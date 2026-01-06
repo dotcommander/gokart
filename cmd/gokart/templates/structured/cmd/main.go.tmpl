@@ -4,24 +4,10 @@ import (
 	"os"
 
 	"{{.Module}}/internal/commands"
-{{- if or .UseSQLite .UseAI }}
-	"{{.Module}}/internal/app"
-{{- end }}
 )
 
 func main() {
-{{- if or .UseSQLite .UseAI }}
-	// Initialize application context
-	appCtx, err := app.New("{{.Name}}")
-	if err != nil {
-		panic(err)
-	}
-	defer appCtx.Close()
-
-	if err := commands.Execute(appCtx); err != nil {
-{{- else }}
 	if err := commands.Execute(); err != nil {
-{{- end }}
 		os.Exit(1)
 	}
 }

@@ -3,6 +3,7 @@ package commands
 import (
 	"github.com/dotcommander/gokart/cli"
 {{- if or .UseSQLite .UseAI }}
+	"github.com/spf13/cobra"
 	"{{.Module}}/internal/app"
 {{- end }}
 )
@@ -13,16 +14,27 @@ var appCtx *app.Context
 {{- end }}
 
 // Execute runs the CLI application.
-{{- if or .UseSQLite .UseAI }}
-func Execute(ctx *app.Context) error {
-	appCtx = ctx
-{{- else }}
 func Execute() error {
-{{- end }}
-	app := cli.NewApp("{{.Name}}", "0.1.0").
-		WithDescription("{{.Name}} - a GoKart CLI application")
+	cliApp := cli.NewApp("{{.Name}}", "0.1.0").
+		WithDescription("{{.Name}} - a GoKart CLI application"){{if or .UseSQLite .UseAI}}.
+		WithEnvPrefix("{{.Name | upper}}").
+		WithStandardFlags()
 
-	app.AddCommand(NewGreetCmd())
+	// Initialize context after config is loaded
+	cliApp.Root().PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
+		var err error
+		appCtx, err = app.New("{{.Name}}", cliApp.Viper())
+		return err
+	}
 
-	return app.Run()
+	// Cleanup on exit
+	defer func() {
+		if appCtx != nil {
+			appCtx.Close()
+		}
+	}(){{end}}
+
+	cliApp.AddCommand(NewGreetCmd())
+
+	return cliApp.Run()
 }

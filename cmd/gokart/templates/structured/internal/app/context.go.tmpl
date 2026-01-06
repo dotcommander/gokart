@@ -2,19 +2,21 @@
 package app
 
 import (
+	"database/sql"
 	"log/slog"
 	"os"
-{{- if .UseSQLite }}
-	"database/sql"
 	"path/filepath"
+{{- if .UseSQLite }}
 
-	_ "modernc.org/sqlite"
+	"github.com/dotcommander/gokart/sqlite"
 {{- end }}
 {{- if .UseAI }}
 
 	"github.com/openai/openai-go"
 	"github.com/openai/openai-go/option"
 {{- end }}
+
+	"github.com/spf13/viper"
 )
 
 // Context holds shared application dependencies.
@@ -28,8 +30,8 @@ type Context struct {
 {{- end }}
 }
 
-// New creates a new application context.
-func New(appName string) (*Context, error) {
+// New creates a new application context with config from viper.
+func New(appName string, v *viper.Viper) (*Context, error) {
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
 
 	ctx := &Context{
@@ -38,23 +40,21 @@ func New(appName string) (*Context, error) {
 {{- if .UseSQLite }}
 
 	// Setup SQLite database
-	cacheDir, err := os.UserCacheDir()
-	if err != nil {
-		return nil, err
+	dbPath := v.GetString("db_path")
+	if dbPath == "" {
+		cacheDir, err := os.UserCacheDir()
+		if err != nil {
+			return nil, err
+		}
+		dbDir := filepath.Join(cacheDir, appName)
+		if err := os.MkdirAll(dbDir, 0755); err != nil {
+			return nil, err
+		}
+		dbPath = filepath.Join(dbDir, "data.db")
 	}
-	dbDir := filepath.Join(cacheDir, appName)
-	if err := os.MkdirAll(dbDir, 0755); err != nil {
-		return nil, err
-	}
-	dbPath := filepath.Join(dbDir, "data.db")
 
-	db, err := sql.Open("sqlite", dbPath)
+	db, err := sqlite.Open(dbPath)
 	if err != nil {
-		return nil, err
-	}
-	// Enable WAL mode and foreign keys
-	if _, err := db.Exec("PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;"); err != nil {
-		db.Close()
 		return nil, err
 	}
 	ctx.DB = db
@@ -62,7 +62,7 @@ func New(appName string) (*Context, error) {
 {{- if .UseAI }}
 
 	// Setup OpenAI client
-	apiKey := os.Getenv("OPENAI_API_KEY")
+	apiKey := v.GetString("openai_api_key")
 	if apiKey == "" {
 		logger.Warn("OPENAI_API_KEY not set, AI features will not work")
 	}
