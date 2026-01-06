@@ -6,6 +6,8 @@
 
 Opinionated Go service toolkit. Thin wrappers around best-in-class packages with sensible defaults.
 
+> **Note:** Not affiliated with [Praetorian's GoKart](https://github.com/praetorian-inc/gokart) (static security scanner). This GoKart is a service/CLI toolkit.
+
 ## Why?
 
 Every Go service has the same 50-100 lines of setup boilerplate: configure slog with JSON/text switching, set up chi with standard middleware, parse postgres URLs with pool limits, wire viper to read config + env vars. You've written this code dozens of times. It's not hard—just tedious and easy to get slightly wrong.
@@ -28,6 +30,12 @@ It's not a framework. It doesn't hide the underlying packages. Factory functions
 - **Fight for inclusion** — Every component must justify its existence.
 
 GoKart is a starter kit, not a modular library. The single `import "github.com/dotcommander/gokart"` is intentional—you get logger, config, database, cache, HTTP, and validation ready to use. Go's compiler eliminates unused code, so you don't pay for what you don't call.
+
+## Examples
+
+See [`examples/`](examples/) for complete working examples:
+- [`http-service/`](examples/http-service/) — Minimal HTTP API with chi router
+- [`cli-app/`](examples/cli-app/) — CLI with commands, tables, and spinners
 
 ## Install
 
@@ -54,6 +62,46 @@ go install github.com/dotcommander/gokart/cmd/gokart@latest  # CLI generator
 | State | encoding/json | JSON state persistence |
 | CLI | cobra + lipgloss | CLI applications |
 | CLI Generator | text/template | Project scaffolding |
+
+---
+
+## Defaults Contract
+
+GoKart applies production-ready defaults so you don't have to look them up.
+
+### StandardMiddleware
+
+```go
+gokart.StandardMiddleware = []func(http.Handler) http.Handler{
+    middleware.RequestID,   // Injects X-Request-ID header
+    middleware.RealIP,      // Extracts client IP from X-Forwarded-For/X-Real-IP
+    middleware.Logger,      // Logs requests with timing
+    middleware.Recoverer,   // Recovers from panics with 500 response
+}
+```
+
+### PostgreSQL Defaults
+
+| Setting | Default | Rationale |
+|---------|---------|-----------|
+| MaxConns | 25 | Suitable for typical web apps |
+| MinConns | 5 | Keep warm connections ready |
+| MaxConnLifetime | 1 hour | Prevent stale connections |
+| MaxConnIdleTime | 30 min | Release unused connections |
+| HealthCheckPeriod | 1 min | Detect dead connections |
+
+### SQLite Defaults
+
+| Setting | Default | Rationale |
+|---------|---------|-----------|
+| WAL Mode | true | Better concurrency |
+| Foreign Keys | true | Data integrity |
+| Busy Timeout | 5 sec | Wait for locks |
+| MaxOpenConns | 25 | Connection pooling |
+| MaxIdleConns | 5 | Keep warm connections |
+| ConnMaxLifetime | 1 hour | Prevent stale connections |
+| Cache Size | 2 MB | In-memory page cache |
+| Temp Store | memory | Faster temp tables |
 
 ---
 
@@ -557,8 +605,18 @@ GoKart intentionally excludes:
 | String utilities | stdlib sufficient | `strings` |
 | Env helpers | viper handles it | `viper.AutomaticEnv()` |
 | DI container | architecture choice | Constructor injection |
-| AI/LLM clients | domain-specific | Separate packages |
+| AI/LLM clients | domain-specific | `--ai` scaffolds integration points; core package doesn't ship an LLM client |
 | Document processing | domain-specific | Separate packages |
+
+---
+
+## Compatibility
+
+**Minimum Go version:** 1.21+
+
+**Stability:**
+- **Library API** (`gokart`, `gokart/cli`): Follows semver. Breaking changes only in major versions.
+- **Generator templates** (`gokart new`): May evolve between minor versions. Generated code is yours to modify.
 
 ---
 
