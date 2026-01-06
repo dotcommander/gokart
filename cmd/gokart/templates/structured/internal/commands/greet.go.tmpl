@@ -10,7 +10,7 @@ import (
 // NewGreetCmd creates the greet command.
 func NewGreetCmd() *cobra.Command {
 	cmd := cli.Command("greet", "Greet someone", func(cmd *cobra.Command, args []string) error {
-		name, _ := cmd.Flags().GetString("name")
+		name := cmd.Flag("name").Value.String()
 		loud, _ := cmd.Flags().GetBool("loud")
 
 		input := actions.GreetInput{

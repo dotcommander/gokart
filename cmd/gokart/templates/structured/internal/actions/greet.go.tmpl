@@ -1,6 +1,7 @@
 package actions
 
 import (
+	"errors"
 	"strings"
 {{- if or .UseSQLite .UseAI }}
 
@@ -8,18 +9,34 @@ import (
 {{- end }}
 )
 
+var ErrNameRequired = errors.New("name is required")
+
 // GreetInput holds the input parameters for the Greet action.
 type GreetInput struct {
 	Name string
 	Loud bool
 }
 
+// Validate checks that the input is valid.
+func (i GreetInput) Validate() error {
+	if strings.TrimSpace(i.Name) == "" {
+		return ErrNameRequired
+	}
+	return nil
+}
+
 // Greet returns a greeting message for the given input.
 {{- if or .UseSQLite .UseAI }}
 func Greet(ctx *app.Context, input GreetInput) (string, error) {
+	if err := input.Validate(); err != nil {
+		return "", err
+	}
 	ctx.Log.Info("greeting", "name", input.Name, "loud", input.Loud)
 {{- else }}
 func Greet(input GreetInput) (string, error) {
+	if err := input.Validate(); err != nil {
+		return "", err
+	}
 {{- end }}
 	msg := "Hello, " + input.Name
 	if input.Loud {
