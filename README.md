@@ -2,6 +2,20 @@
 
 Opinionated Go service toolkit. Thin wrappers around best-in-class packages with sensible defaults.
 
+## Why?
+
+Every Go service has the same 50-100 lines of setup boilerplate: configure slog with JSON/text switching, set up chi with standard middleware, parse postgres URLs with pool limits, wire viper to read config + env vars. You've written this code dozens of times. It's not hard—just tedious and easy to get slightly wrong.
+
+**GoKart is your conventions, tested and packaged.**
+
+```go
+pool, _ := gokart.OpenPostgres(ctx, os.Getenv("DATABASE_URL"))
+router := gokart.NewRouter(gokart.RouterConfig{Middleware: gokart.StandardMiddleware})
+cache, _ := gokart.OpenCache(ctx, "localhost:6379")
+```
+
+It's not a framework. It doesn't hide the underlying packages. Factory functions return `*pgxpool.Pool`, `chi.Router`, `*redis.Client`—use them directly. If you disagree with a default, use the underlying package. GoKart doesn't lock you in.
+
 ## Philosophy
 
 - **Thin wrappers** — GoKart doesn't reinvent. It wraps battle-tested packages.
