@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="logo.png" alt="GoKart Logo" width="200">
+</p>
+
 # GoKart
 
 Opinionated Go service toolkit. Thin wrappers around best-in-class packages with sensible defaults.
@@ -18,9 +22,12 @@ It's not a framework. It doesn't hide the underlying packages. Factory functions
 
 ## Philosophy
 
+- **Batteries included** — One import, everything available. No sub-package juggling.
 - **Thin wrappers** — GoKart doesn't reinvent. It wraps battle-tested packages.
 - **Sensible defaults** — Zero-config works. Customize when needed.
 - **Fight for inclusion** — Every component must justify its existence.
+
+GoKart is a starter kit, not a modular library. The single `import "github.com/dotcommander/gokart"` is intentional—you get logger, config, database, cache, HTTP, and validation ready to use. Go's compiler eliminates unused code, so you don't pay for what you don't call.
 
 ## Install
 

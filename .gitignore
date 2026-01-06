@@ -29,3 +29,9 @@ Thumbs.db
 # Local
 .env
 .env.local
+
+# Generated
+repomix-output.md
+
+# Source assets
+original_logo.png
