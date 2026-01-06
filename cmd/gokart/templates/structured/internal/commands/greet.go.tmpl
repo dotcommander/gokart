@@ -1,0 +1,39 @@
+package commands
+
+import (
+	"github.com/dotcommander/gokart/cli"
+	"github.com/spf13/cobra"
+
+	"{{.Module}}/internal/actions"
+)
+
+// NewGreetCmd creates the greet command.
+func NewGreetCmd() *cobra.Command {
+	cmd := cli.Command("greet", "Greet someone", func(cmd *cobra.Command, args []string) error {
+		name, _ := cmd.Flags().GetString("name")
+		loud, _ := cmd.Flags().GetBool("loud")
+
+		input := actions.GreetInput{
+			Name: name,
+			Loud: loud,
+		}
+
+{{- if or .UseSQLite .UseAI }}
+		result, err := actions.Greet(appCtx, input)
+{{- else }}
+		result, err := actions.Greet(input)
+{{- end }}
+		if err != nil {
+			cli.Error("greet failed: %v", err)
+			return err
+		}
+
+		cli.Success(result)
+		return nil
+	})
+
+	cmd.Flags().StringP("name", "n", "World", "Name to greet")
+	cmd.Flags().BoolP("loud", "l", false, "Greet loudly")
+
+	return cmd
+}

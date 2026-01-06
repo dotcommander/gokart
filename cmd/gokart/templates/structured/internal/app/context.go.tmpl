@@ -1,0 +1,83 @@
+{{- if or .UseSQLite .UseAI -}}
+package app
+
+import (
+	"log/slog"
+	"os"
+{{- if .UseSQLite }}
+	"database/sql"
+	"path/filepath"
+
+	_ "modernc.org/sqlite"
+{{- end }}
+{{- if .UseAI }}
+
+	"github.com/openai/openai-go"
+	"github.com/openai/openai-go/option"
+{{- end }}
+)
+
+// Context holds shared application dependencies.
+type Context struct {
+	Log *slog.Logger
+{{- if .UseSQLite }}
+	DB  *sql.DB
+{{- end }}
+{{- if .UseAI }}
+	AI  *openai.Client
+{{- end }}
+}
+
+// New creates a new application context.
+func New(appName string) (*Context, error) {
+	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
+
+	ctx := &Context{
+		Log: logger,
+	}
+{{- if .UseSQLite }}
+
+	// Setup SQLite database
+	cacheDir, err := os.UserCacheDir()
+	if err != nil {
+		return nil, err
+	}
+	dbDir := filepath.Join(cacheDir, appName)
+	if err := os.MkdirAll(dbDir, 0755); err != nil {
+		return nil, err
+	}
+	dbPath := filepath.Join(dbDir, "data.db")
+
+	db, err := sql.Open("sqlite", dbPath)
+	if err != nil {
+		return nil, err
+	}
+	// Enable WAL mode and foreign keys
+	if _, err := db.Exec("PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;"); err != nil {
+		db.Close()
+		return nil, err
+	}
+	ctx.DB = db
+{{- end }}
+{{- if .UseAI }}
+
+	// Setup OpenAI client
+	apiKey := os.Getenv("OPENAI_API_KEY")
+	if apiKey == "" {
+		logger.Warn("OPENAI_API_KEY not set, AI features will not work")
+	}
+	ctx.AI = openai.NewClient(option.WithAPIKey(apiKey))
+{{- end }}
+
+	return ctx, nil
+}
+
+// Close releases resources.
+func (c *Context) Close() {
+{{- if .UseSQLite }}
+	if c.DB != nil {
+		c.DB.Close()
+	}
+{{- end }}
+}
+{{- end -}}

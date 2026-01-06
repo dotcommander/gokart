@@ -4,6 +4,7 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -65,4 +66,54 @@ func parseLogLevel(level string) slog.Level {
 	default:
 		return slog.LevelInfo
 	}
+}
+
+// NewFileLogger creates a logger that writes to a temp file.
+//
+// This is useful for TUI applications where stdout must remain clean.
+// The logger writes JSON-formatted structured logs.
+//
+// Returns the logger, a cleanup function to close the file, and any error.
+// The cleanup function should be deferred immediately after calling this.
+//
+// Log file location: {os.TempDir()}/{appName}.log
+//
+// Example:
+//
+//	log, cleanup, err := gokart.NewFileLogger("myapp")
+//	if err != nil {
+//	    return err
+//	}
+//	defer cleanup()
+//
+//	log.Info("application started")
+//	// Logs written to /tmp/myapp.log (or equivalent)
+func NewFileLogger(appName string) (*slog.Logger, func(), error) {
+	path := LogPath(appName)
+
+	file, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return nil, func() {}, err
+	}
+
+	handler := slog.NewJSONHandler(file, &slog.HandlerOptions{
+		Level: slog.LevelDebug,
+	})
+	logger := slog.New(handler)
+
+	cleanup := func() {
+		file.Close()
+	}
+
+	return logger, cleanup, nil
+}
+
+// LogPath returns the path where file logs are written.
+//
+// Example:
+//
+//	path := gokart.LogPath("myapp")
+//	// Returns: /tmp/myapp.log (on Unix systems)
+func LogPath(appName string) string {
+	return filepath.Join(os.TempDir(), appName+".log")
 }

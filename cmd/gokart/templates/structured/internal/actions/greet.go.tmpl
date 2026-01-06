@@ -1,0 +1,29 @@
+package actions
+
+import (
+	"strings"
+{{- if or .UseSQLite .UseAI }}
+
+	"{{.Module}}/internal/app"
+{{- end }}
+)
+
+// GreetInput holds the input parameters for the Greet action.
+type GreetInput struct {
+	Name string
+	Loud bool
+}
+
+// Greet returns a greeting message for the given input.
+{{- if or .UseSQLite .UseAI }}
+func Greet(ctx *app.Context, input GreetInput) (string, error) {
+	ctx.Log.Info("greeting", "name", input.Name, "loud", input.Loud)
+{{- else }}
+func Greet(input GreetInput) (string, error) {
+{{- end }}
+	msg := "Hello, " + input.Name
+	if input.Loud {
+		msg = strings.ToUpper(msg) + "!"
+	}
+	return msg, nil
+}

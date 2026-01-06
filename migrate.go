@@ -64,29 +64,11 @@ func DefaultMigrateConfig() MigrateConfig {
 //	    Dialect: "postgres",
 //	})
 func Migrate(ctx context.Context, db *sql.DB, cfg MigrateConfig) error {
-	if cfg.Dir == "" {
-		cfg.Dir = "migrations"
+	if err := setupMigration(&cfg); err != nil {
+		return err
 	}
 
-	if cfg.Table != "" {
-		goose.SetTableName(cfg.Table)
-	}
-
-	if cfg.Dialect != "" {
-		if err := goose.SetDialect(cfg.Dialect); err != nil {
-			return fmt.Errorf("invalid dialect: %w", err)
-		}
-	}
-
-	var err error
-	if cfg.FS != nil {
-		goose.SetBaseFS(cfg.FS)
-		err = goose.UpContext(ctx, db, cfg.Dir)
-	} else {
-		err = goose.UpContext(ctx, db, cfg.Dir)
-	}
-
-	if err != nil {
+	if err := goose.UpContext(ctx, db, cfg.Dir); err != nil {
 		return fmt.Errorf("migration failed: %w", err)
 	}
 
@@ -100,18 +82,8 @@ func MigrateUp(ctx context.Context, db *sql.DB, cfg MigrateConfig) error {
 
 // MigrateDown rolls back the last migration.
 func MigrateDown(ctx context.Context, db *sql.DB, cfg MigrateConfig) error {
-	if cfg.Dir == "" {
-		cfg.Dir = "migrations"
-	}
-
-	if cfg.Dialect != "" {
-		if err := goose.SetDialect(cfg.Dialect); err != nil {
-			return fmt.Errorf("invalid dialect: %w", err)
-		}
-	}
-
-	if cfg.FS != nil {
-		goose.SetBaseFS(cfg.FS)
+	if err := setupMigration(&cfg); err != nil {
+		return err
 	}
 
 	if err := goose.DownContext(ctx, db, cfg.Dir); err != nil {
@@ -123,18 +95,8 @@ func MigrateDown(ctx context.Context, db *sql.DB, cfg MigrateConfig) error {
 
 // MigrateDownTo rolls back to a specific version.
 func MigrateDownTo(ctx context.Context, db *sql.DB, cfg MigrateConfig, version int64) error {
-	if cfg.Dir == "" {
-		cfg.Dir = "migrations"
-	}
-
-	if cfg.Dialect != "" {
-		if err := goose.SetDialect(cfg.Dialect); err != nil {
-			return fmt.Errorf("invalid dialect: %w", err)
-		}
-	}
-
-	if cfg.FS != nil {
-		goose.SetBaseFS(cfg.FS)
+	if err := setupMigration(&cfg); err != nil {
+		return err
 	}
 
 	if err := goose.DownToContext(ctx, db, cfg.Dir, version); err != nil {
@@ -151,18 +113,8 @@ func MigrateReset(ctx context.Context, db *sql.DB, cfg MigrateConfig) error {
 
 // MigrateStatus prints the status of all migrations.
 func MigrateStatus(ctx context.Context, db *sql.DB, cfg MigrateConfig) error {
-	if cfg.Dir == "" {
-		cfg.Dir = "migrations"
-	}
-
-	if cfg.Dialect != "" {
-		if err := goose.SetDialect(cfg.Dialect); err != nil {
-			return fmt.Errorf("invalid dialect: %w", err)
-		}
-	}
-
-	if cfg.FS != nil {
-		goose.SetBaseFS(cfg.FS)
+	if err := setupMigration(&cfg); err != nil {
+		return err
 	}
 
 	if err := goose.StatusContext(ctx, db, cfg.Dir); err != nil {
@@ -174,14 +126,8 @@ func MigrateStatus(ctx context.Context, db *sql.DB, cfg MigrateConfig) error {
 
 // MigrateVersion returns the current migration version.
 func MigrateVersion(ctx context.Context, db *sql.DB, cfg MigrateConfig) (int64, error) {
-	if cfg.Dir == "" {
-		cfg.Dir = "migrations"
-	}
-
-	if cfg.Dialect != "" {
-		if err := goose.SetDialect(cfg.Dialect); err != nil {
-			return 0, fmt.Errorf("invalid dialect: %w", err)
-		}
+	if err := setupMigration(&cfg); err != nil {
+		return 0, err
 	}
 
 	version, err := goose.GetDBVersionContext(ctx, db)
@@ -238,4 +184,23 @@ func SQLiteMigrate(ctx context.Context, db *sql.DB, dir string) error {
 		Dir:     dir,
 		Dialect: "sqlite3",
 	})
+}
+
+// setupMigration applies common configuration for migration operations.
+func setupMigration(cfg *MigrateConfig) error {
+	if cfg.Dir == "" {
+		cfg.Dir = "migrations"
+	}
+	if cfg.Table != "" {
+		goose.SetTableName(cfg.Table)
+	}
+	if cfg.Dialect != "" {
+		if err := goose.SetDialect(cfg.Dialect); err != nil {
+			return fmt.Errorf("invalid dialect: %w", err)
+		}
+	}
+	if cfg.FS != nil {
+		goose.SetBaseFS(cfg.FS)
+	}
+	return nil
 }

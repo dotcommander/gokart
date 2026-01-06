@@ -27,6 +27,7 @@ It's not a framework. It doesn't hide the underlying packages. Factory functions
 ```bash
 go get github.com/dotcommander/gokart
 go get github.com/dotcommander/gokart/cli
+go install github.com/dotcommander/gokart/cmd/gokart@latest  # CLI generator
 ```
 
 ## Components
@@ -43,7 +44,9 @@ go get github.com/dotcommander/gokart/cli
 | Templates | a-h/templ | Type-safe HTML templates |
 | Cache | go-redis/v9 | Redis cache |
 | Migrations | goose/v3 | Database migrations |
+| State | encoding/json | JSON state persistence |
 | CLI | cobra + lipgloss | CLI applications |
+| CLI Generator | text/template | Project scaffolding |
 
 ---
 
@@ -264,9 +267,15 @@ cache.IncrBy(ctx, "views", 10)
 // Distributed lock
 ok, err := cache.SetNX(ctx, "lock:job", "worker-1", time.Minute)
 
-// Remember pattern (get or compute)
+// Remember pattern (get or compute) - returns string
 val, err := cache.Remember(ctx, "expensive", time.Hour, func() (interface{}, error) {
     return computeExpensiveValue()
+})
+
+// RememberJSON for typed data - preserves type for GetJSON retrieval
+var user User
+err := cache.RememberJSON(ctx, "user:1", time.Hour, &user, func() (interface{}, error) {
+    return db.GetUser(ctx, 1)
 })
 
 // Check cache miss
@@ -410,6 +419,123 @@ for i := 0; i < 100; i++ {
 }
 p.Done()
 ```
+
+### Editor Input
+
+Capture long-form input by opening `$EDITOR`:
+
+```go
+// Opens vim/nano, returns edited text
+text, err := cli.CaptureInput("# Enter description here", "md")
+
+// With specific editor
+text, err := cli.CaptureInputWithEditor("code --wait", "", "json")
+```
+
+---
+
+## CLI Generator
+
+Scaffold new CLI projects with `gokart new`:
+
+```bash
+# Install the generator
+go install github.com/dotcommander/gokart/cmd/gokart@latest
+
+# Create a structured project (default)
+gokart new mycli
+
+# Create a flat single-file project
+gokart new mycli --flat
+
+# With SQLite database wiring
+gokart new mycli --sqlite
+
+# With OpenAI client wiring
+gokart new mycli --ai
+
+# With both
+gokart new mycli --sqlite --ai
+
+# Custom module path
+gokart new mycli --module github.com/myorg/mycli
+```
+
+### Structured Output (default)
+
+```
+mycli/
+├── cmd/main.go                    # Entry point
+├── internal/
+│   ├── app/context.go             # App context (if --sqlite or --ai)
+│   ├── commands/
+│   │   ├── root.go                # CLI setup
+│   │   └── greet.go               # Example command
+│   └── actions/
+│       └── greet.go               # Business logic (testable)
+└── go.mod
+```
+
+### Flat Output (`--flat`)
+
+```
+mycli/
+├── main.go
+└── go.mod
+```
+
+---
+
+## State Persistence
+
+Save/load typed state for CLI tools. Separate from config (viper handles config, this handles runtime state).
+
+```go
+// Define your state
+type AppState struct {
+    LastTarget string    `json:"last_target"`
+    RunCount   int       `json:"run_count"`
+}
+
+// Save state to ~/.config/myapp/state.json
+state := AppState{LastTarget: "prod", RunCount: 42}
+err := gokart.SaveState("myapp", "state.json", state)
+
+// Load state (returns zero value if not found)
+state, err := gokart.LoadState[AppState]("myapp", "state.json")
+if errors.Is(err, os.ErrNotExist) {
+    // First run, use defaults
+}
+
+// Get the state file path
+path := gokart.StatePath("myapp", "state.json")
+// ~/.config/myapp/state.json
+```
+
+---
+
+## File Logger
+
+Create a logger that writes to a temp file, keeping stdout clean for spinners and tables.
+
+```go
+// Creates logger writing to /tmp/myapp.log
+logger, cleanup, err := gokart.NewFileLogger("myapp")
+if err != nil {
+    log.Fatal(err)
+}
+defer cleanup()
+
+// Use the logger
+logger.Info("processing started", "file", filename)
+logger.Error("validation failed", "err", err)
+
+// Get the log file path
+path := gokart.LogPath("myapp")
+// /tmp/myapp.log
+```
+
+Debug your CLI with: `tail -f /tmp/myapp.log`
 
 ---
 

@@ -1,0 +1,14 @@
+module {{.Module}}
+
+go {{.GoVersion}}
+
+require (
+	github.com/dotcommander/gokart v0.1.0
+	github.com/spf13/cobra v1.8.0
+{{- if .UseSQLite }}
+	modernc.org/sqlite v1.29.0
+{{- end }}
+{{- if .UseAI }}
+	github.com/openai/openai-go v0.1.0-alpha.41
+{{- end }}
+)

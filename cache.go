@@ -271,6 +271,41 @@ func (c *Cache) Remember(ctx context.Context, key string, ttl time.Duration, fn 
 	return strVal, nil
 }
 
+// RememberJSON gets a value or computes and caches it as JSON.
+// Unlike Remember, this preserves type information for GetJSON retrieval.
+//
+// Example:
+//
+//	var user User
+//	err := cache.RememberJSON(ctx, "user:123", time.Hour, &user, func() (interface{}, error) {
+//	    return db.GetUser(ctx, 123)
+//	})
+func (c *Cache) RememberJSON(ctx context.Context, key string, ttl time.Duration, dest interface{}, fn func() (interface{}, error)) error {
+	// Try to get existing value
+	err := c.GetJSON(ctx, key, dest)
+	if err == nil {
+		return nil
+	}
+	if err != redis.Nil {
+		return err
+	}
+
+	// Compute new value
+	result, err := fn()
+	if err != nil {
+		return err
+	}
+
+	// Store as JSON
+	if err := c.SetJSON(ctx, key, result, ttl); err != nil {
+		return err
+	}
+
+	// Unmarshal into dest (to populate the destination)
+	data, _ := json.Marshal(result)
+	return json.Unmarshal(data, dest)
+}
+
 // IsNil returns true if the error is a cache miss.
 func IsNil(err error) bool {
 	return err == redis.Nil

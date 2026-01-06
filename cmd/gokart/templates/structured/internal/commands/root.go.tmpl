@@ -1,0 +1,28 @@
+package commands
+
+import (
+	"github.com/dotcommander/gokart/cli"
+{{- if or .UseSQLite .UseAI }}
+	"{{.Module}}/internal/app"
+{{- end }}
+)
+
+{{- if or .UseSQLite .UseAI }}
+
+var appCtx *app.Context
+{{- end }}
+
+// Execute runs the CLI application.
+{{- if or .UseSQLite .UseAI }}
+func Execute(ctx *app.Context) error {
+	appCtx = ctx
+{{- else }}
+func Execute() error {
+{{- end }}
+	app := cli.NewApp("{{.Name}}", "0.1.0").
+		WithDescription("{{.Name}} - a GoKart CLI application")
+
+	app.AddCommand(NewGreetCmd())
+
+	return app.Run()
+}
