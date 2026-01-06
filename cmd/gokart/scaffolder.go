@@ -36,7 +36,10 @@ func Apply(efs embed.FS, root string, targetDir string, data TemplateData) error
 			return fmt.Errorf("read template %s: %w", path, err)
 		}
 
-		tmpl, err := template.New(filepath.Base(path)).Parse(string(content))
+		funcs := template.FuncMap{
+			"upper": strings.ToUpper,
+		}
+		tmpl, err := template.New(filepath.Base(path)).Funcs(funcs).Parse(string(content))
 		if err != nil {
 			return fmt.Errorf("parse template %s: %w", path, err)
 		}

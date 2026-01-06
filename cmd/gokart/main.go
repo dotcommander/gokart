@@ -14,18 +14,27 @@ func main() {
 
 	newCmd := cli.CommandWithArgs("new <project-name>", "Create a new GoKart project", 1,
 		func(cmd *cobra.Command, args []string) error {
-			projectName := args[0]
+			projectArg := args[0]
 
 			flat, _ := cmd.Flags().GetBool("flat")
 			module, _ := cmd.Flags().GetString("module")
 			sqlite, _ := cmd.Flags().GetBool("sqlite")
 			ai, _ := cmd.Flags().GetBool("ai")
 
+			// Extract name from path (e.g., /tmp/foo -> foo)
+			projectName := filepath.Base(projectArg)
+
+			// Determine target directory
+			var targetDir string
+			if filepath.IsAbs(projectArg) {
+				targetDir = projectArg
+			} else {
+				targetDir = filepath.Join(".", projectArg)
+			}
+
 			if module == "" {
 				module = projectName
 			}
-
-			targetDir := filepath.Join(".", projectName)
 
 			if flat {
 				if sqlite || ai {
