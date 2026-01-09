@@ -26,6 +26,8 @@ gokart new <name> [flags]
   --postgres   PostgreSQL pool (pgx/v5)
   --ai         OpenAI client (openai-go/v3)
   --flat       Single main.go (no internal/)
+  --local      No global config (structured: default is global)
+  --global     Global config (flat: default is local)
   --module     Custom module path`)
 
 	newCmd := cli.CommandWithArgs("new <project-name>", "Create a new GoKart project", 1,
@@ -37,6 +39,16 @@ gokart new <name> [flags]
 			sqlite, _ := cmd.Flags().GetBool("sqlite")
 			postgres, _ := cmd.Flags().GetBool("postgres")
 			ai, _ := cmd.Flags().GetBool("ai")
+			local, _ := cmd.Flags().GetBool("local")
+			global, _ := cmd.Flags().GetBool("global")
+
+			// Structured defaults to global=true, flat defaults to global=false
+			var useGlobal bool
+			if flat {
+				useGlobal = global // flat: opt-in with --global
+			} else {
+				useGlobal = !local // structured: opt-out with --local
+			}
 
 			projectName := filepath.Base(projectArg)
 
@@ -56,12 +68,12 @@ gokart new <name> [flags]
 					cli.Warning("--sqlite, --postgres, and --ai flags are ignored in flat mode")
 				}
 				cli.Info("Scaffolding flat project: %s", projectName)
-				if err := ScaffoldFlat(targetDir, projectName, module); err != nil {
+				if err := ScaffoldFlat(targetDir, projectName, module, useGlobal); err != nil {
 					return err
 				}
 			} else {
 				cli.Info("Scaffolding structured project: %s", projectName)
-				if err := ScaffoldStructured(targetDir, projectName, module, sqlite, postgres, ai); err != nil {
+				if err := ScaffoldStructured(targetDir, projectName, module, sqlite, postgres, ai, useGlobal); err != nil {
 					return err
 				}
 			}
@@ -103,6 +115,8 @@ Flat mode creates a single main.go for quick scripts.`
 	newCmd.Flags().Bool("sqlite", false, "Include SQLite database wiring (modernc.org/sqlite)")
 	newCmd.Flags().Bool("postgres", false, "Include PostgreSQL connection pool (pgx/v5)")
 	newCmd.Flags().Bool("ai", false, "Include OpenAI client (openai-go/v3)")
+	newCmd.Flags().Bool("local", false, "Disable global config (structured only, default is global)")
+	newCmd.Flags().Bool("global", false, "Enable global config (flat only, default is local)")
 
 	app.AddCommand(newCmd)
 
