@@ -302,7 +302,10 @@ func (c *Cache) RememberJSON(ctx context.Context, key string, ttl time.Duration,
 	}
 
 	// Unmarshal into dest (to populate the destination)
-	data, _ := json.Marshal(result)
+	data, err := json.Marshal(result)
+	if err != nil {
+		return fmt.Errorf("marshal result for dest: %w", err)
+	}
 	return json.Unmarshal(data, dest)
 }
 
