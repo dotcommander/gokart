@@ -87,18 +87,36 @@ func OpenContext(ctx context.Context, path string) (*sql.DB, error) {
 //	    MaxOpenConns: 50,
 //	})
 func OpenWithConfig(ctx context.Context, cfg Config) (*sql.DB, error) {
-	// Build DSN with pragmas
-	dsn := cfg.Path
-	if cfg.Path != ":memory:" {
-		dsn = fmt.Sprintf("file:%s?_txlock=immediate", cfg.Path)
-	}
+	dsn := buildDSN(cfg.Path)
 
 	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("open sqlite: %w", err)
 	}
 
-	// Configure connection pool
+	configurePool(db, cfg)
+
+	if err := applyPragmas(ctx, db, cfg); err != nil {
+		db.Close()
+		return nil, err
+	}
+
+	if err := db.PingContext(ctx); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("ping sqlite: %w", err)
+	}
+
+	return db, nil
+}
+
+func buildDSN(path string) string {
+	if path == ":memory:" {
+		return path
+	}
+	return fmt.Sprintf("file:%s?_txlock=immediate", path)
+}
+
+func configurePool(db *sql.DB, cfg Config) {
 	if cfg.MaxOpenConns > 0 {
 		db.SetMaxOpenConns(cfg.MaxOpenConns)
 	}
@@ -108,19 +126,27 @@ func OpenWithConfig(ctx context.Context, cfg Config) (*sql.DB, error) {
 	if cfg.ConnMaxLifetime > 0 {
 		db.SetConnMaxLifetime(cfg.ConnMaxLifetime)
 	}
+}
 
-	// Apply pragmas
+func applyPragmas(ctx context.Context, db *sql.DB, cfg Config) error {
+	pragmas := buildPragmas(cfg)
+	for _, pragma := range pragmas {
+		if _, err := db.ExecContext(ctx, pragma); err != nil {
+			return fmt.Errorf("set pragma %q: %w", pragma, err)
+		}
+	}
+	return nil
+}
+
+func buildPragmas(cfg Config) []string {
 	pragmas := []string{}
 
 	if cfg.WALMode {
-		pragmas = append(pragmas, "PRAGMA journal_mode=WAL")
-		pragmas = append(pragmas, "PRAGMA synchronous=NORMAL")
+		pragmas = append(pragmas, "PRAGMA journal_mode=WAL", "PRAGMA synchronous=NORMAL")
 	}
-
 	if cfg.BusyTimeout > 0 {
 		pragmas = append(pragmas, fmt.Sprintf("PRAGMA busy_timeout=%d", cfg.BusyTimeout.Milliseconds()))
 	}
-
 	if cfg.ForeignKeys {
 		pragmas = append(pragmas, "PRAGMA foreign_keys=ON")
 	}
@@ -131,20 +157,7 @@ func OpenWithConfig(ctx context.Context, cfg Config) (*sql.DB, error) {
 		"PRAGMA temp_store=MEMORY", // temp tables in memory
 	)
 
-	for _, pragma := range pragmas {
-		if _, err := db.ExecContext(ctx, pragma); err != nil {
-			db.Close()
-			return nil, fmt.Errorf("set pragma %q: %w", pragma, err)
-		}
-	}
-
-	// Verify connection
-	if err := db.PingContext(ctx); err != nil {
-		db.Close()
-		return nil, fmt.Errorf("ping sqlite: %w", err)
-	}
-
-	return db, nil
+	return pragmas
 }
 
 // InMemory creates an in-memory SQLite database for testing.
@@ -158,8 +171,11 @@ func OpenWithConfig(ctx context.Context, cfg Config) (*sql.DB, error) {
 //	defer db.Close()
 func InMemory() (*sql.DB, error) {
 	cfg := DefaultConfig(":memory:")
-	cfg.WALMode = false        // WAL not supported for :memory:
-	cfg.MaxOpenConns = 1       // Single connection for in-memory to share state
+	cfg.WALMode = false // WAL not supported for :memory:
+	// CRITICAL: Must be 1 connection. Each SQLite connection to :memory:
+	// gets its own separate database. Multiple connections = multiple DBs
+	// that don't share data. This is a common trap.
+	cfg.MaxOpenConns = 1
 	cfg.MaxIdleConns = 1
 	return OpenWithConfig(context.Background(), cfg)
 }
