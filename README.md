@@ -62,6 +62,7 @@ go install github.com/dotcommander/gokart/cmd/gokart@latest  # CLI generator
 | State | encoding/json | JSON state persistence |
 | CLI | cobra + lipgloss | CLI applications |
 | CLI Generator | text/template | Project scaffolding |
+| OpenAI | openai-go/v3 | OpenAI client |
 
 ---
 
@@ -154,6 +155,39 @@ router.Route("/api", func(r chi.Router) {
 })
 
 http.ListenAndServe(":8080", router)
+```
+
+---
+
+## Server
+
+Graceful shutdown with signal handling.
+
+```go
+// Start server - blocks until SIGINT/SIGTERM, then graceful shutdown
+err := gokart.ListenAndServe(":8080", router)
+
+// Custom shutdown timeout (default 30s)
+err := gokart.ListenAndServeWithTimeout(":8080", router, 60*time.Second)
+```
+
+Handles:
+- SIGINT (Ctrl+C) and SIGTERM (kill)
+- Graceful connection draining
+- Configurable timeout
+- Structured logging of lifecycle events
+
+---
+
+## Response Helpers
+
+Convenience functions for common HTTP responses.
+
+```go
+gokart.JSON(w, user)                           // 200 + JSON
+gokart.JSONStatus(w, http.StatusCreated, user) // Custom status + JSON
+gokart.Error(w, http.StatusNotFound, "not found") // Error JSON
+gokart.NoContent(w)                            // 204
 ```
 
 ---
@@ -341,6 +375,28 @@ if gokart.IsNil(err) {
 
 ---
 
+## OpenAI
+
+Wraps `openai/openai-go/v3` for OpenAI API access.
+
+```go
+// Simple - reads OPENAI_API_KEY from environment
+client := gokart.NewOpenAIClient()
+
+// With explicit API key
+client := gokart.NewOpenAIClientWithKey("sk-...")
+
+// Use the client
+resp, err := client.Chat.Completions.New(ctx, openai.ChatCompletionNewParams{
+    Model: openai.ChatModelGPT4o,
+    Messages: []openai.ChatCompletionMessageParamUnion{
+        openai.UserMessage("Hello!"),
+    },
+})
+```
+
+---
+
 ## Migrations
 
 Wraps `pressly/goose/v3` for database schema migrations.
@@ -506,11 +562,14 @@ gokart new mycli --flat
 # With SQLite database wiring
 gokart new mycli --sqlite
 
-# With OpenAI client wiring
+# With PostgreSQL database wiring
+gokart new mycli --postgres
+
+# With OpenAI client wiring (v3)
 gokart new mycli --ai
 
-# With both
-gokart new mycli --sqlite --ai
+# Full stack: PostgreSQL + AI
+gokart new mycli --postgres --ai
 
 # Custom module path
 gokart new mycli --module github.com/myorg/mycli
@@ -522,7 +581,7 @@ gokart new mycli --module github.com/myorg/mycli
 mycli/
 ├── cmd/main.go                    # Entry point
 ├── internal/
-│   ├── app/context.go             # App context (if --sqlite or --ai)
+│   ├── app/context.go             # App context (if --sqlite, --postgres, or --ai)
 │   ├── commands/
 │   │   ├── root.go                # CLI setup
 │   │   └── greet.go               # Example command
@@ -605,14 +664,14 @@ GoKart intentionally excludes:
 | String utilities | stdlib sufficient | `strings` |
 | Env helpers | viper handles it | `viper.AutomaticEnv()` |
 | DI container | architecture choice | Constructor injection |
-| AI/LLM clients | domain-specific | `--ai` scaffolds integration points; core package doesn't ship an LLM client |
+| AI/LLM clients | now included | `gokart.NewOpenAIClient()` or `--ai` flag for scaffolding |
 | Document processing | domain-specific | Separate packages |
 
 ---
 
 ## Compatibility
 
-**Minimum Go version:** 1.21+
+**Minimum Go version:** 1.22+ (1.24+ recommended)
 
 **Stability:**
 - **Library API** (`gokart`, `gokart/cli`): Follows semver. Breaking changes only in major versions.
