@@ -194,6 +194,12 @@ var (
 	styleInfo    = lipgloss.NewStyle().Foreground(lipgloss.Color("12"))
 	styleDim     = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
 	styleBold    = lipgloss.NewStyle().Bold(true)
+
+	// Help styling
+	styleTitle   = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("13")).MarginBottom(1)
+	styleHeading = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("6"))
+	styleCommand = lipgloss.NewStyle().Foreground(lipgloss.Color("10"))
+	styleFlag    = lipgloss.NewStyle().Foreground(lipgloss.Color("11"))
 )
 
 // Success prints a success message.
@@ -246,3 +252,54 @@ func Must(err error) {
 		Fatal("%v", err)
 	}
 }
+
+// --- Help Styling ---
+
+// SetStyledHelp configures beautiful help output for a command.
+func SetStyledHelp(cmd *cobra.Command) {
+	cobra.AddTemplateFunc("styleTitle", func(s string) string { return styleTitle.Render(s) })
+	cobra.AddTemplateFunc("styleHeading", func(s string) string { return styleHeading.Render(s) })
+	cobra.AddTemplateFunc("styleCommand", func(s string) string { return styleCommand.Render(s) })
+	cobra.AddTemplateFunc("styleFlag", func(s string) string { return styleFlag.Render(s) })
+	cobra.AddTemplateFunc("styleDim", func(s string) string { return styleDim.Render(s) })
+
+	cmd.SetHelpTemplate(styledHelpTemplate)
+	cmd.SetUsageTemplate(styledUsageTemplate)
+}
+
+var styledHelpTemplate = `{{ styleTitle .Short }}
+{{ if .Long }}
+{{ .Long }}
+{{ end }}
+{{ styleHeading "Usage:" }}
+  {{ styleCommand .UseLine }}
+{{ if .HasAvailableSubCommands }}
+{{ styleHeading "Commands:" }}{{ range .Commands }}{{ if .IsAvailableCommand }}
+  {{ styleCommand (rpad .Name .NamePadding) }}  {{ .Short }}{{ end }}{{ end }}
+{{ end }}
+{{ if .HasAvailableLocalFlags }}
+{{ styleHeading "Flags:" }}
+{{ .LocalFlags.FlagUsages | trimTrailingWhitespaces }}
+{{ end }}
+{{ if .HasAvailableInheritedFlags }}
+{{ styleHeading "Global Flags:" }}
+{{ .InheritedFlags.FlagUsages | trimTrailingWhitespaces }}
+{{ end }}
+{{ if .HasExample }}
+{{ styleHeading "Examples:" }}
+{{ styleDim .Example }}
+{{ end }}
+{{ styleDim "Use \"" }}{{ styleCommand (printf "%s [command] --help" .CommandPath) }}{{ styleDim "\" for more information." }}
+`
+
+var styledUsageTemplate = `{{ styleHeading "Usage:" }}
+  {{ styleCommand .UseLine }}
+{{ if .HasAvailableSubCommands }}
+{{ styleHeading "Commands:" }}{{ range .Commands }}{{ if .IsAvailableCommand }}
+  {{ styleCommand (rpad .Name .NamePadding) }}  {{ .Short }}{{ end }}{{ end }}
+{{ end }}
+{{ if .HasAvailableLocalFlags }}
+{{ styleHeading "Flags:" }}
+{{ .LocalFlags.FlagUsages | trimTrailingWhitespaces }}
+{{ end }}
+`

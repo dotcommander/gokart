@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -15,6 +16,8 @@ type Spinner struct {
 	delay   time.Duration
 	writer  io.Writer
 	done    chan struct{}
+	ctx     context.Context
+	cancel  context.CancelFunc
 	mu      sync.Mutex
 	running bool
 }
@@ -58,7 +61,14 @@ func (s *Spinner) WithWriter(w io.Writer) *Spinner {
 }
 
 // Start begins the spinner animation.
+// For long-running operations, prefer StartWithContext to ensure cleanup.
 func (s *Spinner) Start() {
+	s.StartWithContext(context.Background())
+}
+
+// StartWithContext begins the spinner animation with context cancellation.
+// The spinner stops automatically when the context is cancelled.
+func (s *Spinner) StartWithContext(ctx context.Context) {
 	s.mu.Lock()
 	if s.running {
 		s.mu.Unlock()
@@ -66,6 +76,7 @@ func (s *Spinner) Start() {
 	}
 	s.running = true
 	s.done = make(chan struct{})
+	s.ctx, s.cancel = context.WithCancel(ctx)
 	s.mu.Unlock()
 
 	go func() {
@@ -73,6 +84,8 @@ func (s *Spinner) Start() {
 		for {
 			select {
 			case <-s.done:
+				return
+			case <-s.ctx.Done():
 				return
 			default:
 				s.mu.Lock()
@@ -103,6 +116,9 @@ func (s *Spinner) Stop() {
 	}
 	s.running = false
 	close(s.done)
+	if s.cancel != nil {
+		s.cancel()
+	}
 	s.mu.Unlock()
 
 	// Clear the line

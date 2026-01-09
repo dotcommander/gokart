@@ -11,11 +11,12 @@ var templates embed.FS
 
 // TemplateData holds variables for template substitution.
 type TemplateData struct {
-	Name      string
-	Module    string
-	GoVersion string
-	UseSQLite bool
-	UseAI     bool
+	Name        string
+	Module      string
+	GoVersion   string
+	UseSQLite   bool
+	UsePostgres bool
+	UseAI       bool
 }
 
 // ScaffoldFlat creates a flat project structure with a single main.go.
@@ -29,13 +30,14 @@ func ScaffoldFlat(dir, name, module string) error {
 }
 
 // ScaffoldStructured creates a structured project with cmd/, internal/commands/, internal/actions/.
-func ScaffoldStructured(dir, name, module string, useSQLite, useAI bool) error {
+func ScaffoldStructured(dir, name, module string, useSQLite, usePostgres, useAI bool) error {
 	data := TemplateData{
-		Name:      name,
-		Module:    module,
-		GoVersion: goVersion(),
-		UseSQLite: useSQLite,
-		UseAI:     useAI,
+		Name:        name,
+		Module:      module,
+		GoVersion:   goVersion(),
+		UseSQLite:   useSQLite,
+		UsePostgres: usePostgres,
+		UseAI:       useAI,
 	}
 	return Apply(templates, "templates/structured", dir, data)
 }
