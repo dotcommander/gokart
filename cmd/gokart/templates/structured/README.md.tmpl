@@ -1,0 +1,44 @@
+# {{.Name}}
+
+## Build
+
+```bash
+go build -o {{.Name}} ./cmd
+go install ./cmd                          # or: ln -sf "$(pwd)/{{.Name}}" ~/go/bin/
+
+# Release build with version info
+go build -ldflags "-X main.version=$(git describe --tags 2>/dev/null || echo dev)" -o {{.Name}} ./cmd
+```
+
+## Structure
+
+```
+cmd/{{.Name}}/          Entry point
+internal/commands/      CLI commands (Cobra)
+internal/actions/       Business logic
+{{- if or .UseSQLite .UsePostgres .UseAI }}
+internal/app/           App context & config
+{{- end }}
+```
+{{- if .UseGlobal }}
+
+## Config
+
+`~/.config/{{.Name}}/config.yaml`
+{{- end }}
+{{- if or .UseSQLite .UsePostgres .UseAI }}
+
+## Configuration
+{{- if .UseSQLite }}
+
+SQLite database auto-creates at `~/.cache/{{.Name}}/data.db`.
+{{- end }}
+{{- if .UsePostgres }}
+
+Set `DATABASE_URL` environment variable for PostgreSQL.
+{{- end }}
+{{- if .UseAI }}
+
+Set `OPENAI_API_KEY` environment variable for OpenAI.
+{{- end }}
+{{- end }}

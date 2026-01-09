@@ -1,0 +1,17 @@
+# {{.Name}}
+
+## Build
+
+```bash
+go build -o {{.Name}} .
+go install .                              # or: ln -sf "$(pwd)/{{.Name}}" ~/go/bin/
+
+# Release build with version info
+go build -ldflags "-X main.version=$(git describe --tags 2>/dev/null || echo dev)" -o {{.Name}} .
+```
+{{- if .UseGlobal }}
+
+## Config
+
+`~/.config/{{.Name}}/config.yaml`
+{{- end }}

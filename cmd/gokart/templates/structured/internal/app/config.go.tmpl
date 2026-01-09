@@ -1,0 +1,38 @@
+{{- if .UseGlobal -}}
+package app
+
+import (
+	"os"
+	"path/filepath"
+)
+
+// ConfigDir returns ~/.config/{{.Name}}/ on all platforms.
+func ConfigDir() (string, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(home, ".config", "{{.Name}}"), nil
+}
+
+// EnsureConfigDir creates the config directory and default config.yaml if missing.
+func EnsureConfigDir() error {
+	dir, err := ConfigDir()
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return err
+	}
+
+	configFile := filepath.Join(dir, "config.yaml")
+	if _, err := os.Stat(configFile); os.IsNotExist(err) {
+		return os.WriteFile(configFile, []byte(defaultConfig), 0644)
+	}
+	return nil
+}
+
+const defaultConfig = `# {{.Name}} configuration
+# Run: {{.Name}} --help
+`
+{{- end -}}
