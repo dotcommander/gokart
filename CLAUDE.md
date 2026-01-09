@@ -20,12 +20,27 @@ GoKart is an opinionated Go service toolkit providing thin wrappers around battl
 
 Scaffolds new CLI projects:
 ```bash
-gokart new mycli                    # Structured (default)
-gokart new mycli --flat             # Single main.go
+gokart new mycli                    # Structured, global (default)
+gokart new mycli --local            # Structured, no global config
+gokart new mycli --flat             # Single main.go, local
+gokart new mycli --flat --global    # Single main.go, global config
 gokart new mycli --sqlite           # With SQLite wiring
 gokart new mycli --postgres         # With PostgreSQL wiring
 gokart new mycli --ai               # With OpenAI client (v3)
-gokart new mycli --postgres --ai    # Full stack
+```
+
+**Global mode** (default for structured, opt-in for flat):
+- Creates `~/.config/<app>/config.yaml` on first run
+- Generates CLAUDE.md documenting paths for AI assistants
+- Generates README.md with build commands
+
+**Version embedding** (all scaffolded projects):
+```bash
+# Dev build
+go build -o mycli ./cmd
+
+# Release build with git tag
+go build -ldflags "-X main.version=$(git describe --tags)" -o mycli ./cmd
 ```
 
 ### Main Package (`gokart`)
@@ -81,8 +96,10 @@ State persistence for CLI tools (separate from config):
 ```go
 gokart.SaveState("myapp", "state.json", myState)
 state, _ := gokart.LoadState[MyState]("myapp", "state.json")
-// Saves to ~/.config/myapp/state.json
+// Uses os.UserConfigDir(): macOS ~/Library/Application Support/, Linux ~/.config/
 ```
+
+Scaffolded global CLIs use `~/.config/<app>/` on all platforms for consistency.
 
 File logger keeps stdout clean for UI:
 ```go
