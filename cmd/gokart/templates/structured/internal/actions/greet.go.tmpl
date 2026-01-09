@@ -3,7 +3,7 @@ package actions
 import (
 	"errors"
 	"strings"
-{{- if or .UseSQLite .UseAI }}
+{{- if or .UseSQLite .UsePostgres .UseAI }}
 
 	"{{.Module}}/internal/app"
 {{- end }}
@@ -26,7 +26,7 @@ func (i GreetInput) Validate() error {
 }
 
 // Greet returns a greeting message for the given input.
-{{- if or .UseSQLite .UseAI }}
+{{- if or .UseSQLite .UsePostgres .UseAI }}
 func Greet(ctx *app.Context, input GreetInput) (string, error) {
 	if err := input.Validate(); err != nil {
 		return "", err

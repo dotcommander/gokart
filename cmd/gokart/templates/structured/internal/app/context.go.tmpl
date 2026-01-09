@@ -1,19 +1,33 @@
-{{- if or .UseSQLite .UseAI -}}
+{{- if or .UseSQLite .UsePostgres .UseAI -}}
 package app
 
 import (
+{{- if .UsePostgres }}
+	"context"
+{{- end }}
+{{- if .UseSQLite }}
 	"database/sql"
+{{- end }}
+{{- if .UsePostgres }}
+	"fmt"
+{{- end }}
 	"log/slog"
 	"os"
+{{- if .UseSQLite }}
 	"path/filepath"
+{{- end }}
 {{- if .UseSQLite }}
 
 	"github.com/dotcommander/gokart/sqlite"
 {{- end }}
+{{- if .UsePostgres }}
+
+	"github.com/jackc/pgx/v5/pgxpool"
+{{- end }}
 {{- if .UseAI }}
 
-	"github.com/openai/openai-go"
-	"github.com/openai/openai-go/option"
+	"github.com/openai/openai-go/v3"
+	"github.com/openai/openai-go/v3/option"
 {{- end }}
 
 	"github.com/spf13/viper"
@@ -25,8 +39,11 @@ type Context struct {
 {{- if .UseSQLite }}
 	DB  *sql.DB
 {{- end }}
+{{- if .UsePostgres }}
+	Pool *pgxpool.Pool
+{{- end }}
 {{- if .UseAI }}
-	AI  *openai.Client
+	AI  openai.Client
 {{- end }}
 }
 
@@ -59,6 +76,20 @@ func New(appName string, v *viper.Viper) (*Context, error) {
 	}
 	ctx.DB = db
 {{- end }}
+{{- if .UsePostgres }}
+
+	// Setup PostgreSQL connection pool
+	dbURL := v.GetString("database_url")
+	if dbURL == "" {
+		logger.Warn("DATABASE_URL not set, PostgreSQL features will not work")
+	} else {
+		pool, err := pgxpool.New(context.Background(), dbURL)
+		if err != nil {
+			return nil, fmt.Errorf("connect to postgres: %w", err)
+		}
+		ctx.Pool = pool
+	}
+{{- end }}
 {{- if .UseAI }}
 
 	// Setup OpenAI client
@@ -77,6 +108,11 @@ func (c *Context) Close() {
 {{- if .UseSQLite }}
 	if c.DB != nil {
 		c.DB.Close()
+	}
+{{- end }}
+{{- if .UsePostgres }}
+	if c.Pool != nil {
+		c.Pool.Close()
 	}
 {{- end }}
 }

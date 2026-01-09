@@ -18,7 +18,7 @@ func NewGreetCmd() *cobra.Command {
 			Loud: loud,
 		}
 
-{{- if or .UseSQLite .UseAI }}
+{{- if or .UseSQLite .UsePostgres .UseAI }}
 		result, err := actions.Greet(appCtx, input)
 {{- else }}
 		result, err := actions.Greet(input)

@@ -2,13 +2,13 @@ package commands
 
 import (
 	"github.com/dotcommander/gokart/cli"
-{{- if or .UseSQLite .UseAI }}
+{{- if or .UseSQLite .UsePostgres .UseAI }}
 	"github.com/spf13/cobra"
 	"{{.Module}}/internal/app"
 {{- end }}
 )
 
-{{- if or .UseSQLite .UseAI }}
+{{- if or .UseSQLite .UsePostgres .UseAI }}
 
 var appCtx *app.Context
 {{- end }}
