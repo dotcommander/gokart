@@ -5,9 +5,13 @@ import (
 	"database/sql"
 	"fmt"
 	"io/fs"
+	"sync"
 
 	"github.com/pressly/goose/v3"
 )
+
+// migrateMu protects goose global state during concurrent migrations.
+var migrateMu sync.Mutex
 
 // MigrateConfig configures database migrations.
 type MigrateConfig struct {
@@ -64,6 +68,9 @@ func DefaultMigrateConfig() MigrateConfig {
 //	    Dialect: "postgres",
 //	})
 func Migrate(ctx context.Context, db *sql.DB, cfg MigrateConfig) error {
+	migrateMu.Lock()
+	defer migrateMu.Unlock()
+
 	if err := setupMigration(&cfg); err != nil {
 		return err
 	}
@@ -82,6 +89,9 @@ func MigrateUp(ctx context.Context, db *sql.DB, cfg MigrateConfig) error {
 
 // MigrateDown rolls back the last migration.
 func MigrateDown(ctx context.Context, db *sql.DB, cfg MigrateConfig) error {
+	migrateMu.Lock()
+	defer migrateMu.Unlock()
+
 	if err := setupMigration(&cfg); err != nil {
 		return err
 	}
@@ -95,6 +105,9 @@ func MigrateDown(ctx context.Context, db *sql.DB, cfg MigrateConfig) error {
 
 // MigrateDownTo rolls back to a specific version.
 func MigrateDownTo(ctx context.Context, db *sql.DB, cfg MigrateConfig, version int64) error {
+	migrateMu.Lock()
+	defer migrateMu.Unlock()
+
 	if err := setupMigration(&cfg); err != nil {
 		return err
 	}
@@ -113,6 +126,9 @@ func MigrateReset(ctx context.Context, db *sql.DB, cfg MigrateConfig) error {
 
 // MigrateStatus prints the status of all migrations.
 func MigrateStatus(ctx context.Context, db *sql.DB, cfg MigrateConfig) error {
+	migrateMu.Lock()
+	defer migrateMu.Unlock()
+
 	if err := setupMigration(&cfg); err != nil {
 		return err
 	}
@@ -126,6 +142,9 @@ func MigrateStatus(ctx context.Context, db *sql.DB, cfg MigrateConfig) error {
 
 // MigrateVersion returns the current migration version.
 func MigrateVersion(ctx context.Context, db *sql.DB, cfg MigrateConfig) (int64, error) {
+	migrateMu.Lock()
+	defer migrateMu.Unlock()
+
 	if err := setupMigration(&cfg); err != nil {
 		return 0, err
 	}
