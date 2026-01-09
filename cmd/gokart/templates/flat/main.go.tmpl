@@ -2,14 +2,65 @@ package main
 
 import (
 	"os"
+{{- if .UseGlobal }}
+	"path/filepath"
+{{- end }}
 
 	"github.com/dotcommander/gokart/cli"
 	"github.com/spf13/cobra"
 )
+{{- if .UseGlobal }}
+
+// configDir returns ~/.config/{{.Name}}/.
+func configDir() (string, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(home, ".config", "{{.Name}}"), nil
+}
+
+// ensureConfigDir creates the config directory and default config.yaml if missing.
+func ensureConfigDir() error {
+	dir, err := configDir()
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return err
+	}
+
+	configFile := filepath.Join(dir, "config.yaml")
+	if _, err := os.Stat(configFile); os.IsNotExist(err) {
+		return os.WriteFile(configFile, []byte(defaultConfig), 0644)
+	}
+	return nil
+}
+
+const defaultConfig = `# {{.Name}} configuration
+# Run: {{.Name}} --help
+`
+{{- end }}
+
+// version is set via ldflags: -X main.version=v1.0.0
+var version = "dev"
 
 func main() {
-	app := cli.NewApp("{{.Name}}", "0.1.0").
+	app := cli.NewApp("{{.Name}}", version).
 		WithDescription("{{.Name}} - a GoKart CLI application")
+{{- if .UseGlobal }}
+
+	// Chain with existing PersistentPreRunE (config init)
+	origPreRun := app.Root().PersistentPreRunE
+	app.Root().PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
+		if origPreRun != nil {
+			if err := origPreRun(cmd, args); err != nil {
+				return err
+			}
+		}
+		return ensureConfigDir()
+	}
+{{- end }}
 
 	greetCmd := cli.Command("greet", "Greet someone", func(cmd *cobra.Command, args []string) error {
 		name, _ := cmd.Flags().GetString("name")

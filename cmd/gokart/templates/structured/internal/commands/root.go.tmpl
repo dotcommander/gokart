@@ -2,7 +2,7 @@ package commands
 
 import (
 	"github.com/dotcommander/gokart/cli"
-{{- if or .UseSQLite .UsePostgres .UseAI }}
+{{- if or .UseSQLite .UsePostgres .UseAI .UseGlobal }}
 	"github.com/spf13/cobra"
 	"{{.Module}}/internal/app"
 {{- end }}
@@ -14,14 +14,25 @@ var appCtx *app.Context
 {{- end }}
 
 // Execute runs the CLI application.
-func Execute() error {
-	cliApp := cli.NewApp("{{.Name}}", "0.1.0").
+func Execute(version string) error {
+	cliApp := cli.NewApp("{{.Name}}", version).
 		WithDescription("{{.Name}} - a GoKart CLI application"){{if or .UseSQLite .UseAI}}.
 		WithEnvPrefix("{{.Name | upper}}").
 		WithStandardFlags()
 
-	// Initialize context after config is loaded
+	// Chain with existing PersistentPreRunE (config init)
+	origPreRun := cliApp.Root().PersistentPreRunE
 	cliApp.Root().PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
+		if origPreRun != nil {
+			if err := origPreRun(cmd, args); err != nil {
+				return err
+			}
+		}
+{{- if .UseGlobal }}
+		if err := app.EnsureConfigDir(); err != nil {
+			return err
+		}
+{{- end }}
 		var err error
 		appCtx, err = app.New("{{.Name}}", cliApp.Viper())
 		return err
@@ -32,7 +43,18 @@ func Execute() error {
 		if appCtx != nil {
 			appCtx.Close()
 		}
-	}(){{end}}
+	}(){{else if .UseGlobal}}
+
+	// Chain with existing PersistentPreRunE (config init)
+	origPreRun := cliApp.Root().PersistentPreRunE
+	cliApp.Root().PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
+		if origPreRun != nil {
+			if err := origPreRun(cmd, args); err != nil {
+				return err
+			}
+		}
+		return app.EnsureConfigDir()
+	}{{end}}
 
 	cliApp.AddCommand(NewGreetCmd())
 
