@@ -11,6 +11,12 @@ import (
 )
 
 // migrateMu protects goose global state during concurrent migrations.
+// Goose uses package-level variables for configuration (dialect, table name, base FS),
+// which means concurrent calls to SetDialect, SetTableName, or SetBaseFS from
+// different goroutines could race. While the database itself handles locking for
+// the actual migration execution, this mutex ensures our setup phase is atomic.
+// This is a defensive measure for applications that might run migrations from
+// multiple goroutines (e.g., in test parallelization scenarios).
 var migrateMu sync.Mutex
 
 // MigrateConfig configures database migrations.

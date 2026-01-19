@@ -11,6 +11,11 @@ import (
 type ValidatorConfig struct {
 	// UseJSONNames uses json tag names in error messages instead of struct field names.
 	// Default: true (more useful for API error responses)
+	//
+	// Note: When true, validation errors report the json tag name (e.g., "email")
+	// rather than the struct field name (e.g., "Email"). This is ideal for JSON APIs
+	// but may produce confusing messages for CLI applications that use mapstructure
+	// or flag tags. Set to false explicitly if you need struct field names.
 	UseJSONNames bool
 }
 
