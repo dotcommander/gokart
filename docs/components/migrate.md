@@ -475,5 +475,5 @@ mv migrations/*_add_users_table.sql migrations/${TIMESTAMP}_add_users_table.sql
 ### See Also
 
 - [goose documentation](https://github.com/pressly/goose)
-- [PostgreSQL migrations](/components/postgres)
-- [SQLite migrations](/components/sqlite)
+- [PostgreSQL](/components/postgres) - PostgreSQL integration
+- [SQLite](/components/sqlite) - SQLite integration

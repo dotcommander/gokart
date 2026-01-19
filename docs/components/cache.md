@@ -532,3 +532,5 @@ json.Unmarshal([]byte(data), &user)  // Unnecessary work
 - [`go-redis` documentation](https://redis.uptrace.dev/)
 - [Redis data types](https://redis.io/docs/data-types/)
 - [Redis best practices](https://redis.io/docs/manual/patterns/)
+- [PostgreSQL](/components/postgres) - Primary data storage
+- [State](/components/state) - Local state persistence

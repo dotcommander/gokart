@@ -419,3 +419,4 @@ func handleRequest() {
 
 - [go-playground/validator documentation](https://github.com/go-playground/validator#usage)
 - [Validation tags reference](https://github.com/go-playground/validator/blob/main/README.md#tags)
+- [Response helpers](/components/response) - HTTP error responses

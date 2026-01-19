@@ -435,3 +435,9 @@ func handlePage(w http.ResponseWriter, r *http.Request) {
 | `TemplHandler` | `http.Handler` | Handler for static components |
 | `TemplHandlerFunc` | `http.HandlerFunc` | Handler adapter for request-based components |
 | `TemplHandlerFuncE` | `http.HandlerFunc` | Handler adapter with error handling |
+
+### See Also
+
+- [Response helpers](/components/response) - JSON response helpers
+- [HTTP router](/api/gokart#http-router) - Request routing
+- [templ documentation](https://github.com/a-h/templ)

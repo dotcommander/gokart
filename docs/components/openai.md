@@ -181,3 +181,5 @@ func NewOpenAIClientWithKey(apiKey string) openai.Client
 
 - [OpenAI Go SDK documentation](https://github.com/openai/openai-go)
 - [OpenAI API reference](https://platform.openai.com/docs/api-reference)
+- [HTTP client](/api/gokart#http-client) - Retryable HTTP client
+- [Response helpers](/components/response) - JSON response helpers

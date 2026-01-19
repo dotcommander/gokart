@@ -346,3 +346,5 @@ For JSON/UUID types, use the [`pgtype`](https://pkg.go.dev/github.com/jackc/pgx/
 - [`pgx` documentation](https://pkg.go.dev/github.com/jackc/pgx/v5)
 - [PostgreSQL connection strings](https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING)
 - [Connection pooling best practices](https://www.postgresql.org/docs/current/pool.html)
+- [Migrations](/components/migrate) - Database schema versioning
+- [SQLite](/components/sqlite) - Embedded database alternative

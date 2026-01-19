@@ -311,3 +311,9 @@ gokart.Error(w, http.StatusInternalServerError, "Database error")
 | `JSONStatusE` | `error` | Write JSON response, return error on failure |
 | `Error` | - | Write JSON error response |
 | `NoContent` | - | Write 204 No Content response |
+
+### See Also
+
+- [Validator](/components/validate) - Request validation
+- [Templ](/components/templ) - HTML rendering
+- [HTTP router](/api/gokart#http-router) - Request routing

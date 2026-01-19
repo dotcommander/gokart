@@ -2,6 +2,11 @@
 
 This document provides a comprehensive API reference for the `gokart/cli` subpackage, which provides CLI application utilities wrapping Cobra and Lipgloss.
 
+## Related Documentation
+
+- [Configuration](/api/gokart#configuration) - Config loading utilities
+- [State](/components/state) - CLI state persistence
+
 ## Application Builder
 
 ### `type App struct`
