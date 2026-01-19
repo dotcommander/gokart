@@ -1,0 +1,46 @@
+# Build artifacts
+*.o
+*.a
+*.so
+*.dylib
+*.exe
+*.test
+*.out
+
+# Test files (verbose, bloat snapshot)
+*_test.go
+testdata/
+
+# Vendor/dependencies
+vendor/
+node_modules/
+
+# Generated files
+*.pb.go
+*.mock.go
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Temp/logs
+*.log
+tmp/
+temp/
+
+# Git
+.git/
+.gitignore
+
+# Docs (focus on code)
+docs/
+*.md
+!CLAUDE.md
+
+# Binary artifacts
+cmd/gokart/templates/*.tmpl
+
+# Downloaded files
+*.dmg
+*.pkg
