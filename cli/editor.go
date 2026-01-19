@@ -51,6 +51,12 @@ func CaptureInputWithEditor(editor, initial, extension string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("create temp file: %w", err)
 	}
+	// Ensure restrictive permissions for potentially sensitive content
+	if err := tmpfile.Chmod(0600); err != nil {
+		tmpfile.Close()
+		os.Remove(tmpfile.Name())
+		return "", fmt.Errorf("set temp file permissions: %w", err)
+	}
 	tmpPath := tmpfile.Name()
 	defer os.Remove(tmpPath)
 
