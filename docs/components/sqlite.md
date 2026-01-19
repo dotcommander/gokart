@@ -349,3 +349,5 @@ err := db.QueryRowContext(ctx,
 - [SQLite WAL mode](https://www.sqlite.org/wal.html)
 - [SQLite pragma reference](https://www.sqlite.org/pragma.html)
 - [Go database/sql package](https://pkg.go.dev/database/sql)
+- [Migrations](/components/migrate) - Database schema versioning
+- [PostgreSQL](/components/postgres) - Production database alternative

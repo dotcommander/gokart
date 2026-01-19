@@ -370,3 +370,5 @@ mu.Unlock()
 
 - [`os.UserConfigDir`](https://pkg.go.dev/os#UserConfigDir) - Platform config directory logic
 - [`encoding/json`](https://pkg.go.dev/encoding/json) - JSON marshaling/unmarshaling
+- [Config](/api/gokart#configuration) - Application configuration
+- [Cache](/components/cache) - Server-side caching

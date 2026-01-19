@@ -159,6 +159,8 @@ resp, err := client.Get("https://api.example.com/data")
 
 ## Validation
 
+See [Validator component documentation](/components/validate) for detailed usage guide.
+
 ### `type ValidatorConfig struct`
 
 ```go
@@ -228,6 +230,8 @@ if err := v.Struct(user); err != nil {
 
 ## PostgreSQL
 
+See [PostgreSQL component documentation](/components/postgres) for detailed usage guide.
+
 ### `func OpenPostgres(ctx context.Context, url string) (*pgxpool.Pool, error)`
 
 Opens a PostgreSQL connection pool with default settings.
@@ -261,6 +265,8 @@ Executes a function within a PostgreSQL transaction.
 ---
 
 ## SQLite
+
+See [SQLite component documentation](/components/sqlite) for detailed usage guide.
 
 ### `func OpenSQLite(path string) (*sql.DB, error)`
 
@@ -303,6 +309,8 @@ Executes a function within a SQLite transaction.
 ---
 
 ## Cache (Redis)
+
+See [Cache component documentation](/components/cache) for detailed usage guide.
 
 ### `type CacheConfig struct`
 
@@ -518,6 +526,8 @@ Returns true if the error is a cache miss.
 
 ## Migrations
 
+See [Migrations component documentation](/components/migrate) for detailed usage guide.
+
 ### `type MigrateConfig struct`
 
 ```go
@@ -656,6 +666,8 @@ err := gokart.SQLiteMigrate(ctx, db, "migrations")
 
 ## Templates (templ)
 
+See [Templ component documentation](/components/templ) for detailed usage guide.
+
 ### `func Render(w http.ResponseWriter, r *http.Request, component templ.Component) error`
 
 Renders a templ component to an `http.ResponseWriter`.
@@ -745,6 +757,8 @@ router.Get("/dashboard", gokart.TemplHandlerFuncE(func(r *http.Request) (templ.C
 
 ## State Persistence
 
+See [State component documentation](/components/state) for detailed usage guide.
+
 ### `func SaveState[T any](appName, filename string, data T) error`
 
 Saves typed state to `~/.config/{appName}/{filename}`.
@@ -800,6 +814,8 @@ path := gokart.StatePath("myapp", "state.json")
 
 ## OpenAI
 
+See [OpenAI component documentation](/components/openai) for detailed usage guide.
+
 ### `func NewOpenAIClient(opts ...option.RequestOption) openai.Client`
 
 Creates an OpenAI client with the given options.
@@ -815,6 +831,8 @@ Creates an OpenAI client with the specified API key.
 ---
 
 ## HTTP Response Helpers
+
+See [Response component documentation](/components/response) for detailed usage guide.
 
 ### `func JSON(w http.ResponseWriter, data any)`
 
