@@ -55,7 +55,10 @@ func TestCrossReferenceLinks(t *testing.T) {
 	})
 
 	t.Run("AC2: API reference sections link to component docs for context", func(t *testing.T) {
-		apiDocs := []string{
+		apiDocs := []struct {
+			name     string
+			sections []string
+		}{
 			{"gokart", []string{
 				"Validation",
 				"PostgreSQL",
@@ -98,8 +101,15 @@ func TestCrossReferenceLinks(t *testing.T) {
 					}
 
 					// Also check the broader section for any component links
-					fullSectionPattern := regexp.MustCompile(`## ` + regexp.QuoteMeta(section) + `[\s\S]*?(?=\n##|\z)`)
-					fullSection := fullSectionPattern.FindString(doc)
+					var fullSection string
+					if sectionStart := strings.Index(doc, "## "+section); sectionStart != -1 {
+						rest := doc[sectionStart+len("## "+section):]
+						if before, _, found := strings.Cut(rest, "\n## "); found {
+							fullSection = before
+						} else {
+							fullSection = rest
+						}
+					}
 
 					if !regexp.MustCompile(`\[/components/`).MatchString(fullSection) {
 						// Some sections like HTTP Server might not have component docs, that's OK
@@ -134,8 +144,14 @@ func TestCrossReferenceLinks(t *testing.T) {
 				doc := string(content)
 
 				// Find See Also section
-				seeAlsoPattern := regexp.MustCompile(`### See Also[\s\S]*?(?=\n##|\n###|\z)`)
-				seeAlso := seeAlsoPattern.FindString(doc)
+				var seeAlso string
+				if _, after, found := strings.Cut(doc, "### See Also"); found {
+					if before, _, found := strings.Cut(after, "\n##"); found {
+						seeAlso = before
+					} else {
+						seeAlso = after
+					}
+				}
 
 				if seeAlso == "" {
 					t.Skipf("%s: No See Also section found", component)
@@ -172,10 +188,14 @@ func TestCrossReferenceLinks(t *testing.T) {
 
 			// Check for consistent internal link format
 			// Should be /components/name or /api/name#section
-			badLinkPattern := regexp.MustCompile(`\[(.*?)\]\(((?!http)[^\)]+)\)`)
-			badLinks := badLinkPattern.FindAllStringSubmatch(doc, -1)
+			linkPattern := regexp.MustCompile(`\[(.*?)\]\(([^\)]+)\)`)
+			allLinks := linkPattern.FindAllStringSubmatch(doc, -1)
 
-			for _, match := range badadLinks {
+			for _, match := range allLinks {
+				// Skip external links
+				if strings.HasPrefix(match[2], "http") {
+					continue
+				}
 				link := match[2]
 				// Allow relative links that start with ./ or ../
 				if !strings.HasPrefix(link, "./") && !strings.HasPrefix(link, "../") && !strings.HasPrefix(link, "#") {
