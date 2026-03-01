@@ -1,3 +1,5 @@
+//go:build ignore
+
 // Example: PostgreSQL database operations with GoKart.
 //
 // This example demonstrates:

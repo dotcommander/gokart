@@ -1,3 +1,5 @@
+//go:build ignore
+
 // Example: SQLite database operations with GoKart.
 //
 // This example demonstrates:

@@ -1,3 +1,5 @@
+//go:build ignore
+
 // Example: Structured logging with GoKart logger.
 //
 // This example demonstrates:

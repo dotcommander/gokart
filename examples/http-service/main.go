@@ -1,3 +1,5 @@
+//go:build ignore
+
 // Example: Minimal HTTP service using gokart.
 package main
 
@@ -7,13 +9,13 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/dotcommander/gokart"
+	"github.com/dotcommander/gokart/web"
 )
 
 func main() {
 	// Create router with standard middleware
-	router := gokart.NewRouter(gokart.RouterConfig{
-		Middleware: gokart.StandardMiddleware,
+	router := web.NewRouter(web.RouterConfig{
+		Middleware: web.StandardMiddleware,
 		Timeout:    30 * time.Second,
 	})
 

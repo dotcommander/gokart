@@ -1,3 +1,5 @@
+//go:build ignore
+
 // Example: HTTP server with GoKart.
 //
 // This example demonstrates:
@@ -20,7 +22,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/dotcommander/gokart"
+	"github.com/dotcommander/gokart/web"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -31,14 +33,14 @@ func main() {
 	//   - RealIP: extracts real IP from X-Forwarded-For/X-Real-IP
 	//   - Logger: structured request/response logging
 	//   - Recoverer: panic recovery with 500 response
-	router := gokart.NewRouter(gokart.RouterConfig{
-		Middleware: gokart.StandardMiddleware,
+	router := web.NewRouter(web.RouterConfig{
+		Middleware: web.StandardMiddleware,
 		Timeout:    30 * time.Second,
 	})
 
 	// Health check endpoint
 	router.Get("/health", func(w http.ResponseWriter, r *http.Request) {
-		gokart.JSON(w, map[string]string{"status": "ok"})
+		web.JSON(w, map[string]string{"status": "ok"})
 	})
 
 	// API routes
@@ -62,7 +64,7 @@ func main() {
 	// Start server with graceful shutdown
 	// This blocks until SIGINT (Ctrl+C) or SIGTERM
 	log.Println("Server starting on :8080")
-	if err := gokart.ListenAndServe(":8080", router); err != nil {
+	if err := web.ListenAndServe(":8080", router); err != nil {
 		log.Fatalf("Server failed: %v", err)
 	}
 }
@@ -75,7 +77,7 @@ func listUsersHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Use response helper for 200 OK with JSON
-	gokart.JSON(w, users)
+	web.JSON(w, users)
 }
 
 // getUserHandler returns a single user by ID
@@ -84,25 +86,25 @@ func getUserHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Simulate database lookup
 	if id == "404" {
-		gokart.Error(w, http.StatusNotFound, "User not found")
+		web.Error(w, http.StatusNotFound, "User not found")
 		return
 	}
 
 	user := User{ID: id, Name: "Alice", Email: "alice@example.com"}
-	gokart.JSON(w, user)
+	web.JSON(w, user)
 }
 
 // createUserHandler creates a new user
 func createUserHandler(w http.ResponseWriter, r *http.Request) {
 	var user User
 	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
-		gokart.Error(w, http.StatusBadRequest, "Invalid request body")
+		web.Error(w, http.StatusBadRequest, "Invalid request body")
 		return
 	}
 
 	// Validate
 	if user.Name == "" || user.Email == "" {
-		gokart.Error(w, http.StatusBadRequest, "Name and email are required")
+		web.Error(w, http.StatusBadRequest, "Name and email are required")
 		return
 	}
 
@@ -110,7 +112,7 @@ func createUserHandler(w http.ResponseWriter, r *http.Request) {
 	user.ID = fmt.Sprintf("%d", time.Now().Unix())
 
 	// Return 201 Created with location header
-	gokart.JSONStatus(w, http.StatusCreated, user)
+	web.JSONStatus(w, http.StatusCreated, user)
 }
 
 // updateUserHandler updates an existing user
@@ -119,12 +121,12 @@ func updateUserHandler(w http.ResponseWriter, r *http.Request) {
 
 	var user User
 	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
-		gokart.Error(w, http.StatusBadRequest, "Invalid request body")
+		web.Error(w, http.StatusBadRequest, "Invalid request body")
 		return
 	}
 
 	user.ID = id
-	gokart.JSON(w, user)
+	web.JSON(w, user)
 }
 
 // deleteUserHandler deletes a user
@@ -135,7 +137,7 @@ func deleteUserHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("Deleting user: %s", id)
 
 	// Return 204 No Content
-	gokart.NoContent(w)
+	web.NoContent(w)
 }
 
 // User represents a user in the system
@@ -150,7 +152,7 @@ type User struct {
 // The default ListenAndServe uses a 30-second shutdown timeout.
 // For custom timeout, use:
 //
-//	err := gokart.ListenAndServeWithTimeout(":8080", router, 60*time.Second)
+//	err := web.ListenAndServeWithTimeout(":8080", router, 60*time.Second)
 //
 // Example: Manual graceful shutdown
 //

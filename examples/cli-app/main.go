@@ -1,3 +1,5 @@
+//go:build ignore
+
 // Example: Minimal CLI application using gokart/cli.
 package main
 

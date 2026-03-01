@@ -1,3 +1,5 @@
+//go:build ignore
+
 // Example: Complete HTTP service combining multiple GoKart components.
 //
 // This example demonstrates a production-ready service pattern with:
@@ -29,8 +31,10 @@ import (
 	"time"
 
 	"github.com/dotcommander/gokart"
+	"github.com/dotcommander/gokart/cache"
 	"github.com/dotcommander/gokart/logger"
 	"github.com/dotcommander/gokart/postgres"
+	"github.com/dotcommander/gokart/web"
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -65,7 +69,7 @@ type App struct {
 	config *Config
 	log    *slog.Logger
 	db     *pgxpool.Pool
-	cache  *gokart.Cache
+	cache  *cache.Cache
 }
 
 func main() {
@@ -123,15 +127,15 @@ func main() {
 	}
 
 	// Initialize cache
-	cache, err := gokart.OpenCacheWithConfig(ctx, gokart.CacheConfig{
+	cacheClient, err := cache.OpenWithConfig(ctx, cache.Config{
 		Addr:      cfg.Redis.Addr,
 		KeyPrefix: cfg.Redis.KeyPrefix,
 	})
 	if err != nil {
 		appLog.Warn("Cache connection failed, running without cache", "err", err)
-		cache = nil
+		cacheClient = nil
 	} else {
-		defer cache.Close()
+		defer cacheClient.Close()
 		appLog.Info("Connected to Redis")
 	}
 
@@ -140,12 +144,12 @@ func main() {
 		config: &cfg,
 		log:    appLog,
 		db:     db,
-		cache:  cache,
+		cache:  cacheClient,
 	}
 
 	// Setup router
-	router := gokart.NewRouter(gokart.RouterConfig{
-		Middleware: gokart.StandardMiddleware,
+	router := web.NewRouter(web.RouterConfig{
+		Middleware: web.StandardMiddleware,
 		Timeout:    30 * time.Second,
 	})
 
@@ -163,7 +167,7 @@ func main() {
 	addr := fmt.Sprintf(":%d", cfg.Port)
 	appLog.Info("Server starting", "addr", addr)
 
-	if err := gokart.ListenAndServe(addr, router); err != nil {
+	if err := web.ListenAndServe(addr, router); err != nil {
 		appLog.Error("Server error", "err", err)
 		os.Exit(1)
 	}
@@ -191,7 +195,7 @@ func (app *App) healthHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Check cache
 	if app.cache != nil {
-		if _, err := app.cache.Get(ctx, "_health_check"); err != nil && !gokart.IsNil(err) {
+		if _, err := app.cache.Get(ctx, "_health_check"); err != nil && !cache.IsNil(err) {
 			health["cache"] = "unhealthy"
 			health["status"] = "degraded"
 		} else {
@@ -206,7 +210,7 @@ func (app *App) healthHandler(w http.ResponseWriter, r *http.Request) {
 		status = http.StatusServiceUnavailable
 	}
 
-	gokart.JSONStatus(w, status, health)
+	web.JSONStatus(w, status, health)
 }
 
 // listUsersHandler returns all users (with caching)
@@ -220,7 +224,7 @@ func (app *App) listUsersHandler(w http.ResponseWriter, r *http.Request) {
 			return app.fetchAllUsers(ctx)
 		})
 		if err == nil {
-			gokart.JSON(w, users)
+			web.JSON(w, users)
 			return
 		}
 		app.log.Warn("Cache miss or error", "err", err)
@@ -228,18 +232,18 @@ func (app *App) listUsersHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Fallback to database
 	if app.db == nil {
-		gokart.Error(w, http.StatusServiceUnavailable, "Database not available")
+		web.Error(w, http.StatusServiceUnavailable, "Database not available")
 		return
 	}
 
 	users, err := app.fetchAllUsers(ctx)
 	if err != nil {
 		app.log.Error("Failed to fetch users", "err", err)
-		gokart.Error(w, http.StatusInternalServerError, "Failed to fetch users")
+		web.Error(w, http.StatusInternalServerError, "Failed to fetch users")
 		return
 	}
 
-	gokart.JSON(w, users)
+	web.JSON(w, users)
 }
 
 // getUserHandler returns a single user by ID
@@ -253,13 +257,13 @@ func (app *App) getUserHandler(w http.ResponseWriter, r *http.Request) {
 		var user User
 		err := app.cache.GetJSON(ctx, cacheKey, &user)
 		if err == nil {
-			gokart.JSON(w, user)
+			web.JSON(w, user)
 			return
 		}
 	}
 
 	if app.db == nil {
-		gokart.Error(w, http.StatusServiceUnavailable, "Database not available")
+		web.Error(w, http.StatusServiceUnavailable, "Database not available")
 		return
 	}
 
@@ -271,11 +275,11 @@ func (app *App) getUserHandler(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		if err == pgx.ErrNoRows {
-			gokart.Error(w, http.StatusNotFound, "User not found")
+			web.Error(w, http.StatusNotFound, "User not found")
 			return
 		}
 		app.log.Error("Failed to fetch user", "err", err, "id", id)
-		gokart.Error(w, http.StatusInternalServerError, "Failed to fetch user")
+		web.Error(w, http.StatusInternalServerError, "Failed to fetch user")
 		return
 	}
 
@@ -284,7 +288,7 @@ func (app *App) getUserHandler(w http.ResponseWriter, r *http.Request) {
 		app.cache.SetJSON(ctx, cacheKey, user, 10*time.Minute)
 	}
 
-	gokart.JSON(w, user)
+	web.JSON(w, user)
 }
 
 // createUserHandler creates a new user
@@ -292,7 +296,7 @@ func (app *App) createUserHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	if app.db == nil {
-		gokart.Error(w, http.StatusServiceUnavailable, "Database not available")
+		web.Error(w, http.StatusServiceUnavailable, "Database not available")
 		return
 	}
 
@@ -302,12 +306,12 @@ func (app *App) createUserHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-		gokart.Error(w, http.StatusBadRequest, "Invalid request body")
+		web.Error(w, http.StatusBadRequest, "Invalid request body")
 		return
 	}
 
 	if input.Name == "" || input.Email == "" {
-		gokart.Error(w, http.StatusBadRequest, "Name and email are required")
+		web.Error(w, http.StatusBadRequest, "Name and email are required")
 		return
 	}
 
@@ -322,7 +326,7 @@ func (app *App) createUserHandler(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		app.log.Error("Failed to create user", "err", err)
-		gokart.Error(w, http.StatusInternalServerError, "Failed to create user")
+		web.Error(w, http.StatusInternalServerError, "Failed to create user")
 		return
 	}
 
@@ -332,7 +336,7 @@ func (app *App) createUserHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	app.log.Info("User created", "id", user.ID, "email", user.Email)
-	gokart.JSONStatus(w, http.StatusCreated, user)
+	web.JSONStatus(w, http.StatusCreated, user)
 }
 
 // fetchAllUsers retrieves all users from the database
