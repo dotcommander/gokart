@@ -15,21 +15,21 @@ Every Go service has the same 50-100 lines of setup boilerplate: configure slog 
 **GoKart is your conventions, tested and packaged.**
 
 ```go
-pool, _ := gokart.OpenPostgres(ctx, os.Getenv("DATABASE_URL"))
-router := gokart.NewRouter(gokart.RouterConfig{Middleware: gokart.StandardMiddleware})
-cache, _ := gokart.OpenCache(ctx, "localhost:6379")
+pool, _ := postgres.Open(ctx, os.Getenv("DATABASE_URL"))
+router := web.NewRouter(web.RouterConfig{Middleware: web.StandardMiddleware})
+cache, _ := cache.Open(ctx, "localhost:6379")
 ```
 
 It's not a framework. It doesn't hide the underlying packages. Factory functions return `*pgxpool.Pool`, `chi.Router`, `*redis.Client`—use them directly. If you disagree with a default, use the underlying package. GoKart doesn't lock you in.
 
 ## Philosophy
 
-- **Batteries included** — One import, everything available. No sub-package juggling.
+- **Modular** — Import only what you need. Each component is its own Go module.
 - **Thin wrappers** — GoKart doesn't reinvent. It wraps battle-tested packages.
 - **Sensible defaults** — Zero-config works. Customize when needed.
 - **Fight for inclusion** — Every component must justify its existence.
 
-GoKart is a starter kit, not a modular library. The single `import "github.com/dotcommander/gokart"` is intentional—you get logger, config, database, cache, HTTP, and validation ready to use. Go's compiler eliminates unused code, so you don't pay for what you don't call.
+GoKart is organized into focused Go modules. Import only the packages you need:
 
 ## Examples
 
@@ -40,8 +40,14 @@ See [`examples/`](examples/) for complete working examples:
 ## Install
 
 ```bash
-go get github.com/dotcommander/gokart
-go get github.com/dotcommander/gokart/cli
+go get github.com/dotcommander/gokart           # Config, state, logger
+go get github.com/dotcommander/gokart/web        # Router, server, response, templ, validation
+go get github.com/dotcommander/gokart/postgres   # PostgreSQL pool
+go get github.com/dotcommander/gokart/sqlite     # SQLite (zero CGO)
+go get github.com/dotcommander/gokart/cache      # Redis cache
+go get github.com/dotcommander/gokart/migrate    # Database migrations
+go get github.com/dotcommander/gokart/ai         # OpenAI client
+go get github.com/dotcommander/gokart/cli        # CLI framework
 go install github.com/dotcommander/gokart/cmd/gokart@latest  # CLI generator
 ```
 
@@ -73,7 +79,7 @@ GoKart applies production-ready defaults so you don't have to look them up.
 ### StandardMiddleware
 
 ```go
-gokart.StandardMiddleware = []func(http.Handler) http.Handler{
+web.StandardMiddleware = []func(http.Handler) http.Handler{
     middleware.RequestID,   // Injects X-Request-ID header
     middleware.RealIP,      // Extracts client IP from X-Forwarded-For/X-Real-IP
     middleware.Logger,      // Logs requests with timing
@@ -111,7 +117,9 @@ gokart.StandardMiddleware = []func(http.Handler) http.Handler{
 Wraps `log/slog` with configuration helpers.
 
 ```go
-log := gokart.NewLogger(gokart.LogConfig{
+import "github.com/dotcommander/gokart/logger"
+
+log := logger.New(logger.Config{
     Level:  "debug",  // debug|info|warn|error
     Format: "text",   // json|text
 })
@@ -143,8 +151,10 @@ cfg, err := gokart.LoadConfig[Config]("config.yaml")
 Wraps `go-chi/chi` with standard middleware.
 
 ```go
-router := gokart.NewRouter(gokart.RouterConfig{
-    Middleware: gokart.StandardMiddleware,  // RequestID, RealIP, Logger, Recoverer
+import "github.com/dotcommander/gokart/web"
+
+router := web.NewRouter(web.RouterConfig{
+    Middleware: web.StandardMiddleware,  // RequestID, RealIP, Logger, Recoverer
     Timeout:    30 * time.Second,
 })
 
@@ -165,10 +175,10 @@ Graceful shutdown with signal handling.
 
 ```go
 // Start server - blocks until SIGINT/SIGTERM, then graceful shutdown
-err := gokart.ListenAndServe(":8080", router)
+err := web.ListenAndServe(":8080", router)
 
 // Custom shutdown timeout (default 30s)
-err := gokart.ListenAndServeWithTimeout(":8080", router, 60*time.Second)
+err := web.ListenAndServeWithTimeout(":8080", router, 60*time.Second)
 ```
 
 Handles:
@@ -184,10 +194,10 @@ Handles:
 Convenience functions for common HTTP responses.
 
 ```go
-gokart.JSON(w, user)                           // 200 + JSON
-gokart.JSONStatus(w, http.StatusCreated, user) // Custom status + JSON
-gokart.Error(w, http.StatusNotFound, "not found") // Error JSON
-gokart.NoContent(w)                            // 204
+web.JSON(w, user)                           // 200 + JSON
+web.JSONStatus(w, http.StatusCreated, user) // Custom status + JSON
+web.Error(w, http.StatusNotFound, "not found") // Error JSON
+web.NoContent(w)                            // 204
 ```
 
 ---
@@ -198,10 +208,10 @@ Wraps `hashicorp/go-retryablehttp` for resilient HTTP calls.
 
 ```go
 // Simple - returns *http.Client
-client := gokart.NewStandardClient()
+client := web.NewStandardClient()
 
 // Configurable
-client := gokart.NewHTTPClient(gokart.HTTPConfig{
+client := web.NewHTTPClient(web.HTTPConfig{
     Timeout:   10 * time.Second,
     RetryMax:  5,
     RetryWait: 2 * time.Second,
@@ -217,7 +227,7 @@ resp, err := client.StandardClient().Get("https://api.example.com/data")
 Wraps `go-playground/validator` with JSON field names and common validators.
 
 ```go
-v := gokart.NewStandardValidator()
+v := web.NewStandardValidator()
 
 type User struct {
     Email string `json:"email" validate:"required,email"`
@@ -226,10 +236,13 @@ type User struct {
 }
 
 if err := v.Struct(user); err != nil {
-    for field, msg := range gokart.ValidationErrors(err) {
+    for field, msg := range web.ValidationErrors(err) {
         fmt.Printf("%s: %s\n", field, msg)
     }
 }
+
+// Custom validator config
+v := web.NewValidator(web.ValidatorConfig{...})
 ```
 
 ---
@@ -239,15 +252,17 @@ if err := v.Struct(user); err != nil {
 Wraps `jackc/pgx/v5` with connection pooling.
 
 ```go
+import "github.com/dotcommander/gokart/postgres"
+
 // Simple
-pool, err := gokart.OpenPostgres(ctx, "postgres://user:pass@localhost:5432/mydb")
+pool, err := postgres.Open(ctx, "postgres://user:pass@localhost:5432/mydb")
 defer pool.Close()
 
 // From DATABASE_URL env
-pool, err := gokart.PostgresFromEnv(ctx)
+pool, err := postgres.FromEnv(ctx)
 
 // Custom config
-pool, err := gokart.OpenPostgresWithConfig(ctx, gokart.PostgresConfig{
+pool, err := postgres.OpenWithConfig(ctx, postgres.Config{
     URL:      "postgres://...",
     MaxConns: 50,
     MinConns: 10,
@@ -258,7 +273,7 @@ var name string
 err = pool.QueryRow(ctx, "SELECT name FROM users WHERE id = $1", 1).Scan(&name)
 
 // Transaction
-err := gokart.WithTransaction(ctx, pool, func(tx pgx.Tx) error {
+err := postgres.Transaction(ctx, pool, func(tx pgx.Tx) error {
     _, err := tx.Exec(ctx, "INSERT INTO users (name) VALUES ($1)", "John")
     return err
 })
@@ -271,15 +286,17 @@ err := gokart.WithTransaction(ctx, pool, func(tx pgx.Tx) error {
 Wraps `modernc.org/sqlite` (pure Go, zero CGO) with production defaults.
 
 ```go
+import "github.com/dotcommander/gokart/sqlite"
+
 // Simple
-db, err := gokart.OpenSQLite("app.db")
+db, err := sqlite.Open("app.db")
 defer db.Close()
 
 // In-memory (for tests)
-db, err := gokart.SQLiteInMemory()
+db, err := sqlite.InMemory()
 
 // Custom config
-db, err := gokart.OpenSQLiteWithConfig(ctx, gokart.SQLiteConfig{
+db, err := sqlite.OpenWithConfig(ctx, sqlite.Config{
     Path:         "app.db",
     WALMode:      true,
     ForeignKeys:  true,
@@ -287,7 +304,7 @@ db, err := gokart.OpenSQLiteWithConfig(ctx, gokart.SQLiteConfig{
 })
 
 // Transaction
-err := gokart.SQLiteTransaction(ctx, db, func(tx *sql.Tx) error {
+err := sqlite.Transaction(ctx, db, func(tx *sql.Tx) error {
     _, err := tx.ExecContext(ctx, "INSERT INTO users (name) VALUES (?)", "John")
     return err
 })
@@ -300,19 +317,21 @@ err := gokart.SQLiteTransaction(ctx, db, func(tx *sql.Tx) error {
 Wraps `a-h/templ` for type-safe HTML rendering.
 
 ```go
+import "github.com/dotcommander/gokart/web"
+
 // In handler
 func handleHome(w http.ResponseWriter, r *http.Request) {
-    gokart.Render(w, r, views.HomePage("Welcome"))
+    web.Render(w, r, views.HomePage("Welcome"))
 }
 
 // With status code
-gokart.RenderWithStatus(w, r, http.StatusNotFound, views.NotFoundPage())
+web.RenderWithStatus(w, r, http.StatusNotFound, views.NotFoundPage())
 
 // As handler
-router.Get("/about", gokart.TemplHandler(views.AboutPage()))
+router.Get("/about", web.TemplHandler(views.AboutPage()))
 
 // Dynamic handler
-router.Get("/user/{id}", gokart.TemplHandlerFunc(func(r *http.Request) templ.Component {
+router.Get("/user/{id}", web.TemplHandlerFunc(func(r *http.Request) templ.Component {
     id := chi.URLParam(r, "id")
     return views.UserPage(getUser(id))
 }))
@@ -327,48 +346,50 @@ Note: Write `.templ` files and run `templ generate` - gokart provides HTTP integ
 Wraps `redis/go-redis/v9` for Redis caching.
 
 ```go
+import "github.com/dotcommander/gokart/cache"
+
 // Simple
-cache, err := gokart.OpenCache(ctx, "localhost:6379")
-defer cache.Close()
+c, err := cache.Open(ctx, "localhost:6379")
+defer c.Close()
 
 // From URL
-cache, err := gokart.OpenCacheURL(ctx, "redis://:password@localhost:6379/0")
+c, err := cache.OpenURL(ctx, "redis://:password@localhost:6379/0")
 
 // With prefix
-cache, err := gokart.OpenCacheWithConfig(ctx, gokart.CacheConfig{
+c, err := cache.OpenWithConfig(ctx, cache.Config{
     Addr:      "localhost:6379",
     KeyPrefix: "myapp:",
 })
 
 // String operations
-cache.Set(ctx, "key", "value", time.Hour)
-val, err := cache.Get(ctx, "key")
-cache.Delete(ctx, "key")
+c.Set(ctx, "key", "value", time.Hour)
+val, err := c.Get(ctx, "key")
+c.Delete(ctx, "key")
 
 // JSON operations
-cache.SetJSON(ctx, "user:1", user, time.Hour)
-cache.GetJSON(ctx, "user:1", &user)
+c.SetJSON(ctx, "user:1", user, time.Hour)
+c.GetJSON(ctx, "user:1", &user)
 
 // Counters
-cache.Incr(ctx, "views")
-cache.IncrBy(ctx, "views", 10)
+c.Incr(ctx, "views")
+c.IncrBy(ctx, "views", 10)
 
 // Distributed lock
-ok, err := cache.SetNX(ctx, "lock:job", "worker-1", time.Minute)
+ok, err := c.SetNX(ctx, "lock:job", "worker-1", time.Minute)
 
 // Remember pattern (get or compute) - returns string
-val, err := cache.Remember(ctx, "expensive", time.Hour, func() (interface{}, error) {
+val, err := c.Remember(ctx, "expensive", time.Hour, func() (interface{}, error) {
     return computeExpensiveValue()
 })
 
 // RememberJSON for typed data - preserves type for GetJSON retrieval
 var user User
-err := cache.RememberJSON(ctx, "user:1", time.Hour, &user, func() (interface{}, error) {
+err := c.RememberJSON(ctx, "user:1", time.Hour, &user, func() (interface{}, error) {
     return db.GetUser(ctx, 1)
 })
 
 // Check cache miss
-if gokart.IsNil(err) {
+if cache.IsNil(err) {
     // Key doesn't exist
 }
 ```
@@ -380,11 +401,13 @@ if gokart.IsNil(err) {
 Wraps `openai/openai-go/v3` for OpenAI API access.
 
 ```go
+import "github.com/dotcommander/gokart/ai"
+
 // Simple - reads OPENAI_API_KEY from environment
-client := gokart.NewOpenAIClient()
+client := ai.NewOpenAIClient()
 
 // With explicit API key
-client := gokart.NewOpenAIClientWithKey("sk-...")
+client := ai.NewOpenAIClientWithKey("sk-...")
 
 // Use the client
 resp, err := client.Chat.Completions.New(ctx, openai.ChatCompletionNewParams{
@@ -402,34 +425,36 @@ resp, err := client.Chat.Completions.New(ctx, openai.ChatCompletionNewParams{
 Wraps `pressly/goose/v3` for database schema migrations.
 
 ```go
+import "github.com/dotcommander/gokart/migrate"
+
 // PostgreSQL
-pool, _ := gokart.OpenPostgres(ctx, url)
+pool, _ := postgres.Open(ctx, url)
 db := stdlib.OpenDBFromPool(pool)
-err := gokart.PostgresMigrate(ctx, db, "migrations")
+err := migrate.Postgres(ctx, db, "migrations")
 
 // SQLite
-db, _ := gokart.OpenSQLite("app.db")
-err := gokart.SQLiteMigrate(ctx, db, "migrations")
+db, _ := sqlite.Open("app.db")
+err := migrate.SQLite(ctx, db, "migrations")
 
 // Embedded migrations
 //go:embed migrations/*.sql
 var migrations embed.FS
 
-err := gokart.Migrate(ctx, db, gokart.MigrateConfig{
+err := migrate.Up(ctx, db, migrate.Config{
     FS:      migrations,
     Dir:     "migrations",
     Dialect: "postgres",
 })
 
 // Operations
-gokart.MigrateUp(ctx, db, cfg)       // Run pending
-gokart.MigrateDown(ctx, db, cfg)     // Rollback one
-gokart.MigrateDownTo(ctx, db, cfg, 5) // Rollback to version
-gokart.MigrateReset(ctx, db, cfg)    // Rollback all
-gokart.MigrateStatus(ctx, db, cfg)   // Print status
+migrate.Up(ctx, db, cfg)          // Run pending
+migrate.Down(ctx, db, cfg)        // Rollback one
+migrate.DownTo(ctx, db, cfg, 5)   // Rollback to version
+migrate.Reset(ctx, db, cfg)       // Rollback all
+migrate.Status(ctx, db, cfg)      // Print status
 
 // Create new migration
-gokart.MigrateCreate("migrations", "add_users_table", "sql")
+migrate.Create("migrations", "add_users_table", "sql")
 ```
 
 Migration file format (`migrations/001_create_users.sql`):
@@ -579,14 +604,20 @@ gokart new mycli --module github.com/myorg/mycli
 
 ```
 mycli/
+├── .gitignore
+├── CLAUDE.md                      # AI assistant guidance
+├── README.md                      # Build commands
 ├── cmd/main.go                    # Entry point
 ├── internal/
-│   ├── app/context.go             # App context (if --sqlite, --postgres, or --ai)
+│   ├── app/
+│   │   ├── config.go              # App configuration
+│   │   └── context.go             # App context (if --sqlite, --postgres, or --ai)
 │   ├── commands/
 │   │   ├── root.go                # CLI setup
 │   │   └── greet.go               # Example command
 │   └── actions/
-│       └── greet.go               # Business logic (testable)
+│       ├── greet.go               # Business logic (testable)
+│       └── greet_test.go          # Example test
 └── go.mod
 ```
 
@@ -633,19 +664,21 @@ path := gokart.StatePath("myapp", "state.json")
 Create a logger that writes to a temp file, keeping stdout clean for spinners and tables.
 
 ```go
+import "github.com/dotcommander/gokart/logger"
+
 // Creates logger writing to /tmp/myapp.log
-logger, cleanup, err := gokart.NewFileLogger("myapp")
+log, cleanup, err := logger.NewFile("myapp")
 if err != nil {
     log.Fatal(err)
 }
 defer cleanup()
 
 // Use the logger
-logger.Info("processing started", "file", filename)
-logger.Error("validation failed", "err", err)
+log.Info("processing started", "file", filename)
+log.Error("validation failed", "err", err)
 
 // Get the log file path
-path := gokart.LogPath("myapp")
+path := logger.Path("myapp")
 // /tmp/myapp.log
 ```
 
@@ -664,14 +697,14 @@ GoKart intentionally excludes:
 | String utilities | stdlib sufficient | `strings` |
 | Env helpers | viper handles it | `viper.AutomaticEnv()` |
 | DI container | architecture choice | Constructor injection |
-| AI/LLM clients | now included | `gokart.NewOpenAIClient()` or `--ai` flag for scaffolding |
+| AI/LLM clients | now a subpackage | `github.com/dotcommander/gokart/ai` |
 | Document processing | domain-specific | Separate packages |
 
 ---
 
 ## Compatibility
 
-**Minimum Go version:** 1.22+ (1.24+ recommended)
+**Minimum Go version:** 1.22+ (1.26+ recommended)
 
 **Stability:**
 - **Library API** (`gokart`, `gokart/cli`): Follows semver. Breaking changes only in major versions.
