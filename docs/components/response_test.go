@@ -80,7 +80,7 @@ func TestResponseDocs_AcceptanceCriteria(t *testing.T) {
 			{
 				name: "Error response example with 400",
 				required: []string{
-					`gokart.Error(w, http.StatusBadRequest, "Missing user ID")`,
+					`web.Error(w, http.StatusBadRequest, "Missing user ID")`,
 					`// Response: 400 {"error":"Missing user ID"}`,
 				},
 			},
@@ -106,9 +106,9 @@ func TestResponseDocs_AcceptanceCriteria(t *testing.T) {
 				name: "Quick start example handler",
 				required: []string{
 					"func handleUser(w http.ResponseWriter, r *http.Request)",
-					`gokart.JSON(w, user)`,
-					`gokart.Error(w, http.StatusBadRequest, "Invalid user ID")`,
-					`gokart.JSONStatus(w, http.StatusCreated, user)`,
+					`web.JSON(w, user)`,
+					`web.Error(w, http.StatusBadRequest, "Invalid user ID")`,
+					`web.JSONStatus(w, http.StatusCreated, user)`,
 				},
 			},
 			{
@@ -116,9 +116,9 @@ func TestResponseDocs_AcceptanceCriteria(t *testing.T) {
 				required: []string{
 					"func handleUser(w http.ResponseWriter, r *http.Request)",
 					"id := r.PathValue(\"id\")",
-					`gokart.Error(w, http.StatusNotFound, "User not found")`,
-					`gokart.Error(w, http.StatusInternalServerError, "Failed to fetch user")`,
-					`gokart.JSON(w, user)`,
+					`web.Error(w, http.StatusNotFound, "User not found")`,
+					`web.Error(w, http.StatusInternalServerError, "Failed to fetch user")`,
+					`web.JSON(w, user)`,
 				},
 			},
 			{
@@ -126,17 +126,17 @@ func TestResponseDocs_AcceptanceCriteria(t *testing.T) {
 				required: []string{
 					"func handleCreate(w http.ResponseWriter, r *http.Request)",
 					"var req CreateUserRequest",
-					`gokart.Error(w, http.StatusBadRequest, "Invalid request body")`,
-					`gokart.Error(w, http.StatusUnprocessableEntity, "Validation failed")`,
-					`gokart.JSONStatus(w, http.StatusCreated, user)`,
+					`web.Error(w, http.StatusBadRequest, "Invalid request body")`,
+					`web.Error(w, http.StatusUnprocessableEntity, "Validation failed")`,
+					`web.JSONStatus(w, http.StatusCreated, user)`,
 				},
 			},
 			{
 				name: "Delete handler example with NoContent",
 				required: []string{
 					"func handleDelete(w http.ResponseWriter, r *http.Request)",
-					`gokart.Error(w, http.StatusInternalServerError, "Failed to delete user")`,
-					"gokart.NoContent(w)",
+					`web.Error(w, http.StatusInternalServerError, "Failed to delete user")`,
+					"web.NoContent(w)",
 					"// Response: 204 (no body)",
 				},
 			},
@@ -145,7 +145,7 @@ func TestResponseDocs_AcceptanceCriteria(t *testing.T) {
 				required: []string{
 					"func handleUser(w http.ResponseWriter, r *http.Request)",
 					`user := User{ID: 1, Name: "Alice"}`,
-					`gokart.JSON(w, user)`,
+					`web.JSON(w, user)`,
 					`// Response: 200 {"id":1,"name":"Alice"}`,
 				},
 			},

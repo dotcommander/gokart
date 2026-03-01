@@ -16,16 +16,16 @@ func TestMigrateDocumentation_FunctionSignatures(t *testing.T) {
 
 	// Test for function signatures documented
 	signatures := []string{
-		"func Migrate",
-		"func MigrateUp",
-		"func MigrateDown",
-		"func MigrateDownTo",
-		"func MigrateReset",
-		"func MigrateStatus",
-		"func MigrateVersion",
-		"func MigrateCreate",
-		"func PostgresMigrate",
-		"func SQLiteMigrate",
+		"func Up",
+		"func Down",
+		"func DownTo",
+		"func Reset",
+		"func Status",
+		"func Version",
+		"func Create",
+		"func Postgres",
+		"func SQLite",
+		"DefaultConfig",
 	}
 
 	for _, sig := range signatures {
@@ -36,16 +36,15 @@ func TestMigrateDocumentation_FunctionSignatures(t *testing.T) {
 
 	// Test for code examples with function signatures
 	examples := []string{
-		"gokart.Migrate(ctx, db, gokart.MigrateConfig",
-		"gokart.MigrateUp(ctx, db, gokart.MigrateConfig",
-		"gokart.MigrateDown(ctx, db, gokart.MigrateConfig",
-		"gokart.MigrateDownTo(ctx, db, gokart.MigrateConfig",
-		"gokart.MigrateReset(ctx, db, gokart.MigrateConfig",
-		"gokart.MigrateStatus(ctx, db, gokart.MigrateConfig",
-		"gokart.MigrateVersion(ctx, db, gokart.MigrateConfig",
-		"gokart.MigrateCreate(",
-		"gokart.PostgresMigrate(ctx, db,",
-		"gokart.SQLiteMigrate(ctx, db,",
+		"migrate.Up(ctx, db, migrate.Config",
+		"migrate.Down(ctx, db, migrate.Config",
+		"migrate.DownTo(ctx, db, migrate.Config",
+		"migrate.Reset(ctx, db, migrate.Config",
+		"migrate.Status(ctx, db, migrate.Config",
+		"migrate.Version(ctx, db, migrate.Config",
+		"migrate.Create(",
+		"migrate.Postgres(ctx, db,",
+		"migrate.SQLite(ctx, db,",
 	}
 
 	for _, example := range examples {
@@ -87,7 +86,7 @@ var migrations embed.FS`
 	// Test for FS config field
 	fsConfig := `FS:      migrations,`
 	if !strings.Contains(text, fsConfig) {
-		t.Error("Missing FS field in MigrateConfig example")
+		t.Error("Missing FS field in Config example")
 	}
 
 	// Test for benefits explanation
@@ -107,23 +106,22 @@ func TestMigrateDocumentation_Commands(t *testing.T) {
 
 	// Test for operation commands (up, down, status)
 	operations := []string{
-		"Migrate",
-		"MigrateUp",
-		"MigrateDown",
-		"MigrateDownTo",
-		"MigrateReset",
-		"MigrateStatus",
-		"MigrateVersion",
+		"Up",
+		"Down",
+		"DownTo",
+		"Reset",
+		"Status",
+		"Version",
 	}
 
 	for _, op := range operations {
-		// Check for heading
-		if !strings.Contains(text, "### "+op) {
+		// Check for heading (operations use #### headings in this doc)
+		if !strings.Contains(text, "#### "+op) && !strings.Contains(text, "### "+op) {
 			t.Errorf("Missing section heading for %s operation", op)
 		}
 
 		// Check for code example
-		if !strings.Contains(text, "gokart."+op+"(ctx, db,") {
+		if !strings.Contains(text, "migrate."+op+"(ctx, db,") {
 			t.Errorf("Missing code example for %s operation", op)
 		}
 	}
@@ -147,7 +145,7 @@ func TestMigrateDocumentation_Commands(t *testing.T) {
 	// Test for MigrateStatus output example
 	statusOutput := "Applied At"
 	if !strings.Contains(text, statusOutput) {
-		t.Error("Missing MigrateStatus output example")
+		t.Error("Missing Status output example")
 	}
 }
 
@@ -159,7 +157,7 @@ func TestMigrateDocumentation_MigrateConfigStruct(t *testing.T) {
 
 	text := string(content)
 
-	// Test for MigrateConfig struct documentation
+	// Test for Config struct documentation
 	configFields := []string{
 		"Dir",
 		"Table",
@@ -171,7 +169,7 @@ func TestMigrateDocumentation_MigrateConfigStruct(t *testing.T) {
 
 	for _, field := range configFields {
 		if !strings.Contains(text, "| `"+field+"`") {
-			t.Errorf("Missing MigrateConfig field documentation for %s", field)
+			t.Errorf("Missing Config field documentation for %s", field)
 		}
 	}
 }

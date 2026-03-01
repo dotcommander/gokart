@@ -119,14 +119,14 @@ func TestValidatorDocs_AcceptanceCriteria(t *testing.T) {
 			{
 				name: "Error extraction example",
 				required: []string{
-					"for field, msg := range gokart.ValidationErrors(err)",
+					"for field, msg := range web.ValidationErrors(err)",
 					"fmt.Printf(\"%s %s\\n\", field, msg)",
 				},
 			},
 			{
 				name: "Error extraction example with map iteration",
 				required: []string{
-					"errors := gokart.ValidationErrors(err)",
+					"errors := web.ValidationErrors(err)",
 					"for field, message := range errors",
 					"fmt.Printf(\"%s: %s\\n\", field, message)",
 				},

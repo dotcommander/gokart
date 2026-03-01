@@ -5,19 +5,19 @@ OpenAI client wrapper for AI capabilities in your Go applications. Built on [ope
 ## Installation
 
 ```bash
-go get github.com/dotcommander/gokart
+go get github.com/dotcommander/gokart/ai
 ```
 
 ## Quick Start
 
 ```go
-import "github.com/dotcommander/gokart"
+import "github.com/dotcommander/gokart/ai"
 
 // Create client with default environment variable
-client := gokart.NewOpenAIClient()
+client := ai.NewOpenAIClient()
 
 // Create client with explicit API key
-client := gokart.NewOpenAIClientWithKey("sk-...")
+client := ai.NewOpenAIClientWithKey("sk-...")
 
 // Basic completion
 ctx := context.Background()
@@ -46,13 +46,13 @@ export OPENAI_API_KEY="sk-..."
 #### Using Environment Variable (Recommended)
 
 ```go
-client := gokart.NewOpenAIClient()
+client := ai.NewOpenAIClient()
 ```
 
 #### Using Explicit API Key
 
 ```go
-client := gokart.NewOpenAIClientWithKey("sk-...")
+client := ai.NewOpenAIClientWithKey("sk-...")
 ```
 
 ---
