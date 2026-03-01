@@ -66,11 +66,11 @@ HTTP service with chi router. Demonstrates:
 - RESTful CRUD endpoints
 
 ```go
-router := gokart.NewRouter(gokart.RouterConfig{
-    Middleware: gokart.StandardMiddleware,
+router := web.NewRouter(web.RouterConfig{
+    Middleware: web.StandardMiddleware,
     Timeout:    30 * time.Second,
 })
-gokart.ListenAndServe(":8080", router)
+web.ListenAndServe(":8080", router)
 ```
 
 ### [postgres](./postgres/)
@@ -116,7 +116,7 @@ Redis caching with go-redis. Demonstrates:
 - Key prefixing for namespacing
 
 ```go
-cache, _ := gokart.OpenCache(ctx, "localhost:6379")
+cache, _ := cache.Open(ctx, "localhost:6379")
 cache.RememberJSON(ctx, "user:123", time.Hour, &user, func() (interface{}, error) {
     return db.GetUser(ctx, 123) // Only called on cache miss
 })
@@ -133,7 +133,7 @@ OpenAI API integration with openai-go v3. Demonstrates:
 - Different model selection
 
 ```go
-client := gokart.NewOpenAIClient() // Reads OPENAI_API_KEY from env
+client := ai.NewOpenAIClient() // Reads OPENAI_API_KEY from env
 client.Chat.Completions.New(ctx, openai.ChatCompletionNewParams{
     Messages: []openai.ChatCompletionMessageParamUnion{
         openai.UserMessage("Hello!"),
@@ -171,8 +171,8 @@ GoKart factory functions return the actual library types, not custom wrappers:
 
 ```go
 pool, _ := postgres.Open(ctx, url)     // Returns *pgxpool.Pool
-router := gokart.NewRouter(cfg)         // Returns chi.Router
-client := gokart.NewOpenAIClient()      // Returns openai.Client
+router := web.NewRouter(cfg)            // Returns chi.Router
+client := ai.NewOpenAIClient()          // Returns openai.Client
 ```
 
 ### Transaction Helpers
