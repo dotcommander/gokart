@@ -29,7 +29,7 @@ func TestCrossReferenceLinks(t *testing.T) {
 	t.Run("AC1: Component docs have See Also sections with cross-references", func(t *testing.T) {
 		for _, component := range componentDocs {
 			t.Run(component, func(t *testing.T) {
-				docPath := filepath.Join("docs", "components", component+".md")
+				docPath := filepath.Join("components", component+".md")
 				content, err := os.ReadFile(docPath)
 				if err != nil {
 					t.Fatalf("Failed to read %s: %v", component, err)
@@ -42,7 +42,7 @@ func TestCrossReferenceLinks(t *testing.T) {
 				}
 
 				// Count internal cross-references (links to /components/ or /api/)
-				internalLinkPattern := regexp.MustCompile(`\[/components/[^\]]+\]|\[/api/[^\]]+\]`)
+				internalLinkPattern := regexp.MustCompile(`\]\(/components/[^\)]+\)|\]\(/api/[^\)]+\)`)
 				matches := internalLinkPattern.FindAllString(doc, -1)
 
 				if len(matches) == 0 {
@@ -74,7 +74,7 @@ func TestCrossReferenceLinks(t *testing.T) {
 
 		for _, apiDoc := range apiDocs {
 			t.Run(apiDoc.name, func(t *testing.T) {
-				docPath := filepath.Join("docs", "api", apiDoc.name+".md")
+				docPath := filepath.Join("api", apiDoc.name+".md")
 				content, err := os.ReadFile(docPath)
 				if err != nil {
 					t.Fatalf("Failed to read %s: %v", apiDoc.name, err)
@@ -111,7 +111,7 @@ func TestCrossReferenceLinks(t *testing.T) {
 						}
 					}
 
-					if !regexp.MustCompile(`\[/components/`).MatchString(fullSection) {
+					if !regexp.MustCompile(`\(/components/`).MatchString(fullSection) {
 						// Some sections like HTTP Server might not have component docs, that's OK
 						if section == "HTTP Server" || section == "HTTP Router" || section == "HTTP Client" || section == "Configuration" {
 							t.Logf("%s: Section %q has no component link (acceptable - no dedicated component doc)", apiDoc.name, section)
@@ -136,7 +136,7 @@ func TestCrossReferenceLinks(t *testing.T) {
 
 		for component, expectedTargets := range expectedAPILinks {
 			t.Run(component, func(t *testing.T) {
-				docPath := filepath.Join("docs", "components", component+".md")
+				docPath := filepath.Join("components", component+".md")
 				content, err := os.ReadFile(docPath)
 				if err != nil {
 					t.Fatalf("Failed to read %s: %v", component, err)
@@ -173,11 +173,11 @@ func TestCrossReferenceLinks(t *testing.T) {
 		for _, docName := range allDocs {
 			var docPath string
 			if strings.Contains(docName, "/") {
-				docPath = filepath.Join("docs", docName+".md")
+				docPath = filepath.Join(docName+".md")
 			} else if docName == "gokart" || docName == "cli" {
-				docPath = filepath.Join("docs", "api", docName+".md")
+				docPath = filepath.Join("api", docName+".md")
 			} else {
-				docPath = filepath.Join("docs", "components", docName+".md")
+				docPath = filepath.Join("components", docName+".md")
 			}
 
 			content, err := os.ReadFile(docPath)
@@ -192,11 +192,15 @@ func TestCrossReferenceLinks(t *testing.T) {
 			allLinks := linkPattern.FindAllStringSubmatch(doc, -1)
 
 			for _, match := range allLinks {
+				link := match[2]
 				// Skip external links
-				if strings.HasPrefix(match[2], "http") {
+				if strings.HasPrefix(link, "http") {
 					continue
 				}
-				link := match[2]
+				// Skip Go code signatures matched as links (e.g. generic funcs)
+				if strings.Contains(link, "...") || strings.Contains(link, ",") {
+					continue
+				}
 				// Allow relative links that start with ./ or ../
 				if !strings.HasPrefix(link, "./") && !strings.HasPrefix(link, "../") && !strings.HasPrefix(link, "#") {
 					// Should be using /path format for absolute links within docs
