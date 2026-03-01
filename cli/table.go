@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sort"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
@@ -113,8 +114,14 @@ func KeyValue(data map[string]string) {
 	keyStyle := lipgloss.NewStyle().Bold(true).Width(20)
 	valStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("12"))
 
-	for k, v := range data {
-		fmt.Printf("%s %s\n", keyStyle.Render(k+":"), valStyle.Render(v))
+	keys := make([]string, 0, len(data))
+	for k := range data {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	for _, k := range keys {
+		fmt.Printf("%s %s\n", keyStyle.Render(k+":"), valStyle.Render(data[k]))
 	}
 }
 
