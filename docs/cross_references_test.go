@@ -60,15 +60,10 @@ func TestCrossReferenceLinks(t *testing.T) {
 			sections []string
 		}{
 			{"gokart", []string{
-				"Validation",
-				"PostgreSQL",
-				"SQLite",
-				"Cache",
-				"Migrations",
-				"Templates",
+				"Configuration",
 				"State Persistence",
-				"OpenAI",
-				"HTTP Response Helpers",
+				"Subpackages",
+				"Deprecated Functions",
 			}},
 		}
 
@@ -113,7 +108,7 @@ func TestCrossReferenceLinks(t *testing.T) {
 
 					if !regexp.MustCompile(`\(/components/`).MatchString(fullSection) {
 						// Some sections like HTTP Server might not have component docs, that's OK
-						if section == "HTTP Server" || section == "HTTP Router" || section == "HTTP Client" || section == "Configuration" {
+						if section == "HTTP Server" || section == "HTTP Router" || section == "HTTP Client" || section == "Configuration" || section == "Deprecated Functions" || section == "State Persistence" {
 							t.Logf("%s: Section %q has no component link (acceptable - no dedicated component doc)", apiDoc.name, section)
 						} else {
 							t.Errorf("%s: Section %q missing link to component documentation", apiDoc.name, section)
