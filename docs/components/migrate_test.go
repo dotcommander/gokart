@@ -7,7 +7,7 @@ import (
 )
 
 func TestMigrateDocumentation_FunctionSignatures(t *testing.T) {
-	content, err := os.ReadFile("docs/components/migrate.md")
+	content, err := os.ReadFile("migrate.md")
 	if err != nil {
 		t.Fatalf("Failed to read migrate.md: %v", err)
 	}
@@ -56,7 +56,7 @@ func TestMigrateDocumentation_FunctionSignatures(t *testing.T) {
 }
 
 func TestMigrateDocumentation_EmbedFSUsage(t *testing.T) {
-	content, err := os.ReadFile("docs/components/migrate.md")
+	content, err := os.ReadFile("migrate.md")
 	if err != nil {
 		t.Fatalf("Failed to read migrate.md: %v", err)
 	}
@@ -98,7 +98,7 @@ var migrations embed.FS`
 }
 
 func TestMigrateDocumentation_Commands(t *testing.T) {
-	content, err := os.ReadFile("docs/components/migrate.md")
+	content, err := os.ReadFile("migrate.md")
 	if err != nil {
 		t.Fatalf("Failed to read migrate.md: %v", err)
 	}
@@ -152,7 +152,7 @@ func TestMigrateDocumentation_Commands(t *testing.T) {
 }
 
 func TestMigrateDocumentation_MigrateConfigStruct(t *testing.T) {
-	content, err := os.ReadFile("docs/components/migrate.md")
+	content, err := os.ReadFile("migrate.md")
 	if err != nil {
 		t.Fatalf("Failed to read migrate.md: %v", err)
 	}
@@ -177,7 +177,7 @@ func TestMigrateDocumentation_MigrateConfigStruct(t *testing.T) {
 }
 
 func TestMigrateDocumentation_FileFormat(t *testing.T) {
-	content, err := os.ReadFile("docs/components/migrate.md")
+	content, err := os.ReadFile("migrate.md")
 	if err != nil {
 		t.Fatalf("Failed to read migrate.md: %v", err)
 	}

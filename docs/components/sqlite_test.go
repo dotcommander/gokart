@@ -8,7 +8,7 @@ import (
 
 func TestSQLiteDocumentation_NewSQLiteDB_SignatureDocumented(t *testing.T) {
 	// Given: docs/components/sqlite.md exists
-	content, err := os.ReadFile("docs/components/sqlite.md")
+	content, err := os.ReadFile("sqlite.md")
 	if err != nil {
 		t.Fatalf("Failed to read sqlite.md: %v", err)
 	}
@@ -54,7 +54,7 @@ func TestSQLiteDocumentation_NewSQLiteDB_SignatureDocumented(t *testing.T) {
 
 func TestSQLiteDocumentation_TransactionHelperExplained(t *testing.T) {
 	// Given: docs/components/sqlite.md exists
-	content, err := os.ReadFile("docs/components/sqlite.md")
+	content, err := os.ReadFile("sqlite.md")
 	if err != nil {
 		t.Fatalf("Failed to read sqlite.md: %v", err)
 	}
@@ -91,7 +91,7 @@ func TestSQLiteDocumentation_TransactionHelperExplained(t *testing.T) {
 
 func TestSQLiteDocumentation_ZeroCGOProminentlyMentioned(t *testing.T) {
 	// Given: docs/components/sqlite.md exists
-	content, err := os.ReadFile("docs/components/sqlite.md")
+	content, err := os.ReadFile("sqlite.md")
 	if err != nil {
 		t.Fatalf("Failed to read sqlite.md: %v", err)
 	}
@@ -127,7 +127,7 @@ func TestSQLiteDocumentation_ZeroCGOProminentlyMentioned(t *testing.T) {
 
 func TestSQLiteDocumentation_Structure(t *testing.T) {
 	// Given: docs/components/sqlite.md exists
-	content, err := os.ReadFile("docs/components/sqlite.md")
+	content, err := os.ReadFile("sqlite.md")
 	if err != nil {
 		t.Fatalf("Failed to read sqlite.md: %v", err)
 	}
@@ -156,7 +156,7 @@ func TestSQLiteDocumentation_Structure(t *testing.T) {
 
 func TestSQLiteDocumentation_CodeExamples(t *testing.T) {
 	// Given: docs/components/sqlite.md exists
-	content, err := os.ReadFile("docs/components/sqlite.md")
+	content, err := os.ReadFile("sqlite.md")
 	if err != nil {
 		t.Fatalf("Failed to read sqlite.md: %v", err)
 	}

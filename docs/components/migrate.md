@@ -452,6 +452,19 @@ mv migrations/*_add_users_table.sql migrations/${TIMESTAMP}_add_users_table.sql
 
 ### Functions
 
+```go
+func Migrate(ctx context.Context, db *sql.DB, cfg MigrateConfig) error
+func MigrateUp(ctx context.Context, db *sql.DB, cfg MigrateConfig) error
+func MigrateDown(ctx context.Context, db *sql.DB, cfg MigrateConfig) error
+func MigrateDownTo(ctx context.Context, db *sql.DB, cfg MigrateConfig, version int64) error
+func MigrateReset(ctx context.Context, db *sql.DB, cfg MigrateConfig) error
+func MigrateStatus(ctx context.Context, db *sql.DB, cfg MigrateConfig) error
+func MigrateVersion(ctx context.Context, db *sql.DB, cfg MigrateConfig) (int64, error)
+func MigrateCreate(dir, name, ext string) error
+func PostgresMigrate(ctx context.Context, db *sql.DB, dir string) error
+func SQLiteMigrate(ctx context.Context, db *sql.DB, dir string) error
+```
+
 | Function | Description |
 |----------|-------------|
 | [`Migrate`](#migrate) | Runs all pending migrations |

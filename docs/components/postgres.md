@@ -31,6 +31,10 @@ err = pool.QueryRow(ctx, "SELECT name FROM users WHERE id = $1", 1).Scan(&name)
 
 ### Opening a Pool
 
+```go
+func Open(ctx context.Context, dsn string) (*pgxpool.Pool, error)
+```
+
 #### Using Default Settings
 
 ```go
@@ -174,7 +178,7 @@ err := postgres.Transaction(ctx, pool, func(tx pgx.Tx) error {
 
 **Automatic rollback on:**
 
-- Error returned from function
+- Any error returned from the function (error returned causes immediate rollback)
 - Panic occurs during transaction
 - Both error and rollback failure (returns compound error)
 
