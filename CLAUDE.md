@@ -45,22 +45,24 @@ go build -ldflags "-X main.version=$(git describe --tags)" -o mycli ./cmd
 
 ### Main Package (`gokart`)
 
+Root package provides logger, config, and state persistence.
+
 | File | Component | Wraps |
 |------|-----------|-------|
 | `log.go` | Logger | `log/slog` |
 | `config.go` | Config | `spf13/viper` |
-| `httpserver.go` | Router | `go-chi/chi/v5` |
-| `server.go` | Server | stdlib `net/http` (graceful shutdown) |
-| `httpclient.go` | HTTP Client | `hashicorp/go-retryablehttp` |
-| `validate.go` | Validator | `go-playground/validator/v10` |
-| `postgres.go` | PostgreSQL | `jackc/pgx/v5` |
-| `sqlite.go` | SQLite | `modernc.org/sqlite` (zero CGO) |
-| `templ.go` | Templates | `a-h/templ` |
-| `cache.go` | Cache | `redis/go-redis/v9` |
-| `migrate.go` | Migrations | `pressly/goose/v3` |
 | `state.go` | State Persistence | `encoding/json` (stdlib) |
-| `openai.go` | OpenAI | `openai/openai-go/v3` |
-| `response.go` | Response Helpers | stdlib `net/http` + `encoding/json` |
+
+### Subpackages
+
+| Package | Purpose | Key dependencies |
+|---------|---------|-----------------|
+| `gokart/web` | HTTP router, server, response, templ, negotiate, flash, CSRF, pagination, assets | `chi/v5`, `a-h/templ`, `validator/v10` |
+| `gokart/postgres` | PostgreSQL connection pool, transactions | `jackc/pgx/v5` |
+| `gokart/sqlite` | SQLite (zero CGO), transactions | `modernc.org/sqlite` |
+| `gokart/migrate` | Database migrations | `pressly/goose/v3` |
+| `gokart/ai` | OpenAI client | `openai/openai-go/v3` |
+| `gokart/cli` | CLI applications with styled output | `cobra`, `lipgloss` |
 
 ### CLI Subpackage (`gokart/cli`)
 
@@ -82,14 +84,14 @@ cfg, err := gokart.LoadConfig[AppConfig]("config.yaml")
 
 Transaction helpers auto-rollback on error/panic:
 ```go
-gokart.WithTransaction(ctx, pool, func(tx pgx.Tx) error { ... })
-gokart.SQLiteTransaction(ctx, db, func(tx *sql.Tx) error { ... })
+postgres.Transaction(ctx, pool, func(tx pgx.Tx) error { ... })
+sqlite.Transaction(ctx, db, func(tx *sql.Tx) error { ... })
 ```
 
-Cache has Remember pattern (get-or-compute):
+Content negotiation serves JSON or HTML from the same handler:
 ```go
-cache.Remember(ctx, "key", time.Hour, func() (interface{}, error) { ... })  // Returns string
-cache.RememberJSON(ctx, "key", time.Hour, &dest, func() (interface{}, error) { ... })  // Typed
+web.Negotiate(w, r, jsonData, views.Page(data))
+// JSON for Accept: application/json, HTML otherwise
 ```
 
 State persistence for CLI tools (separate from config):
