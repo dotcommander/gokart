@@ -47,6 +47,14 @@ type TemplateData struct {
 // ScaffoldFlat creates a flat project structure with a single main.go.
 func ScaffoldFlat(dir, name, module string, useGlobal, includeExample bool, opts ApplyOptions) (*ApplyResult, error) {
 	data := baseTemplateData(name, module, useGlobal, includeExample)
+
+	useGlobalPtr := boolPtr(useGlobal)
+	opts.ManifestMetadata = &scaffoldManifestMetadata{
+		Mode:      "flat",
+		Module:    module,
+		UseGlobal: useGlobalPtr,
+	}
+
 	return Apply(templates, "templates/flat", dir, data, opts)
 }
 
@@ -56,6 +64,19 @@ func ScaffoldStructured(dir, name, module string, useSQLite, usePostgres, useAI,
 	data.UseSQLite = useSQLite
 	data.UsePostgres = usePostgres
 	data.UseAI = useAI
+
+	useGlobalPtr := boolPtr(useGlobal)
+	opts.ManifestMetadata = &scaffoldManifestMetadata{
+		Integrations: &manifestIntegrations{
+			SQLite:   useSQLite,
+			Postgres: usePostgres,
+			AI:       useAI,
+		},
+		Mode:      "structured",
+		Module:    module,
+		UseGlobal: useGlobalPtr,
+	}
+
 	return Apply(templates, "templates/structured", dir, data, opts)
 }
 
@@ -77,6 +98,10 @@ func baseTemplateData(name, module string, useGlobal, includeExample bool) Templ
 		OpenAIVersion:         defaultOpenAIVersion,
 		GooseVersion:          defaultGooseVersion,
 	}
+}
+
+func boolPtr(b bool) *bool {
+	return &b
 }
 
 // goVersion returns the current Go version without the "go" prefix.

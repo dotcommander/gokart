@@ -30,6 +30,7 @@ type ApplyOptions struct {
 	DryRun             bool
 	ExistingFilePolicy ExistingFilePolicy
 	SkipManifest       bool
+	ManifestMetadata   *scaffoldManifestMetadata
 }
 
 // ApplyResult summarizes what the scaffolder did (or would do, in dry-run mode).
@@ -126,6 +127,7 @@ const (
 	applyJournalVersion  = 2
 	scaffoldManifestPath = ".gokart-manifest.json"
 	scaffoldManifestV1   = 1
+	scaffoldManifestV2   = 2
 	applyLockStaleAfter  = 30 * time.Minute
 )
 
@@ -162,6 +164,10 @@ type scaffoldManifest struct {
 	ExistingFilePolicy ExistingFilePolicy     `json:"existing_file_policy"`
 	GeneratedAt        *time.Time             `json:"generated_at,omitempty"`
 	Files              []scaffoldManifestFile `json:"files"`
+	Integrations       *manifestIntegrations  `json:"integrations,omitempty"`
+	Mode               string                 `json:"mode,omitempty"`
+	Module             string                 `json:"module,omitempty"`
+	UseGlobal          *bool                  `json:"use_global,omitempty"`
 }
 
 type scaffoldManifestFile struct {
@@ -170,6 +176,19 @@ type scaffoldManifestFile struct {
 	TemplateSHA256 string `json:"template_sha256"`
 	ContentSHA256  string `json:"content_sha256"`
 	Mode           uint32 `json:"mode"`
+}
+
+type manifestIntegrations struct {
+	SQLite   bool `json:"sqlite"`
+	Postgres bool `json:"postgres"`
+	AI       bool `json:"ai"`
+}
+
+type scaffoldManifestMetadata struct {
+	Integrations *manifestIntegrations
+	Mode         string
+	Module       string
+	UseGlobal    *bool
 }
 
 type journalRecoveryMismatchError struct {
@@ -240,7 +259,7 @@ func Apply(fsys fs.FS, root string, targetDir string, data TemplateData, opts Ap
 		return nil, err
 	}
 
-	if err := applyPlanWrites(plan, result, journal, targetRoot, root, normalizedOpts.ExistingFilePolicy, normalizedOpts.SkipManifest); err != nil {
+	if err := applyPlanWrites(plan, result, journal, targetRoot, root, normalizedOpts); err != nil {
 		return nil, err
 	}
 
@@ -537,7 +556,7 @@ func collectResult(plan []plannedFile, dryRun bool) *ApplyResult {
 	return result
 }
 
-func applyPlanWrites(plan []plannedFile, result *ApplyResult, journal *applyJournal, targetRoot string, templateRoot string, policy ExistingFilePolicy, skipManifest bool) error {
+func applyPlanWrites(plan []plannedFile, result *ApplyResult, journal *applyJournal, targetRoot string, templateRoot string, opts ApplyOptions) error {
 	applied := make([]rollbackAction, 0, len(plan))
 
 	for _, file := range plan {
@@ -603,12 +622,12 @@ func applyPlanWrites(plan []plannedFile, result *ApplyResult, journal *applyJour
 		}
 	}
 
-	if skipManifest {
+	if opts.SkipManifest {
 		return nil
 	}
 
 	manifestPath := filepath.Join(targetRoot, scaffoldManifestPath)
-	manifestData, err := renderScaffoldManifest(templateRoot, policy, plan)
+	manifestData, err := renderScaffoldManifest(templateRoot, plan, opts)
 	if err != nil {
 		return rollbackWithError(fmt.Errorf("render scaffold manifest: %w", err), applied, journal)
 	}
@@ -683,8 +702,8 @@ func rollbackActionForPath(targetRoot, path string) (rollbackAction, error) {
 	}, nil
 }
 
-func renderScaffoldManifest(templateRoot string, policy ExistingFilePolicy, plan []plannedFile) ([]byte, error) {
-	manifest, err := buildScaffoldManifest(templateRoot, policy, plan)
+func renderScaffoldManifest(templateRoot string, plan []plannedFile, opts ApplyOptions) ([]byte, error) {
+	manifest, err := buildScaffoldManifest(templateRoot, plan, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -710,7 +729,7 @@ func writeScaffoldManifest(targetRoot string, manifestData []byte) error {
 	return nil
 }
 
-func buildScaffoldManifest(templateRoot string, policy ExistingFilePolicy, plan []plannedFile) (scaffoldManifest, error) {
+func buildScaffoldManifest(templateRoot string, plan []plannedFile, opts ApplyOptions) (scaffoldManifest, error) {
 	files := make([]scaffoldManifestFile, 0, len(plan))
 
 	for _, file := range plan {
@@ -735,13 +754,28 @@ func buildScaffoldManifest(templateRoot string, policy ExistingFilePolicy, plan 
 		return files[i].Path < files[j].Path
 	})
 
-	return scaffoldManifest{
-		Version:            scaffoldManifestV1,
+	meta := opts.ManifestMetadata
+	version := scaffoldManifestV1
+	if meta != nil {
+		version = scaffoldManifestV2
+	}
+
+	m := scaffoldManifest{
+		Version:            version,
 		Generator:          "gokart",
 		TemplateRoot:       templateRoot,
-		ExistingFilePolicy: policy,
+		ExistingFilePolicy: opts.ExistingFilePolicy,
 		Files:              files,
-	}, nil
+	}
+
+	if meta != nil {
+		m.Integrations = meta.Integrations
+		m.Mode = meta.Mode
+		m.Module = meta.Module
+		m.UseGlobal = meta.UseGlobal
+	}
+
+	return m, nil
 }
 
 func planActionLabel(action planAction) (string, error) {
