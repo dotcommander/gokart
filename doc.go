@@ -5,16 +5,21 @@
 //
 // # Components
 //
-//   - Logger: slog wrapper with JSON/text formatting
+// Root module (github.com/dotcommander/gokart):
 //   - Config: viper wrapper for config files + env vars
-//   - Router: chi wrapper with standard middleware
-//   - HTTP Client: retryablehttp wrapper with automatic retries
-//   - Validator: go-playground/validator with JSON field names
-//   - PostgreSQL: pgx/v5 connection pool
-//   - SQLite: modernc.org/sqlite (zero CGO) with WAL mode
-//   - Templates: a-h/templ HTTP integration helpers
-//   - Cache: go-redis/v9 with convenience methods
-//   - Migrations: goose/v3 schema migrations
+//   - State: JSON state persistence for CLI tools
+//   - Server: HTTP server with graceful shutdown
+//   - Logger: slog aliases (use gokart/logger directly)
+//
+// Submodules:
+//   - gokart/logger: slog wrapper with JSON/text formatting
+//   - gokart/cli: CLI framework wrapping cobra + lipgloss
+//   - gokart/web: HTTP router, client, templ helpers, validator
+//   - gokart/postgres: pgx/v5 connection pool
+//   - gokart/sqlite: modernc.org/sqlite (zero CGO) with WAL mode
+//   - gokart/cache: go-redis/v9 with convenience methods
+//   - gokart/migrate: goose/v3 schema migrations
+//   - gokart/ai: OpenAI client factory functions
 //
 // # Design Principles
 //
@@ -26,22 +31,22 @@
 // # Quick Start
 //
 //	// Logger
-//	log := gokart.NewLogger(gokart.LogConfig{Level: "info", Format: "json"})
+//	log := logger.New(logger.Config{Level: "info", Format: "json"})
 //
 //	// Config
 //	cfg, err := gokart.LoadConfig[AppConfig]("config.yaml")
 //
-//	// Router
-//	router := gokart.NewRouter(gokart.RouterConfig{Middleware: gokart.StandardMiddleware})
+//	// Router (gokart/web)
+//	router := web.NewRouter(web.RouterConfig{Middleware: web.StandardMiddleware})
 //
-//	// PostgreSQL
-//	pool, err := gokart.OpenPostgres(ctx, "postgres://localhost/mydb")
+//	// PostgreSQL (gokart/postgres)
+//	pool, err := postgres.Open(ctx, "postgres://localhost/mydb")
 //
-//	// Cache
-//	cache, err := gokart.OpenCache(ctx, "localhost:6379")
+//	// Cache (gokart/cache)
+//	c, err := cache.Open(ctx, "localhost:6379")
 //
-//	// Migrations
-//	gokart.PostgresMigrate(ctx, db, "migrations")
+//	// Migrations (gokart/migrate)
+//	migrate.Postgres(ctx, db, "migrations")
 //
 // # CLI Subpackage
 //
