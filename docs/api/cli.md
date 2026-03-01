@@ -1,6 +1,6 @@
 # GoKart CLI API Reference
 
-This document provides a comprehensive API reference for the `gokart/cli` subpackage, which provides CLI application utilities wrapping Cobra and Lipgloss.
+API reference for the `gokart/cli` subpackage. Wraps Cobra and Lipgloss for CLI applications with styled output.
 
 ## Related Documentation
 
