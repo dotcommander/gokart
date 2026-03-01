@@ -1,3 +1,5 @@
+//go:build ignore
+
 // Example: Configuration loading with GoKart config.
 //
 // This example demonstrates:

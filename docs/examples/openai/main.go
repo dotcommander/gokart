@@ -1,3 +1,5 @@
+//go:build ignore
+
 // Example: OpenAI API integration with GoKart.
 //
 // This example demonstrates:
@@ -19,7 +21,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/dotcommander/gokart"
+	"github.com/dotcommander/gokart/ai"
 	"github.com/openai/openai-go/v3"
 )
 
@@ -33,7 +35,7 @@ func main() {
 
 	// Example 1: Create client using environment variable (recommended)
 	// The SDK automatically reads OPENAI_API_KEY from the environment
-	client := gokart.NewOpenAIClient()
+	client := ai.NewOpenAIClient()
 
 	// Example 2: Simple chat completion
 	log.Println("Sending chat completion request...")
@@ -127,7 +129,7 @@ func main() {
 
 	// Example 6: With explicit API key
 	// Useful when managing multiple API keys or testing
-	// keyClient := gokart.NewOpenAIClientWithKey("sk-...")
+	// keyClient := ai.NewOpenAIClientWithKey("sk-...")
 	// keyClient.Chat.Completions.New(ctx, params)
 
 	log.Println("\nDone!")
