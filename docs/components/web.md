@@ -98,99 +98,65 @@ func ListenAndServeWithTimeout(addr string, handler http.Handler, timeout time.D
 
 ---
 
+## HTTP Client
+
+Wraps [hashicorp/go-retryablehttp](https://github.com/hashicorp/go-retryablehttp) to provide an HTTP client with automatic retries and exponential backoff.
+
+### NewStandardClient
+
+Returns a `*http.Client` with default configuration — drop-in replacement for `http.DefaultClient`.
+
+```go
+func NewStandardClient() *http.Client
+```
+
+```go
+client := web.NewStandardClient()
+resp, err := client.Get("https://api.example.com/data")
+```
+
+### HTTPConfig
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `Timeout` | `time.Duration` | `30s` | Per-request timeout |
+| `RetryMax` | `int` | `3` | Maximum retry attempts |
+| `RetryWait` | `time.Duration` | `1s` | Base wait between retries; max wait is 10x this value |
+
+### NewHTTPClient
+
+Creates a retryable client with custom configuration. Returns `*retryablehttp.Client`, which exposes the full go-retryablehttp surface (custom retry policies, request logging, etc.).
+
+```go
+func NewHTTPClient(cfg HTTPConfig) *retryablehttp.Client
+```
+
+```go
+client := web.NewHTTPClient(web.HTTPConfig{
+    Timeout:   10 * time.Second,
+    RetryMax:  5,
+    RetryWait: 2 * time.Second,
+})
+resp, err := client.Get("https://api.example.com/data")
+```
+
+The client retries automatically on network errors and 5xx responses. Wait time between retries grows exponentially from `RetryWait` up to `RetryWait * 10`.
+
+---
+
 ## Response helpers
 
-### JSON / JSONStatus / JSONStatusE
+Convenience functions for JSON success responses, error payloads, and 204 No Content. Covers `JSON`, `JSONStatus`, `JSONStatusE`, `Error`, and `NoContent`.
 
-```go
-func JSON(w http.ResponseWriter, data any)
-func JSONStatus(w http.ResponseWriter, status int, data any)
-func JSONStatusE(w http.ResponseWriter, status int, data any) error
-```
-
-```go
-web.JSON(w, user)                                    // 200
-web.JSONStatus(w, http.StatusCreated, user)          // 201
-if err := web.JSONStatusE(w, http.StatusOK, user); err != nil {
-    log.Printf("encode: %v", err)
-}
-```
-
-### Error
-
-Writes `{"error": "message"}` with the given status code.
-
-```go
-func Error(w http.ResponseWriter, status int, message string)
-```
-
-```go
-web.Error(w, http.StatusNotFound, "user not found")
-// 404 {"error":"user not found"}
-```
-
-### NoContent
-
-```go
-func NoContent(w http.ResponseWriter)
-```
-
-Writes a 204 with no body. Use after DELETE or when the response has no payload.
+See [Response Helpers](response.md) for the full API reference and examples.
 
 ---
 
 ## HTML rendering (templ)
 
-### Render / RenderWithStatus / RenderCtx
+Thin wrappers around the templ rendering API: `Render`, `RenderWithStatus`, `RenderCtx`, and handler adapters (`TemplHandler`, `TemplHandlerFunc`, `TemplHandlerFuncE`) for wiring components directly to chi routes.
 
-```go
-func Render(w http.ResponseWriter, r *http.Request, component templ.Component) error
-func RenderWithStatus(w http.ResponseWriter, r *http.Request, status int, component templ.Component) error
-func RenderCtx(ctx context.Context, w http.ResponseWriter, component templ.Component) error
-```
-
-```go
-func handleHome(w http.ResponseWriter, r *http.Request) {
-    web.Render(w, r, views.HomePage())
-}
-
-func handleNotFound(w http.ResponseWriter, r *http.Request) {
-    web.RenderWithStatus(w, r, http.StatusNotFound, views.NotFoundPage())
-}
-```
-
-All three set `Content-Type: text/html; charset=utf-8`.
-
-### Handler adapters
-
-```go
-func TemplHandler(component templ.Component) http.Handler
-func TemplHandlerFunc(fn func(r *http.Request) templ.Component) http.HandlerFunc
-func TemplHandlerFuncE(fn func(r *http.Request) (templ.Component, error)) http.HandlerFunc
-```
-
-```go
-// Static page — no request data needed
-router.Get("/about", web.TemplHandler(views.AboutPage()))
-
-// Dynamic page — needs URL params or query
-router.Get("/user/{id}", web.TemplHandlerFunc(func(r *http.Request) templ.Component {
-    id := chi.URLParam(r, "id")
-    user := db.GetUser(id)
-    return views.UserPage(user)
-}))
-
-// Page with data fetching that can fail
-router.Get("/dashboard", web.TemplHandlerFuncE(func(r *http.Request) (templ.Component, error) {
-    data, err := loadDashboard(r.Context())
-    if err != nil {
-        return nil, err
-    }
-    return views.Dashboard(data), nil
-}))
-```
-
-`TemplHandlerFuncE` returns 500 if the function errors or rendering fails.
+See [Templ](templ.md) for the full API reference and examples.
 
 ---
 
@@ -308,28 +274,9 @@ if fields != nil {
 
 ### Validator
 
-```go
-func NewValidator(cfg ValidatorConfig) *validator.Validate
-func NewStandardValidator() *validator.Validate
-func ValidationErrors(err error) map[string]string
-```
+`NewValidator`, `NewStandardValidator`, and `ValidationErrors` provide struct validation backed by go-playground/validator. The `notblank` custom tag rejects whitespace-only strings (unlike `required`).
 
-`NewStandardValidator` uses JSON tag names in error messages. The `notblank` custom tag rejects whitespace-only strings (unlike `required`).
-
-```go
-type User struct {
-    Email string `json:"email" validate:"required,email"`
-    Name  string `json:"name"  validate:"notblank,max=100"`
-    Age   int    `json:"age"   validate:"gte=0,lte=130"`
-}
-
-v := web.NewStandardValidator()
-if err := v.Struct(user); err != nil {
-    for field, msg := range web.ValidationErrors(err) {
-        fmt.Printf("%s: %s\n", field, msg)
-    }
-}
-```
+See [Validator](validate.md) for the full API reference, tag listing, and error message table.
 
 ---
 
@@ -498,6 +445,8 @@ The hash changes when file content changes. Browsers cache the file for one year
 
 ## Reference
 
+Quick lookup for all exports in the `web` package. For detailed usage, see [Response Helpers](response.md), [Templ](templ.md), and [Validator](validate.md).
+
 ### Router and server
 
 | Function | Description |
@@ -577,6 +526,14 @@ The hash changes when file content changes. Browsers cache the file for one year
 | `NewAssets(cfg)` | `(*Assets, error)` | Build asset server from embedded FS |
 | `(a *Assets) Path(name)` | `string` | Versioned URL for an asset |
 | `(a *Assets) Handler()` | `http.Handler` | HTTP handler for embedded files |
+
+### HTTP Client
+
+| Function | Returns | Description |
+|----------|---------|-------------|
+| `NewStandardClient()` | `*http.Client` | Retryable client with default config, standard library interface |
+| `NewHTTPClient(cfg)` | `*retryablehttp.Client` | Retryable client with custom timeout, retries, and wait |
+| `HTTPConfig` | struct | Config for `NewHTTPClient`: `Timeout`, `RetryMax`, `RetryWait` |
 
 ### See also
 

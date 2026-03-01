@@ -158,6 +158,99 @@ Model: openai.F(openai.ChatModelGPT35Turbo)
 
 ---
 
+## Best Practices
+
+### Structured Output
+
+Use `ResponseFormatJSONObject` to request machine-readable JSON responses. The model is instructed to always return valid JSON, which you can then unmarshal directly:
+
+```go
+completion, err := client.Chat.Completions.New(ctx, openai.ChatCompletionNewParams{
+    Messages: openai.F([]openai.ChatCompletionMessageParamUnion{
+        openai.SystemMessage("Extract the fields as JSON. Return {\"name\": string, \"age\": number}."),
+        openai.UserMessage("Name: Alice, Age: 30"),
+    }),
+    Model: openai.F(openai.ChatModelGPT4o),
+    ResponseFormat: openai.F[openai.ChatCompletionNewParamsResponseFormatUnion](
+        openai.ResponseFormatJSONObjectParam{
+            Type: openai.F(openai.ResponseFormatJSONObjectTypeJSONObject),
+        },
+    ),
+})
+if err != nil {
+    return err
+}
+
+var result struct {
+    Name string `json:"name"`
+    Age  int    `json:"age"`
+}
+if err := json.Unmarshal([]byte(completion.Choices[0].Message.Content), &result); err != nil {
+    return fmt.Errorf("unmarshal response: %w", err)
+}
+```
+
+### Streaming Long Responses
+
+For user-facing output, prefer streaming over blocking. It writes tokens as they arrive, which reduces perceived latency significantly for long responses:
+
+```go
+stream := client.Chat.Completions.NewStreaming(ctx, openai.ChatCompletionNewParams{
+    Messages: openai.F([]openai.ChatCompletionMessageParamUnion{
+        openai.UserMessage("Summarize this document: " + doc),
+    }),
+    Model: openai.F(openai.ChatModelGPT4o),
+})
+
+for stream.Next() {
+    chunk := stream.Current()
+    if len(chunk.Choices) > 0 {
+        fmt.Print(chunk.Choices[0].Delta.Content)
+    }
+}
+
+if err := stream.Err(); err != nil {
+    return fmt.Errorf("stream: %w", err)
+}
+```
+
+### Error Handling
+
+The SDK returns typed errors. Distinguish API-level errors (invalid request, quota exceeded, rate limit) from transport errors (network timeout, context cancellation) so you can surface useful messages:
+
+```go
+completion, err := client.Chat.Completions.New(ctx, params)
+if err != nil {
+    var apiErr *openai.Error
+    if errors.As(err, &apiErr) {
+        // HTTP-level error from the API: check StatusCode and Message
+        return fmt.Errorf("openai error %d: %s", apiErr.StatusCode, apiErr.Message)
+    }
+    // Network or context error (e.g., context.DeadlineExceeded)
+    return fmt.Errorf("openai request: %w", err)
+}
+
+if len(completion.Choices) == 0 {
+    return errors.New("no completion choices returned")
+}
+```
+
+### Reuse the Client
+
+`ai.NewOpenAIClient()` returns an `openai.Client` that is safe to share across requests and goroutines. Create it once — in your app context or command setup — and inject it wherever it is needed. Calling the constructor per request adds unnecessary overhead and bypasses the connection pool built into the underlying HTTP client.
+
+### Model Constants
+
+Prefer the SDK-provided model constants over raw string literals. The constants are defined in the `openai` package alongside the rest of the API surface. See the [Models](#models) section above for the available constants and a guide on when to use each.
+
+If you need a model that does not yet have a constant (e.g., a preview release), you can cast a string directly:
+
+```go
+Model: openai.F(openai.ChatModel("the-model-id"))
+```
+
+---
+
 ## Reference
 
 ### Functions
@@ -179,7 +272,13 @@ func NewOpenAIClientWithKey(apiKey string) openai.Client
 
 ### See Also
 
-- [OpenAI Go SDK documentation](https://github.com/openai/openai-go)
-- [OpenAI API reference](https://platform.openai.com/docs/api-reference)
-- [HTTP client](/api/gokart#http-client) - Retryable HTTP client
-- [Response helpers](/components/response) - JSON response helpers
+**Upstream SDK:**
+- [openai-go on pkg.go.dev](https://pkg.go.dev/github.com/openai/openai-go/v3) — full API reference for the underlying SDK
+- [openai-go on GitHub](https://github.com/openai/openai-go) — source, changelog, and examples
+- [OpenAI API reference](https://platform.openai.com/docs/api-reference) — REST API documentation and model capabilities
+
+**GoKart components:**
+- [CLI](/api/cli) — build AI-powered CLI tools using the same client alongside commands, tables, and spinners
+- [Config](/api/gokart) — load `OPENAI_API_KEY` and model configuration from config files or environment
+- [Web](/components/web) — build AI-powered HTTP APIs with the [HTTP client](/components/web#http-client) and [Response helpers](/components/response) to return completions as JSON
+- [Cache](/components/cache) — cache expensive completion results with the Remember pattern to reduce API calls
