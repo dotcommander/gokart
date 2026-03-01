@@ -9,6 +9,19 @@ import (
 //go:embed templates
 var templates embed.FS
 
+const (
+	defaultGokartCLIVersion      = "v0.0.0-20260301050059-af15bf731eeb"
+	defaultGokartSQLiteVersion   = "v0.0.0-20260301050059-af15bf731eeb"
+	defaultGokartPostgresVersion = "v0.0.0-20260301050059-af15bf731eeb"
+	defaultGokartAIVersion       = "v0.0.0-20260301050059-af15bf731eeb"
+
+	defaultCobraVersion  = "v1.10.2"
+	defaultViperVersion  = "v1.21.0"
+	defaultPGXVersion    = "v5.8.0"
+	defaultOpenAIVersion = "v3.24.0"
+	defaultGooseVersion  = "v3.27.0"
+)
+
 // TemplateData holds variables for template substitution.
 type TemplateData struct {
 	Name        string
@@ -18,31 +31,50 @@ type TemplateData struct {
 	UsePostgres bool
 	UseAI       bool
 	UseGlobal   bool
+
+	GokartCLIVersion      string
+	GokartSQLiteVersion   string
+	GokartPostgresVersion string
+	GokartAIVersion       string
+	CobraVersion          string
+	ViperVersion          string
+	PGXVersion            string
+	OpenAIVersion         string
+	GooseVersion          string
 }
 
 // ScaffoldFlat creates a flat project structure with a single main.go.
-func ScaffoldFlat(dir, name, module string, useGlobal bool) error {
-	data := TemplateData{
+func ScaffoldFlat(dir, name, module string, useGlobal bool, opts ApplyOptions) (*ApplyResult, error) {
+	data := baseTemplateData(name, module, useGlobal)
+	return Apply(templates, "templates/flat", dir, data, opts)
+}
+
+// ScaffoldStructured creates a structured project with cmd/, internal/commands/, internal/actions/.
+func ScaffoldStructured(dir, name, module string, useSQLite, usePostgres, useAI, useGlobal bool, opts ApplyOptions) (*ApplyResult, error) {
+	data := baseTemplateData(name, module, useGlobal)
+	data.UseSQLite = useSQLite
+	data.UsePostgres = usePostgres
+	data.UseAI = useAI
+	return Apply(templates, "templates/structured", dir, data, opts)
+}
+
+func baseTemplateData(name, module string, useGlobal bool) TemplateData {
+	return TemplateData{
 		Name:      name,
 		Module:    module,
 		GoVersion: goVersion(),
 		UseGlobal: useGlobal,
-	}
-	return Apply(templates, "templates/flat", dir, data)
-}
 
-// ScaffoldStructured creates a structured project with cmd/, internal/commands/, internal/actions/.
-func ScaffoldStructured(dir, name, module string, useSQLite, usePostgres, useAI, useGlobal bool) error {
-	data := TemplateData{
-		Name:        name,
-		Module:      module,
-		GoVersion:   goVersion(),
-		UseSQLite:   useSQLite,
-		UsePostgres: usePostgres,
-		UseAI:       useAI,
-		UseGlobal:   useGlobal,
+		GokartCLIVersion:      defaultGokartCLIVersion,
+		GokartSQLiteVersion:   defaultGokartSQLiteVersion,
+		GokartPostgresVersion: defaultGokartPostgresVersion,
+		GokartAIVersion:       defaultGokartAIVersion,
+		CobraVersion:          defaultCobraVersion,
+		ViperVersion:          defaultViperVersion,
+		PGXVersion:            defaultPGXVersion,
+		OpenAIVersion:         defaultOpenAIVersion,
+		GooseVersion:          defaultGooseVersion,
 	}
-	return Apply(templates, "templates/structured", dir, data)
 }
 
 // goVersion returns the current Go version without the "go" prefix.

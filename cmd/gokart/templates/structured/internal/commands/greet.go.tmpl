@@ -28,7 +28,7 @@ func NewGreetCmd() *cobra.Command {
 			return err
 		}
 
-		cli.Success(result)
+		cli.Success("%s", result)
 		return nil
 	})
 

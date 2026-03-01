@@ -31,7 +31,9 @@ func Greet(ctx *app.Context, input GreetInput) (string, error) {
 	if err := input.Validate(); err != nil {
 		return "", err
 	}
-	ctx.Log.Info("greeting", "name", input.Name, "loud", input.Loud)
+	if ctx != nil && ctx.Log != nil {
+		ctx.Log.Info("greeting", "name", input.Name, "loud", input.Loud)
+	}
 {{- else }}
 func Greet(input GreetInput) (string, error) {
 	if err := input.Validate(); err != nil {
