@@ -26,8 +26,8 @@ import (
 {{- end }}
 {{- if .UseAI }}
 
+	"github.com/dotcommander/gokart/ai"
 	"github.com/openai/openai-go/v3"
-	"github.com/openai/openai-go/v3/option"
 {{- end }}
 
 	"github.com/spf13/viper"
@@ -81,6 +81,9 @@ func New(appName string, v *viper.Viper) (*Context, error) {
 	// Setup PostgreSQL connection pool
 	dbURL := v.GetString("database_url")
 	if dbURL == "" {
+		dbURL = os.Getenv("DATABASE_URL")
+	}
+	if dbURL == "" {
 		logger.Warn("DATABASE_URL not set, PostgreSQL features will not work")
 	} else {
 		pool, err := pgxpool.New(context.Background(), dbURL)
@@ -95,9 +98,12 @@ func New(appName string, v *viper.Viper) (*Context, error) {
 	// Setup OpenAI client
 	apiKey := v.GetString("openai_api_key")
 	if apiKey == "" {
+		apiKey = os.Getenv("OPENAI_API_KEY")
+	}
+	if apiKey == "" {
 		logger.Warn("OPENAI_API_KEY not set, AI features will not work")
 	}
-	ctx.AI = openai.NewClient(option.WithAPIKey(apiKey))
+	ctx.AI = ai.NewOpenAIClientWithKey(apiKey)
 {{- end }}
 
 	return ctx, nil

@@ -16,7 +16,7 @@ var appCtx *app.Context
 // Execute runs the CLI application.
 func Execute(version string) error {
 	cliApp := cli.NewApp("{{.Name}}", version).
-		WithDescription("{{.Name}} - a GoKart CLI application"){{if or .UseSQLite .UseAI}}.
+		WithDescription("{{.Name}} - a GoKart CLI application"){{if or .UseSQLite .UsePostgres .UseAI}}.
 		WithEnvPrefix("{{.Name | upper}}").
 		WithStandardFlags()
 
