@@ -181,6 +181,11 @@ func TestCrossReferenceLinks(t *testing.T) {
 			}
 			doc := string(content)
 
+			// Strip fenced code blocks — they contain Go generics syntax
+			// that matches markdown link patterns (e.g., F[Type](value))
+			codeBlockPattern := regexp.MustCompile("(?s)```[^\n]*\n.*?```")
+			doc = codeBlockPattern.ReplaceAllString(doc, "")
+
 			// Check for consistent internal link format
 			// Should be /components/name or /api/name#section
 			linkPattern := regexp.MustCompile(`\[(.*?)\]\(([^\)]+)\)`)
