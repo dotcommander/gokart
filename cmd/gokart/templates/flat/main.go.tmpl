@@ -71,7 +71,7 @@ func main() {
 			msg = "HELLO, " + name + "!"
 		}
 
-		cli.Success(msg)
+		cli.Success("%s", msg)
 		return nil
 	})
 	greetCmd.Flags().StringP("name", "n", "World", "Name to greet")

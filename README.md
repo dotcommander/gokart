@@ -581,6 +581,9 @@ go install github.com/dotcommander/gokart/cmd/gokart@latest
 # Create a structured project (default)
 gokart new mycli
 
+# Same as above, explicit preset form
+gokart new cli mycli
+
 # Create a flat single-file project
 gokart new mycli --flat
 
@@ -598,7 +601,45 @@ gokart new mycli --postgres --ai
 
 # Custom module path
 gokart new mycli --module github.com/myorg/mycli
+
+# Preview changes without writing files
+gokart new mycli --dry-run
+
+# Overwrite existing generated files
+gokart new mycli --force
+
+# Keep existing files, generate only missing files
+gokart new mycli --skip-existing
+
+# Generate and verify immediately
+gokart new mycli --verify
+
+# CI-friendly machine-readable output
+gokart new mycli --dry-run --json
 ```
+
+`gokart new` supports both legacy and preset syntax:
+
+- `gokart new mycli` (legacy, default preset)
+- `gokart new cli mycli` (explicit preset)
+
+Config scope can be controlled with:
+
+- `--config-scope auto` (default)
+- `--config-scope local`
+- `--config-scope global`
+
+For post-generation verification:
+
+- `--verify` runs `go mod tidy` and `go test ./...` in the generated project directory.
+
+For automation and conflict handling:
+
+- `--json` prints a machine-readable result payload.
+- default behavior fails on existing conflicting files and reports all conflicts.
+- `--force` overwrites conflicts, `--skip-existing` keeps existing files.
+
+Generated `go.mod` files pin starter dependency versions for deterministic scaffolding output.
 
 ### Structured Output (default)
 

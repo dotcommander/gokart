@@ -3,20 +3,25 @@ module {{.Module}}
 go {{.GoVersion}}
 
 require (
-	github.com/dotcommander/gokart/cli v0.2.0
+	github.com/dotcommander/gokart/cli {{.GokartCLIVersion}}
 {{- if .UseSQLite }}
-	github.com/dotcommander/gokart/sqlite v0.2.0
+	github.com/dotcommander/gokart/sqlite {{.GokartSQLiteVersion}}
 {{- end }}
 {{- if .UsePostgres }}
-	github.com/dotcommander/gokart/postgres v0.2.0
-	github.com/jackc/pgx/v5 v5.8.0
+	github.com/dotcommander/gokart/postgres {{.GokartPostgresVersion}}
+	github.com/jackc/pgx/v5 {{.PGXVersion}}
 {{- end }}
 {{- if .UseAI }}
-	github.com/dotcommander/gokart/ai v0.2.0
-	github.com/openai/openai-go/v3 v3.16.0
+	github.com/dotcommander/gokart/ai {{.GokartAIVersion}}
+	github.com/openai/openai-go/v3 {{.OpenAIVersion}}
 {{- end }}
-	github.com/spf13/cobra v1.10.2
-	github.com/spf13/viper v1.21.0
+{{- if or .UseSQLite .UsePostgres .UseAI }}
+	github.com/spf13/viper {{.ViperVersion}}
+{{- end }}
+	github.com/spf13/cobra {{.CobraVersion}}
+{{- if or .UseSQLite .UsePostgres }}
+	github.com/pressly/goose/v3 {{.GooseVersion}}
+{{- end }}
 )
 {{- if or .UseSQLite .UsePostgres }}
 
