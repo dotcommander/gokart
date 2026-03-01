@@ -124,6 +124,7 @@ const logo = `
 const rootLongDescription = logo + `
 	gokart new <name> [flags]
 	gokart new cli <name> [flags]
+	gokart add <integration>... [flags]
 
   --sqlite         SQLite database (modernc.org/sqlite)
   --postgres       PostgreSQL pool (pgx/v5)
@@ -196,8 +197,10 @@ const rootHelpTemplate = `{{.Long}}
   gokart new myapp
   gokart new cli myapp
   gokart new myapp --postgres --ai
+  gokart add sqlite ai
 
   gokart new --help    Full options
+  gokart add --help    Add integrations
 `
 
 func main() {
@@ -217,6 +220,7 @@ func newGokartApp(version string) *cli.App {
 		WithLongDescription(rootLongDescription)
 
 	app.AddCommand(newNewCommand())
+	app.AddCommand(newAddCommand())
 	configureRootCommand(app.Root())
 
 	return app
