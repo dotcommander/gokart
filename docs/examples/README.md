@@ -204,6 +204,14 @@ var user User
 cache.RememberJSON(ctx, key, ttl, &user, computeFunc)
 ```
 
+## Full Application Examples
+
+For complete application examples, see the root [`examples/`](../../examples/) directory:
+- [`http-service/`](../../examples/http-service/) — Minimal HTTP API with chi router
+- [`cli-app/`](../../examples/cli-app/) — CLI with commands, tables, and spinners
+
+---
+
 ## Testing Examples
 
 Examples can serve as integration tests when services are available:
