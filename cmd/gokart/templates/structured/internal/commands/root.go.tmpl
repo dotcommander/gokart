@@ -8,11 +8,6 @@ import (
 {{- end }}
 )
 
-{{- if or .UseSQLite .UsePostgres .UseAI }}
-
-var appCtx *app.Context
-{{- end }}
-
 // Execute runs the CLI application.
 func Execute(version string) error {
 	cliApp := cli.NewApp("{{.Name}}", version).
@@ -21,6 +16,7 @@ func Execute(version string) error {
 		WithStandardFlags()
 
 	// Chain with existing PersistentPreRunE (config init)
+	var appCtx *app.Context
 	origPreRun := cliApp.Root().PersistentPreRunE
 	cliApp.Root().PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
 		if origPreRun != nil {
@@ -43,7 +39,13 @@ func Execute(version string) error {
 		if appCtx != nil {
 			appCtx.Close()
 		}
-	}(){{else if .UseGlobal}}
+	}()
+
+	{{- if .IncludeExample }}
+	cliApp.AddCommand(NewGreetCmd(func() *app.Context {
+		return appCtx
+	}))
+	{{- end }}{{else if .UseGlobal}}
 
 	// Chain with existing PersistentPreRunE (config init)
 	origPreRun := cliApp.Root().PersistentPreRunE
@@ -54,9 +56,15 @@ func Execute(version string) error {
 			}
 		}
 		return app.EnsureConfigDir()
-	}{{end}}
+	}
 
+	{{- if .IncludeExample }}
 	cliApp.AddCommand(NewGreetCmd())
+	{{- end }}{{else}}
+
+	{{- if .IncludeExample }}
+	cliApp.AddCommand(NewGreetCmd())
+	{{- end }}{{end}}
 
 	return cliApp.Run()
 }

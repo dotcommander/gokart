@@ -1,3 +1,4 @@
+{{- if .IncludeExample -}}
 package actions
 
 import (
@@ -70,3 +71,4 @@ func TestGreet(t *testing.T) {
 		})
 	}
 }
+{{- end -}}

@@ -4,15 +4,15 @@
 
 # GoKart
 
-Opinionated Go service toolkit. Thin wrappers around best-in-class packages with sensible defaults.
+Opinionated Go service toolkit. Thin wrappers around best-in-class packages with sensible defaults, so the repetitive setup is handled and you can get to the interesting part.
 
 > **Note:** Not affiliated with [Praetorian's GoKart](https://github.com/praetorian-inc/gokart) (static security scanner). This GoKart is a service/CLI toolkit.
 
 ## Why?
 
-Every Go service has the same 50-100 lines of setup boilerplate: configure slog with JSON/text switching, set up chi with standard middleware, parse postgres URLs with pool limits, wire viper to read config + env vars. You've written this code dozens of times. It's not hard—just tedious and easy to get slightly wrong.
+Every Go service has the same 50-100 lines of setup boilerplate: configure slog with JSON/text switching, set up chi with standard middleware, parse postgres URLs with pool limits, wire viper to read config + env vars. You have run this experiment dozens of times. It works, but it is tedious and easy to get slightly wrong.
 
-**GoKart is your conventions, tested and packaged.**
+**GoKart turns that repeatable setup into one clean, reliable move.**
 
 ```go
 pool, _ := postgres.Open(ctx, os.Getenv("DATABASE_URL"))
@@ -20,14 +20,16 @@ router := web.NewRouter(web.RouterConfig{Middleware: web.StandardMiddleware})
 cache, _ := cache.Open(ctx, "localhost:6379")
 ```
 
-It's not a framework. It doesn't hide the underlying packages. Factory functions return `*pgxpool.Pool`, `chi.Router`, `*redis.Client`—use them directly. If you disagree with a default, use the underlying package. GoKart doesn't lock you in.
+Three lines. Real types. No ceremony.
+
+It's not a framework. No hidden runtime. Factory functions return `*pgxpool.Pool`, `chi.Router`, `*redis.Client` - use them directly. If you disagree with a default, change it or use the underlying package. GoKart doesn't lock you in.
 
 ## Philosophy
 
 - **Modular** — Import only what you need. Each component is its own Go module.
 - **Thin wrappers** — GoKart doesn't reinvent. It wraps battle-tested packages.
 - **Sensible defaults** — Zero-config works. Customize when needed.
-- **Fight for inclusion** — Every component must justify its existence.
+- **Fight for inclusion** — If stdlib or the underlying package already solves it well, it stays out.
 
 GoKart is organized into focused Go modules. Import only the packages you need:
 
@@ -572,7 +574,7 @@ text, err := cli.CaptureInputWithEditor("code --wait", "", "json")
 
 ## CLI Generator
 
-Scaffold new CLI projects with `gokart new`:
+Scaffold new CLI projects with `gokart new`: fast start, files you own, no framework lock-in.
 
 ```bash
 # Install the generator
@@ -599,6 +601,9 @@ gokart new mycli --ai
 # Full stack: PostgreSQL + AI
 gokart new mycli --postgres --ai
 
+# Include example command/action scaffold
+gokart new mycli --example
+
 # Custom module path
 gokart new mycli --module github.com/myorg/mycli
 
@@ -613,6 +618,15 @@ gokart new mycli --skip-existing
 
 # Generate and verify immediately
 gokart new mycli --verify
+
+# Verify an existing generated project without scaffolding
+gokart new mycli --verify-only
+
+# Control verification timeout (default 5m, 0 disables timeout)
+gokart new mycli --verify --verify-timeout=2m
+
+# Skip writing .gokart-manifest.json
+gokart new mycli --no-manifest
 
 # CI-friendly machine-readable output
 gokart new mycli --dry-run --json
@@ -632,12 +646,20 @@ Config scope can be controlled with:
 For post-generation verification:
 
 - `--verify` runs `go mod tidy` and `go test ./...` in the generated project directory.
+- `--verify-only` runs the same verification commands against an existing target directory without scaffolding files.
+- `--verify-timeout` sets the max verify duration (default `5m`; set `0` to disable timeout).
 
-For automation and conflict handling:
+For automation, auditing, and conflict handling:
 
 - `--json` prints a machine-readable result payload.
 - default behavior fails on existing conflicting files and reports all conflicts.
 - `--force` overwrites conflicts, `--skip-existing` keeps existing files.
+- default scaffolding writes `.gokart-manifest.json` with per-file actions and hashes.
+- `--no-manifest` skips writing `.gokart-manifest.json`.
+
+For starter examples:
+
+- `--example` adds a sample `greet` command plus testable action files.
 
 Generated `go.mod` files pin starter dependency versions for deterministic scaffolding output.
 
@@ -651,15 +673,19 @@ mycli/
 ├── cmd/main.go                    # Entry point
 ├── internal/
 │   ├── app/
-│   │   ├── config.go              # App configuration
+│   │   ├── config.go              # Global config helper (default structured mode)
 │   │   └── context.go             # App context (if --sqlite, --postgres, or --ai)
 │   ├── commands/
-│   │   ├── root.go                # CLI setup
-│   │   └── greet.go               # Example command
-│   └── actions/
-│       ├── greet.go               # Business logic (testable)
-│       └── greet_test.go          # Example test
+│   │   └── root.go                # CLI setup
 └── go.mod
+```
+
+### Optional Example Output (`--example`)
+
+```
+internal/commands/greet.go         # Example command
+internal/actions/greet.go          # Business logic (testable)
+internal/actions/greet_test.go     # Example test
 ```
 
 ### Flat Output (`--flat`)

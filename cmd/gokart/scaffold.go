@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-//go:embed templates
+//go:embed all:templates
 var templates embed.FS
 
 const (
@@ -24,13 +24,14 @@ const (
 
 // TemplateData holds variables for template substitution.
 type TemplateData struct {
-	Name        string
-	Module      string
-	GoVersion   string
-	UseSQLite   bool
-	UsePostgres bool
-	UseAI       bool
-	UseGlobal   bool
+	Name           string
+	Module         string
+	GoVersion      string
+	UseSQLite      bool
+	UsePostgres    bool
+	UseAI          bool
+	IncludeExample bool
+	UseGlobal      bool
 
 	GokartCLIVersion      string
 	GokartSQLiteVersion   string
@@ -44,26 +45,27 @@ type TemplateData struct {
 }
 
 // ScaffoldFlat creates a flat project structure with a single main.go.
-func ScaffoldFlat(dir, name, module string, useGlobal bool, opts ApplyOptions) (*ApplyResult, error) {
-	data := baseTemplateData(name, module, useGlobal)
+func ScaffoldFlat(dir, name, module string, useGlobal, includeExample bool, opts ApplyOptions) (*ApplyResult, error) {
+	data := baseTemplateData(name, module, useGlobal, includeExample)
 	return Apply(templates, "templates/flat", dir, data, opts)
 }
 
 // ScaffoldStructured creates a structured project with cmd/, internal/commands/, internal/actions/.
-func ScaffoldStructured(dir, name, module string, useSQLite, usePostgres, useAI, useGlobal bool, opts ApplyOptions) (*ApplyResult, error) {
-	data := baseTemplateData(name, module, useGlobal)
+func ScaffoldStructured(dir, name, module string, useSQLite, usePostgres, useAI, useGlobal, includeExample bool, opts ApplyOptions) (*ApplyResult, error) {
+	data := baseTemplateData(name, module, useGlobal, includeExample)
 	data.UseSQLite = useSQLite
 	data.UsePostgres = usePostgres
 	data.UseAI = useAI
 	return Apply(templates, "templates/structured", dir, data, opts)
 }
 
-func baseTemplateData(name, module string, useGlobal bool) TemplateData {
+func baseTemplateData(name, module string, useGlobal, includeExample bool) TemplateData {
 	return TemplateData{
-		Name:      name,
-		Module:    module,
-		GoVersion: goVersion(),
-		UseGlobal: useGlobal,
+		Name:           name,
+		Module:         module,
+		GoVersion:      goVersion(),
+		IncludeExample: includeExample,
+		UseGlobal:      useGlobal,
 
 		GokartCLIVersion:      defaultGokartCLIVersion,
 		GokartSQLiteVersion:   defaultGokartSQLiteVersion,

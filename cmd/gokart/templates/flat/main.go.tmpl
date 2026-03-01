@@ -7,7 +7,9 @@ import (
 {{- end }}
 
 	"github.com/dotcommander/gokart/cli"
+	{{- if or .UseGlobal .IncludeExample }}
 	"github.com/spf13/cobra"
+	{{- end }}
 )
 {{- if .UseGlobal }}
 
@@ -62,6 +64,7 @@ func main() {
 	}
 {{- end }}
 
+	{{- if .IncludeExample }}
 	greetCmd := cli.Command("greet", "Greet someone", func(cmd *cobra.Command, args []string) error {
 		name, _ := cmd.Flags().GetString("name")
 		loud, _ := cmd.Flags().GetBool("loud")
@@ -78,6 +81,7 @@ func main() {
 	greetCmd.Flags().BoolP("loud", "l", false, "Greet loudly")
 
 	app.AddCommand(greetCmd)
+	{{- end }}
 
 	if err := app.Run(); err != nil {
 		os.Exit(1)

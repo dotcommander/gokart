@@ -13,11 +13,13 @@ go build -ldflags "-X main.version=$(git describe --tags 2>/dev/null || echo dev
 ## Structure
 
 ```
-cmd/{{.Name}}/          Entry point
+cmd/main.go             Entry point
 internal/commands/      CLI commands (Cobra)
+{{- if .IncludeExample }}
 internal/actions/       Business logic
-{{- if or .UseSQLite .UsePostgres .UseAI }}
-internal/app/           App context & config
+{{- end }}
+{{- if or .UseGlobal .UseSQLite .UsePostgres .UseAI }}
+internal/app/           App config/context
 {{- end }}
 ```
 {{- if .UseGlobal }}

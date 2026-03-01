@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync"
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/cobra"
@@ -200,6 +201,8 @@ var (
 	styleHeading = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("6"))
 	styleCommand = lipgloss.NewStyle().Foreground(lipgloss.Color("10"))
 	styleFlag    = lipgloss.NewStyle().Foreground(lipgloss.Color("11"))
+
+	registerHelpTemplateFuncsOnce sync.Once
 )
 
 // Success prints a success message.
@@ -257,11 +260,17 @@ func Must(err error) {
 
 // SetStyledHelp configures beautiful help output for a command.
 func SetStyledHelp(cmd *cobra.Command) {
-	cobra.AddTemplateFunc("styleTitle", func(s string) string { return styleTitle.Render(s) })
-	cobra.AddTemplateFunc("styleHeading", func(s string) string { return styleHeading.Render(s) })
-	cobra.AddTemplateFunc("styleCommand", func(s string) string { return styleCommand.Render(s) })
-	cobra.AddTemplateFunc("styleFlag", func(s string) string { return styleFlag.Render(s) })
-	cobra.AddTemplateFunc("styleDim", func(s string) string { return styleDim.Render(s) })
+	if cmd == nil {
+		return
+	}
+
+	registerHelpTemplateFuncsOnce.Do(func() {
+		cobra.AddTemplateFunc("styleTitle", func(s string) string { return styleTitle.Render(s) })
+		cobra.AddTemplateFunc("styleHeading", func(s string) string { return styleHeading.Render(s) })
+		cobra.AddTemplateFunc("styleCommand", func(s string) string { return styleCommand.Render(s) })
+		cobra.AddTemplateFunc("styleFlag", func(s string) string { return styleFlag.Render(s) })
+		cobra.AddTemplateFunc("styleDim", func(s string) string { return styleDim.Render(s) })
+	})
 
 	cmd.SetHelpTemplate(styledHelpTemplate)
 	cmd.SetUsageTemplate(styledUsageTemplate)

@@ -1,3 +1,4 @@
+{{- if .IncludeExample -}}
 package commands
 
 import (
@@ -5,10 +6,17 @@ import (
 	"github.com/spf13/cobra"
 
 	"{{.Module}}/internal/actions"
+{{- if or .UseSQLite .UsePostgres .UseAI }}
+	"{{.Module}}/internal/app"
+{{- end }}
 )
 
 // NewGreetCmd creates the greet command.
+{{- if or .UseSQLite .UsePostgres .UseAI }}
+func NewGreetCmd(getAppContext func() *app.Context) *cobra.Command {
+{{- else }}
 func NewGreetCmd() *cobra.Command {
+{{- end }}
 	cmd := cli.Command("greet", "Greet someone", func(cmd *cobra.Command, args []string) error {
 		name := cmd.Flag("name").Value.String()
 		loud, _ := cmd.Flags().GetBool("loud")
@@ -19,6 +27,11 @@ func NewGreetCmd() *cobra.Command {
 		}
 
 {{- if or .UseSQLite .UsePostgres .UseAI }}
+		var appCtx *app.Context
+		if getAppContext != nil {
+			appCtx = getAppContext()
+		}
+
 		result, err := actions.Greet(appCtx, input)
 {{- else }}
 		result, err := actions.Greet(input)
@@ -37,3 +50,4 @@ func NewGreetCmd() *cobra.Command {
 
 	return cmd
 }
+{{- end -}}
