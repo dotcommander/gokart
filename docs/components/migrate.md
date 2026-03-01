@@ -5,23 +5,23 @@ Database schema versioning built on [pressly/goose](https://github.com/pressly/g
 ## Installation
 
 ```bash
-go get github.com/dotcommander/gokart
+go get github.com/dotcommander/gokart/migrate
 ```
 
 ## Quick Start
 
 ```go
-import "github.com/dotcommander/gokart"
+import "github.com/dotcommander/gokart/migrate"
 
 // Run all pending migrations
-err := gokart.Migrate(ctx, db, gokart.MigrateConfig{
+err := migrate.Up(ctx, db, migrate.Config{
     Dir:     "migrations",
     Dialect: "postgres",
 })
 
 // Or use convenience helpers
-err := gokart.PostgresMigrate(ctx, db, "migrations")
-err := gokart.SQLiteMigrate(ctx, db, "migrations")
+err := migrate.Postgres(ctx, db, "migrations")
+err := migrate.SQLite(ctx, db, "migrations")
 ```
 
 ---
@@ -30,68 +30,57 @@ err := gokart.SQLiteMigrate(ctx, db, "migrations")
 
 ### Running Migrations
 
-#### Migrate
+#### Up
 
 Runs all pending migrations.
 
 ```go
-err := gokart.Migrate(ctx, db, gokart.MigrateConfig{
+err := migrate.Up(ctx, db, migrate.Config{
     Dir:     "migrations",
     Dialect: "postgres",
 })
 ```
 
-#### MigrateUp
-
-Alias for `Migrate`. Runs all pending migrations.
-
-```go
-err := gokart.MigrateUp(ctx, db, gokart.MigrateConfig{
-    Dir:     "migrations",
-    Dialect: "postgres",
-})
-```
-
-#### MigrateDown
+#### Down
 
 Rolls back the most recently applied migration.
 
 ```go
-err := gokart.MigrateDown(ctx, db, gokart.MigrateConfig{
+err := migrate.Down(ctx, db, migrate.Config{
     Dir:     "migrations",
     Dialect: "postgres",
 })
 ```
 
-#### MigrateDownTo
+#### DownTo
 
 Rolls back to a specific version.
 
 ```go
 // Rollback to version 20230101000000
-err := gokart.MigrateDownTo(ctx, db, gokart.MigrateConfig{
+err := migrate.DownTo(ctx, db, migrate.Config{
     Dir:     "migrations",
     Dialect: "postgres",
 }, 20230101000000)
 ```
 
-#### MigrateReset
+#### Reset
 
-Rolls back all migrations (equivalent to `MigrateDownTo` version 0).
+Rolls back all migrations (equivalent to `DownTo` version 0).
 
 ```go
-err := gokart.MigrateReset(ctx, db, gokart.MigrateConfig{
+err := migrate.Reset(ctx, db, migrate.Config{
     Dir:     "migrations",
     Dialect: "postgres",
 })
 ```
 
-#### MigrateStatus
+#### Status
 
 Prints the status of all migrations to stdout.
 
 ```go
-err := gokart.MigrateStatus(ctx, db, gokart.MigrateConfig{
+err := migrate.Status(ctx, db, migrate.Config{
     Dir:     "migrations",
     Dialect: "postgres",
 })
@@ -106,12 +95,12 @@ Output format:
     Pending                    20230103120000_posts.sql
 ```
 
-#### MigrateVersion
+#### Version
 
 Returns the current migration version.
 
 ```go
-version, err := gokart.MigrateVersion(ctx, db, gokart.MigrateConfig{
+version, err := migrate.Version(ctx, db, migrate.Config{
     Dir:     "migrations",
     Dialect: "postgres",
 })
@@ -122,13 +111,13 @@ fmt.Printf("Current version: %d\n", version)
 
 ## Creating Migrations
 
-### MigrateCreate
+### Create
 
 Creates a new migration file with up/down SQL templates.
 
 ```go
 // Creates: migrations/20240101120000_add_users_table.sql
-err := gokart.MigrateCreate("migrations", "add_users_table", "sql")
+err := migrate.Create("migrations", "add_users_table", "sql")
 ```
 
 The generated file includes both up and down migrations:
@@ -159,7 +148,7 @@ package main
 
 import (
     "embed"
-    "github.com/dotcommander/gokart"
+    "github.com/dotcommander/gokart/migrate"
 )
 
 //go:embed migrations/*.sql
@@ -168,7 +157,7 @@ var migrations embed.FS
 func main() {
     ctx := context.Background()
 
-    err := gokart.Migrate(ctx, db, gokart.MigrateConfig{
+    err := migrate.Up(ctx, db, migrate.Config{
         FS:      migrations,
         Dir:     "migrations",
         Dialect: "postgres",
@@ -186,7 +175,7 @@ func main() {
 
 ## Configuration
 
-### MigrateConfig Struct
+### Config Struct
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
@@ -197,13 +186,13 @@ func main() {
 | `AllowMissing` | `bool` | `false` | Allow applying out-of-order migrations |
 | `NoVersioning` | `bool` | `false` | Disable version tracking (one-off scripts) |
 
-### DefaultMigrateConfig
+### DefaultConfig
 
 Returns sensible defaults for migration configuration:
 
 ```go
-cfg := gokart.DefaultMigrateConfig()
-// Returns: MigrateConfig{Dir: "migrations", Table: "goose_db_version"}
+cfg := migrate.DefaultConfig()
+// Returns: Config{Dir: "migrations", Table: "goose_db_version"}
 ```
 
 ### Custom Table Name
@@ -211,7 +200,7 @@ cfg := gokart.DefaultMigrateConfig()
 Override the default migration tracking table:
 
 ```go
-err := gokart.Migrate(ctx, db, gokart.MigrateConfig{
+err := migrate.Up(ctx, db, migrate.Config{
     Dir:     "migrations",
     Dialect: "postgres",
     Table:   "schema_migrations",  // Custom tracking table
@@ -222,40 +211,40 @@ err := gokart.Migrate(ctx, db, gokart.MigrateConfig{
 
 ## Database-Specific Helpers
 
-### PostgresMigrate
+### Postgres
 
 Convenience function for PostgreSQL migrations:
 
 ```go
-pool, _ := gokart.OpenPostgres(ctx, url)
+pool, _ := postgres.Open(ctx, url)
 db := stdlib.OpenDBFromPool(pool)
 
-err := gokart.PostgresMigrate(ctx, db, "migrations")
+err := migrate.Postgres(ctx, db, "migrations")
 ```
 
 Equivalent to:
 
 ```go
-err := gokart.Migrate(ctx, db, gokart.MigrateConfig{
+err := migrate.Up(ctx, db, migrate.Config{
     Dir:     "migrations",
     Dialect: "postgres",
 })
 ```
 
-### SQLiteMigrate
+### SQLite
 
 Convenience function for SQLite migrations:
 
 ```go
-db, _ := gokart.OpenSQLite("app.db")
+db, _ := sqlite.Open("app.db")
 
-err := gokart.SQLiteMigrate(ctx, db, "migrations")
+err := migrate.SQLite(ctx, db, "migrations")
 ```
 
 Equivalent to:
 
 ```go
-err := gokart.Migrate(ctx, db, gokart.MigrateConfig{
+err := migrate.Up(ctx, db, migrate.Config{
     Dir:     "migrations",
     Dialect: "sqlite3",
 })
@@ -453,37 +442,35 @@ mv migrations/*_add_users_table.sql migrations/${TIMESTAMP}_add_users_table.sql
 ### Functions
 
 ```go
-func Migrate(ctx context.Context, db *sql.DB, cfg MigrateConfig) error
-func MigrateUp(ctx context.Context, db *sql.DB, cfg MigrateConfig) error
-func MigrateDown(ctx context.Context, db *sql.DB, cfg MigrateConfig) error
-func MigrateDownTo(ctx context.Context, db *sql.DB, cfg MigrateConfig, version int64) error
-func MigrateReset(ctx context.Context, db *sql.DB, cfg MigrateConfig) error
-func MigrateStatus(ctx context.Context, db *sql.DB, cfg MigrateConfig) error
-func MigrateVersion(ctx context.Context, db *sql.DB, cfg MigrateConfig) (int64, error)
-func MigrateCreate(dir, name, ext string) error
-func PostgresMigrate(ctx context.Context, db *sql.DB, dir string) error
-func SQLiteMigrate(ctx context.Context, db *sql.DB, dir string) error
+func Up(ctx context.Context, db *sql.DB, cfg Config) error
+func Down(ctx context.Context, db *sql.DB, cfg Config) error
+func DownTo(ctx context.Context, db *sql.DB, cfg Config, version int64) error
+func Reset(ctx context.Context, db *sql.DB, cfg Config) error
+func Status(ctx context.Context, db *sql.DB, cfg Config) error
+func Version(ctx context.Context, db *sql.DB, cfg Config) (int64, error)
+func Create(dir, name, ext string) error
+func Postgres(ctx context.Context, db *sql.DB, dir string) error
+func SQLite(ctx context.Context, db *sql.DB, dir string) error
 ```
 
 | Function | Description |
 |----------|-------------|
-| [`Migrate`](#migrate) | Runs all pending migrations |
-| [`MigrateUp`](#migrateup) | Alias for `Migrate` |
-| [`MigrateDown`](#migratedown) | Rolls back the last migration |
-| [`MigrateDownTo`](#migratedownto) | Rolls back to a specific version |
-| [`MigrateReset`](#migratereset) | Rolls back all migrations |
-| [`MigrateStatus`](#migratestatus) | Prints migration status |
-| [`MigrateVersion`](#migrateversion) | Returns current version |
-| [`MigrateCreate`](#migratecreate) | Creates a new migration file |
-| [`PostgresMigrate`](#postgresmigrate) | PostgreSQL convenience helper |
-| [`SQLiteMigrate`](#sqlitemigrate) | SQLite convenience helper |
-| [`DefaultMigrateConfig`](#defaultmigrateconfig) | Returns default configuration |
+| [`Up`](#up) | Runs all pending migrations |
+| [`Down`](#down) | Rolls back the last migration |
+| [`DownTo`](#downto) | Rolls back to a specific version |
+| [`Reset`](#reset) | Rolls back all migrations |
+| [`Status`](#status) | Prints migration status |
+| [`Version`](#version) | Returns current version |
+| [`Create`](#create) | Creates a new migration file |
+| [`Postgres`](#postgres) | PostgreSQL convenience helper |
+| [`SQLite`](#sqlite) | SQLite convenience helper |
+| [`DefaultConfig`](#defaultconfig) | Returns default configuration |
 
 ### Types
 
 | Type | Description |
 |------|-------------|
-| [`MigrateConfig`](#migrateconfig-struct) | Migration configuration options |
+| [`Config`](#config-struct) | Migration configuration options |
 
 ### See Also
 

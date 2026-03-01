@@ -5,25 +5,25 @@ JSON response helpers for writing consistent HTTP API responses. Provides functi
 ## Installation
 
 ```bash
-go get github.com/dotcommander/gokart
+go get github.com/dotcommander/gokart/web
 ```
 
 ## Quick Start
 
 ```go
-import "github.com/dotcommander/gokart"
+import "github.com/dotcommander/gokart/web"
 
 func handleUser(w http.ResponseWriter, r *http.Request) {
     user := User{ID: 1, Name: "Alice"}
 
     // Success response (200)
-    gokart.JSON(w, user)
+    web.JSON(w, user)
 
     // Error response (400)
-    gokart.Error(w, http.StatusBadRequest, "Invalid user ID")
+    web.Error(w, http.StatusBadRequest, "Invalid user ID")
 
     // Custom status (201)
-    gokart.JSONStatus(w, http.StatusCreated, user)
+    web.JSONStatus(w, http.StatusCreated, user)
 }
 ```
 
@@ -47,7 +47,7 @@ type User struct {
 
 func handleUser(w http.ResponseWriter, r *http.Request) {
     user := User{ID: 1, Name: "Alice"}
-    gokart.JSON(w, user)
+    web.JSON(w, user)
     // Response: 200 {"id":1,"name":"Alice"}
 }
 ```
@@ -69,7 +69,7 @@ func JSONStatus(w http.ResponseWriter, status int, data any)
 ```go
 func handleCreate(w http.ResponseWriter, r *http.Request) {
     user := User{ID: 1, Name: "Alice"}
-    gokart.JSONStatus(w, http.StatusCreated, user)
+    web.JSONStatus(w, http.StatusCreated, user)
     // Response: 201 {"id":1,"name":"Alice"}
 }
 ```
@@ -97,7 +97,7 @@ func JSONStatusE(w http.ResponseWriter, status int, data any) error
 ```go
 func handleWithError(w http.ResponseWriter, r *http.Request) error {
     user := User{ID: 1, Name: "Alice"}
-    if err := gokart.JSONStatusE(w, http.StatusOK, user); err != nil {
+    if err := web.JSONStatusE(w, http.StatusOK, user); err != nil {
         return fmt.Errorf("failed to write response: %w", err)
     }
     return nil
@@ -128,7 +128,7 @@ func handleDelete(w http.ResponseWriter, r *http.Request) {
     id := r.PathValue("id")
 
     if id == "" {
-        gokart.Error(w, http.StatusBadRequest, "Missing user ID")
+        web.Error(w, http.StatusBadRequest, "Missing user ID")
         // Response: 400 {"error":"Missing user ID"}
         return
     }
@@ -173,11 +173,11 @@ func handleDelete(w http.ResponseWriter, r *http.Request) {
     id := r.PathValue("id")
 
     if err := deleteResource(id); err != nil {
-        gokart.Error(w, http.StatusInternalServerError, "Failed to delete")
+        web.Error(w, http.StatusInternalServerError, "Failed to delete")
         return
     }
 
-    gokart.NoContent(w)
+    web.NoContent(w)
     // Response: 204 (no body)
 }
 ```
@@ -200,14 +200,14 @@ func handleUser(w http.ResponseWriter, r *http.Request) {
     user, err := db.GetUser(r.Context(), id)
     if err != nil {
         if errors.Is(err, sql.ErrNoRows) {
-            gokart.Error(w, http.StatusNotFound, "User not found")
+            web.Error(w, http.StatusNotFound, "User not found")
         } else {
-            gokart.Error(w, http.StatusInternalServerError, "Failed to fetch user")
+            web.Error(w, http.StatusInternalServerError, "Failed to fetch user")
         }
         return
     }
 
-    gokart.JSON(w, user)
+    web.JSON(w, user)
 }
 ```
 
@@ -217,22 +217,22 @@ func handleUser(w http.ResponseWriter, r *http.Request) {
 func handleCreate(w http.ResponseWriter, r *http.Request) {
     var req CreateUserRequest
     if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-        gokart.Error(w, http.StatusBadRequest, "Invalid request body")
+        web.Error(w, http.StatusBadRequest, "Invalid request body")
         return
     }
 
     if err := validator.Struct(&req); err != nil {
-        gokart.Error(w, http.StatusUnprocessableEntity, "Validation failed")
+        web.Error(w, http.StatusUnprocessableEntity, "Validation failed")
         return
     }
 
     user, err := db.CreateUser(r.Context(), req)
     if err != nil {
-        gokart.Error(w, http.StatusInternalServerError, "Failed to create user")
+        web.Error(w, http.StatusInternalServerError, "Failed to create user")
         return
     }
 
-    gokart.JSONStatus(w, http.StatusCreated, user)
+    web.JSONStatus(w, http.StatusCreated, user)
 }
 ```
 
@@ -243,11 +243,11 @@ func handleDelete(w http.ResponseWriter, r *http.Request) {
     id := r.PathValue("id")
 
     if err := db.DeleteUser(r.Context(), id); err != nil {
-        gokart.Error(w, http.StatusInternalServerError, "Failed to delete user")
+        web.Error(w, http.StatusInternalServerError, "Failed to delete user")
         return
     }
 
-    gokart.NoContent(w)
+    web.NoContent(w)
 }
 ```
 
@@ -258,7 +258,7 @@ func errorHandler(next http.Handler) http.Handler {
     return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
         defer func() {
             if err := recover(); err != nil {
-                gokart.Error(w, http.StatusInternalServerError, "Internal server error")
+                web.Error(w, http.StatusInternalServerError, "Internal server error")
             }
         }()
         next.ServeHTTP(w, r)
@@ -273,28 +273,28 @@ func errorHandler(next http.Handler) http.Handler {
 ### Success with Data
 
 ```go
-gokart.JSON(w, user)
+web.JSON(w, user)
 // 200 {"id":1,"name":"Alice"}
 ```
 
 ### Success No Data
 
 ```go
-gokart.NoContent(w)
+web.NoContent(w)
 // 204 (no body)
 ```
 
 ### Client Error
 
 ```go
-gokart.Error(w, http.StatusBadRequest, "Invalid input")
+web.Error(w, http.StatusBadRequest, "Invalid input")
 // 400 {"error":"Invalid input"}
 ```
 
 ### Server Error
 
 ```go
-gokart.Error(w, http.StatusInternalServerError, "Database error")
+web.Error(w, http.StatusInternalServerError, "Database error")
 // 500 {"error":"Database error"}
 ```
 

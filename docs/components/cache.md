@@ -5,24 +5,24 @@ Production-ready Redis client with convenient key-value operations and Remember 
 ## Installation
 
 ```bash
-go get github.com/dotcommander/gokart
+go get github.com/dotcommander/gokart/cache
 ```
 
 ## Quick Start
 
 ```go
-import "github.com/dotcommander/gokart"
+import "github.com/dotcommander/gokart/cache"
 
 // Open with default settings
-cache, err := gokart.OpenCache(ctx, "localhost:6379")
+c, err := cache.Open(ctx, "localhost:6379")
 if err != nil {
     log.Fatal(err)
 }
-defer cache.Close()
+defer c.Close()
 
 // Set and get
-err = cache.Set(ctx, "greeting", "Hello, World!", time.Hour)
-val, _ := cache.Get(ctx, "greeting")
+err = c.Set(ctx, "greeting", "Hello, World!", time.Hour)
+val, _ := c.Get(ctx, "greeting")
 // val == "Hello, World!"
 ```
 
@@ -35,27 +35,27 @@ val, _ := cache.Get(ctx, "greeting")
 #### Using Default Settings
 
 ```go
-cache, err := gokart.OpenCache(ctx, "localhost:6379")
+c, err := cache.Open(ctx, "localhost:6379")
 if err != nil {
     log.Fatal(err)
 }
-defer cache.Close()
+defer c.Close()
 ```
 
 #### Using Connection URL
 
 ```go
-cache, err := gokart.OpenCacheURL(ctx, "redis://:password@localhost:6379/0")
+c, err := cache.OpenURL(ctx, "redis://:password@localhost:6379/0")
 if err != nil {
     log.Fatal(err)
 }
-defer cache.Close()
+defer c.Close()
 ```
 
 #### Using Custom Configuration
 
 ```go
-cache, err := gokart.OpenCacheWithConfig(ctx, gokart.CacheConfig{
+c, err := cache.OpenWithConfig(ctx, cache.Config{
     Addr:         "localhost:6379",
     Password:     "secret",
     DB:           0,
@@ -66,14 +66,14 @@ cache, err := gokart.OpenCacheWithConfig(ctx, gokart.CacheConfig{
 if err != nil {
     log.Fatal(err)
 }
-defer cache.Close()
+defer c.Close()
 ```
 
 ---
 
 ## Configuration
 
-### CacheConfig Struct
+### Config Struct
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
@@ -147,10 +147,10 @@ type Config struct {
 
 ```go
 // Store a string value
-err := cache.Set(ctx, "user:123:name", "Alice", time.Hour)
+err := c.Set(ctx, "user:123:name", "Alice", time.Hour)
 
 // Retrieve a string value
-name, err := cache.Get(ctx, "user:123:name")
+name, err := c.Get(ctx, "user:123:name")
 ```
 
 ### JSON Operations
@@ -164,27 +164,27 @@ type User struct {
 
 // Store as JSON
 user := User{ID: 123, Name: "Alice", Email: "alice@example.com"}
-err := cache.SetJSON(ctx, "user:123", user, time.Hour)
+err := c.SetJSON(ctx, "user:123", user, time.Hour)
 
 // Retrieve and unmarshal
 var retrieved User
-err := cache.GetJSON(ctx, "user:123", &retrieved)
+err := c.GetJSON(ctx, "user:123", &retrieved)
 ```
 
 ### Delete
 
 ```go
 // Delete single key
-err := cache.Delete(ctx, "user:123")
+err := c.Delete(ctx, "user:123")
 
 // Delete multiple keys
-err := cache.Delete(ctx, "user:123", "user:456", "session:abc")
+err := c.Delete(ctx, "user:123", "user:456", "session:abc")
 ```
 
 ### Existence Check
 
 ```go
-exists, err := cache.Exists(ctx, "user:123")
+exists, err := c.Exists(ctx, "user:123")
 if exists {
     // Key exists
 }
@@ -202,13 +202,13 @@ The Remember pattern implements "get-or-compute" caching: retrieve cached value 
 
 ```go
 // Cache a computed string value
-greeting, err := cache.Remember(ctx, "greeting", time.Hour, func() (interface{}, error) {
+greeting, err := c.Remember(ctx, "greeting", time.Hour, func() (interface{}, error) {
     // Computed only on cache miss
     return "Hello, World!", nil
 })
 
 // Cache a database query result (converted to JSON string)
-userData, err := cache.Remember(ctx, "user:123", time.Hour, func() (interface{}, error) {
+userData, err := c.Remember(ctx, "user:123", time.Hour, func() (interface{}, error) {
     // Computed only on cache miss
     user, err := db.GetUser(ctx, 123)
     if err != nil {
@@ -233,7 +233,7 @@ type User struct {
 
 var user User
 
-err := cache.RememberJSON(ctx, "user:123", time.Hour, &user, func() (interface{}, error) {
+err := c.RememberJSON(ctx, "user:123", time.Hour, &user, func() (interface{}, error) {
     // Computed only on cache miss
     return db.GetUser(ctx, 123)
 })
@@ -277,7 +277,7 @@ The TTL is applied **only on cache miss** when the value is computed. Existing c
 ```go
 // On miss: cached with 1-hour TTL
 // On hit: returned with whatever TTL remains
-val, err := cache.Remember(ctx, "key", time.Hour, computeFn)
+val, err := c.Remember(ctx, "key", time.Hour, computeFn)
 ```
 
 ---
@@ -290,20 +290,20 @@ TTL is set when storing values:
 
 ```go
 // Expire after 1 hour
-cache.Set(ctx, "key", "value", time.Hour)
+c.Set(ctx, "key", "value", time.Hour)
 
 // Expire after 5 minutes
-cache.Set(ctx, "temp", "data", 5*time.Minute)
+c.Set(ctx, "temp", "data", 5*time.Minute)
 
 // No expiration (persistent)
-cache.Set(ctx, "permanent", "data", 0)
+c.Set(ctx, "permanent", "data", 0)
 ```
 
 ### Checking TTL
 
 ```go
 // Get remaining time-to-live
-ttl, err := cache.TTL(ctx, "user:123")
+ttl, err := c.TTL(ctx, "user:123")
 if ttl > 0 {
     fmt.Printf("Key expires in %v\n", ttl)
 } else if ttl == -2 {
@@ -317,7 +317,7 @@ if ttl > 0 {
 
 ```go
 // Extend expiration of existing key
-err := cache.Expire(ctx, "user:123", 2*time.Hour)
+err := c.Expire(ctx, "user:123", 2*time.Hour)
 ```
 
 ### TTL Return Values
@@ -336,20 +336,20 @@ err := cache.Expire(ctx, "user:123", 2*time.Hour)
 
 ```go
 // Increment by 1
-count, err := cache.Incr(ctx, "pageviews:home")
+count, err := c.Incr(ctx, "pageviews:home")
 
 // Increment by custom amount
-count, err := cache.IncrBy(ctx, "score:player1", 10)
+count, err := c.IncrBy(ctx, "score:player1", 10)
 ```
 
 ### Distributed Locks (SetNX)
 
 ```go
 // Acquire lock (only if key doesn't exist)
-acquired, err := cache.SetNX(ctx, "lock:resource1", "owner1", 10*time.Second)
+acquired, err := c.SetNX(ctx, "lock:resource1", "owner1", 10*time.Second)
 if acquired {
     // Lock acquired - do work
-    defer cache.Delete(ctx, "lock:resource1")
+    defer c.Delete(ctx, "lock:resource1")
 } else {
     // Lock already held
 }
@@ -358,7 +358,7 @@ if acquired {
 ### Accessing Underlying Client
 
 ```go
-client := cache.Client()
+client := c.Client()
 
 // Use full go-redis API
 result := client.ZAdd(ctx, "leaderboard", redis.Z{
@@ -374,16 +374,16 @@ result := client.ZAdd(ctx, "leaderboard", redis.Z{
 Use `KeyPrefix` to namespace all cache keys:
 
 ```go
-cache, _ := gokart.OpenCacheWithConfig(ctx, gokart.CacheConfig{
+c, _ := cache.OpenWithConfig(ctx, cache.Config{
     Addr:      "localhost:6379",
     KeyPrefix: "myapp:v1:",
 })
 
 // All keys are automatically prefixed
-cache.Set(ctx, "user:123", "data", time.Hour)
+c.Set(ctx, "user:123", "data", time.Hour)
 // Actual Redis key: "myapp:v1:user:123"
 
-cache.Get(ctx, "user:123")
+c.Get(ctx, "user:123")
 // Retrieves "myapp:v1:user:123"
 ```
 
@@ -398,11 +398,11 @@ cache.Get(ctx, "user:123")
 
 ### Cache Miss Detection
 
-Use `gokart.IsNil` to detect cache misses:
+Use `cache.IsNil` to detect cache misses:
 
 ```go
-val, err := cache.Get(ctx, "user:123")
-if gokart.IsNil(err) {
+val, err := c.Get(ctx, "user:123")
+if cache.IsNil(err) {
     // Key does not exist - cache miss
 } else if err != nil {
     // Actual error (connection, timeout, etc.)
@@ -416,7 +416,7 @@ if gokart.IsNil(err) {
 ### Remember Error Handling
 
 ```go
-val, err := cache.Remember(ctx, "key", time.Hour, func() (interface{}, error) {
+val, err := c.Remember(ctx, "key", time.Hour, func() (interface{}, error) {
     // Compute function errors are NOT cached
     return nil, errors.New("computation failed")
 })
@@ -441,13 +441,13 @@ cfg.PoolSize = 10
 
 ```go
 // Hot data (frequently accessed)
-cache.Set(ctx, "config", data, 24*time.Hour)
+c.Set(ctx, "config", data, 24*time.Hour)
 
 // Warm data (moderately accessed)
-cache.Set(ctx, "user:123", profile, 1*time.Hour)
+c.Set(ctx, "user:123", profile, 1*time.Hour)
 
 // Cold data (rarely accessed)
-cache.Set(ctx, "archive:2023", data, 7*24*time.Hour)
+c.Set(ctx, "archive:2023", data, 7*24*time.Hour)
 ```
 
 ### Context Timeouts
@@ -458,19 +458,19 @@ Always use context with timeout:
 ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 defer cancel()
 
-val, err := cache.Get(ctx, "key")
+val, err := c.Get(ctx, "key")
 ```
 
 ### Resource Cleanup
 
-Always defer `cache.Close()`:
+Always defer `c.Close()`:
 
 ```go
-cache, err := gokart.OpenCache(ctx, addr)
+c, err := cache.Open(ctx, addr)
 if err != nil {
     return err
 }
-defer cache.Close()  // Ensures clean shutdown
+defer c.Close()  // Ensures clean shutdown
 ```
 
 ### Remember Pattern Usage
@@ -480,11 +480,11 @@ Prefer `RememberJSON` for structured data:
 ```go
 // Good - type-safe
 var user User
-err := cache.RememberJSON(ctx, "user:123", time.Hour, &user, fetchUser)
+err := c.RememberJSON(ctx, "user:123", time.Hour, &user, fetchUser)
 
 // Avoids manual unmarshaling
 var user User
-data, _ := cache.Remember(ctx, "user:123", time.Hour, fetchUser)
+data, _ := c.Remember(ctx, "user:123", time.Hour, fetchUser)
 json.Unmarshal([]byte(data), &user)  // Unnecessary work
 ```
 
@@ -496,10 +496,10 @@ json.Unmarshal([]byte(data), &user)  // Unnecessary work
 
 | Function | Description |
 |----------|-------------|
-| [`OpenCache`](#opening-a-cache) | Opens cache with default settings |
-| [`OpenCacheURL`](#opening-a-cache) | Opens cache from connection URL |
-| [`OpenCacheWithConfig`](#opening-a-cache) | Opens cache with custom config |
-| [`DefaultCacheConfig`](#cacheconfig-struct) | Returns default configuration |
+| [`Open`](#opening-a-cache) | Opens cache with default settings |
+| [`OpenURL`](#opening-a-cache) | Opens cache from connection URL |
+| [`OpenWithConfig`](#opening-a-cache) | Opens cache with custom config |
+| [`DefaultConfig`](#config-struct) | Returns default configuration |
 
 ### Cache Methods
 

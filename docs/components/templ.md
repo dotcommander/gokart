@@ -5,27 +5,27 @@ Type-safe HTML rendering helpers for [templ](https://github.com/a-h/templ) compo
 ## Installation
 
 ```bash
-go get github.com/dotcommander/gokart
+go get github.com/dotcommander/gokart/web
 go get github.com/a-h/templ
 ```
 
 ## Quick Start
 
 ```go
-import "github.com/dotcommander/gokart"
+import "github.com/dotcommander/gokart/web"
 
 func handleHome(w http.ResponseWriter, r *http.Request) {
     // Simple render with 200 status
-    gokart.Render(w, r, views.HomePage("Welcome"))
+    web.Render(w, r, views.HomePage("Welcome"))
 
     // Render with custom status
-    gokart.RenderWithStatus(w, r, http.StatusNotFound, views.NotFoundPage())
+    web.RenderWithStatus(w, r, http.StatusNotFound, views.NotFoundPage())
 
     // Handler adapter for static pages
-    router.Get("/about", gokart.TemplHandler(views.AboutPage()))
+    router.Get("/about", web.TemplHandler(views.AboutPage()))
 
     // Handler adapter for pages needing request data
-    router.Get("/user/{id}", gokart.TemplHandlerFunc(func(r *http.Request) templ.Component {
+    router.Get("/user/{id}", web.TemplHandlerFunc(func(r *http.Request) templ.Component {
         user := getUser(chi.URLParam(r, "id"))
         return views.UserPage(user)
     }))
@@ -46,7 +46,7 @@ func Render(w http.ResponseWriter, r *http.Request, component templ.Component) e
 
 ```go
 func handleHome(w http.ResponseWriter, r *http.Request) {
-    if err := gokart.Render(w, r, views.HomePage("Welcome")); err != nil {
+    if err := web.Render(w, r, views.HomePage("Welcome")); err != nil {
         log.Printf("render error: %v", err)
     }
 }
@@ -76,11 +76,11 @@ func RenderWithStatus(w http.ResponseWriter, r *http.Request, status int, compon
 
 ```go
 func handleNotFound(w http.ResponseWriter, r *http.Request) {
-    gokart.RenderWithStatus(w, r, http.StatusNotFound, views.NotFoundPage())
+    web.RenderWithStatus(w, r, http.StatusNotFound, views.NotFoundPage())
 }
 
 func handleUnauthorized(w http.ResponseWriter, r *http.Request) {
-    gokart.RenderWithStatus(w, r, http.StatusUnauthorized, views.UnauthorizedPage())
+    web.RenderWithStatus(w, r, http.StatusUnauthorized, views.UnauthorizedPage())
 }
 ```
 
@@ -121,7 +121,7 @@ func handleDashboard(w http.ResponseWriter, r *http.Request) {
     // Add user to context for component access
     ctx := context.WithValue(r.Context(), "user", user)
 
-    if err := gokart.RenderCtx(ctx, w, views.Dashboard()); err != nil {
+    if err := web.RenderCtx(ctx, w, views.Dashboard()); err != nil {
         log.Printf("render error: %v", err)
     }
 }
@@ -154,9 +154,9 @@ func TemplHandler(component templ.Component) http.Handler
 ```go
 func setupRoutes(r chi.Router) {
     // Static page - no request data needed
-    r.Get("/about", gokart.TemplHandler(views.AboutPage()))
-    r.Get("/contact", gokart.TemplHandler(views.ContactPage()))
-    r.Get("/privacy", gokart.TemplHandler(views.PrivacyPage()))
+    r.Get("/about", web.TemplHandler(views.AboutPage()))
+    r.Get("/contact", web.TemplHandler(views.ContactPage()))
+    r.Get("/privacy", web.TemplHandler(views.PrivacyPage()))
 }
 ```
 
@@ -180,13 +180,13 @@ func TemplHandlerFunc(fn func(r *http.Request) templ.Component) http.HandlerFunc
 ```go
 func setupRoutes(r chi.Router) {
     // Page needs data from request
-    r.Get("/user/{id}", gokart.TemplHandlerFunc(func(r *http.Request) templ.Component {
+    r.Get("/user/{id}", web.TemplHandlerFunc(func(r *http.Request) templ.Component {
         id := chi.URLParam(r, "id")
         user := getUser(id)
         return views.UserPage(user)
     }))
 
-    r.Get("/search", gokart.TemplHandlerFunc(func(r *http.Request) templ.Component {
+    r.Get("/search", web.TemplHandlerFunc(func(r *http.Request) templ.Component {
         query := r.URL.Query().Get("q")
         results := search(query)
         return views.SearchResults(query, results)
@@ -216,7 +216,7 @@ func TemplHandlerFuncE(fn func(r *http.Request) (templ.Component, error)) http.H
 ```go
 func setupRoutes(r chi.Router) {
     // Page needs data fetching with error handling
-    r.Get("/dashboard", gokart.TemplHandlerFuncE(func(r *http.Request) (templ.Component, error) {
+    r.Get("/dashboard", web.TemplHandlerFuncE(func(r *http.Request) (templ.Component, error) {
         data, err := loadDashboardData(r.Context())
         if err != nil {
             return nil, fmt.Errorf("load dashboard: %w", err)
@@ -224,7 +224,7 @@ func setupRoutes(r chi.Router) {
         return views.Dashboard(data), nil
     }))
 
-    r.Get("/post/{id}", gokart.TemplHandlerFuncE(func(r *http.Request) (templ.Component, error) {
+    r.Get("/post/{id}", web.TemplHandlerFuncE(func(r *http.Request) (templ.Component, error) {
         id := chi.URLParam(r, "id")
         post, err := db.GetPost(r.Context(), id)
         if err != nil {
@@ -258,7 +258,7 @@ func setupRoutes(r chi.Router) {
 ```go
 func handleHome(w http.ResponseWriter, r *http.Request) {
     title := "Welcome to My App"
-    if err := gokart.Render(w, r, views.HomePage(title)); err != nil {
+    if err := web.Render(w, r, views.HomePage(title)); err != nil {
         log.Printf("render error: %v", err)
     }
 }
@@ -273,14 +273,14 @@ func handleUserProfile(w http.ResponseWriter, r *http.Request) {
     user, err := db.GetUser(r.Context(), id)
     if err != nil {
         if errors.Is(err, pgx.ErrNoRows) {
-            gokart.RenderWithStatus(w, r, http.StatusNotFound, views.NotFoundPage())
+            web.RenderWithStatus(w, r, http.StatusNotFound, views.NotFoundPage())
             return
         }
-        gokart.RenderWithStatus(w, r, http.StatusInternalServerError, views.ErrorPage())
+        web.RenderWithStatus(w, r, http.StatusInternalServerError, views.ErrorPage())
         return
     }
 
-    gokart.Render(w, r, views.UserProfilePage(user))
+    web.Render(w, r, views.UserProfilePage(user))
 }
 ```
 
@@ -293,13 +293,13 @@ func handleDashboard(w http.ResponseWriter, r *http.Request) {
     data, err := loadDashboardData(r.Context(), user.ID)
     if err != nil {
         log.Printf("load dashboard: %v", err)
-        gokart.RenderWithStatus(w, r, http.StatusInternalServerError, views.ErrorPage())
+        web.RenderWithStatus(w, r, http.StatusInternalServerError, views.ErrorPage())
         return
     }
 
     // Pass user context to component
     ctx := context.WithValue(r.Context(), "user", user)
-    if err := gokart.RenderCtx(ctx, w, views.Dashboard(data)); err != nil {
+    if err := web.RenderCtx(ctx, w, views.Dashboard(data)); err != nil {
         log.Printf("render error: %v", err)
     }
 }
@@ -310,15 +310,15 @@ func handleDashboard(w http.ResponseWriter, r *http.Request) {
 ```go
 func setupRoutes(r chi.Router) {
     // Public pages
-    r.Get("/", gokart.TemplHandler(views.HomePage()))
-    r.Get("/about", gokart.TemplHandler(views.AboutPage()))
-    r.Get("/contact", gokart.TemplHandler(views.ContactPage()))
+    r.Get("/", web.TemplHandler(views.HomePage()))
+    r.Get("/about", web.TemplHandler(views.AboutPage()))
+    r.Get("/contact", web.TemplHandler(views.ContactPage()))
 
     // Protected pages
     r.Group(func(r chi.Router) {
         r.Use(middleware.RequireAuth)
-        r.Get("/dashboard", gokart.TemplHandlerFunc(dashboardHandler))
-        r.Get("/settings", gokart.TemplHandlerFunc(settingsHandler))
+        r.Get("/dashboard", web.TemplHandlerFunc(dashboardHandler))
+        r.Get("/settings", web.TemplHandlerFunc(settingsHandler))
     })
 }
 
@@ -344,10 +344,10 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
     post, err := db.GetPost(r.Context(), id)
     if err != nil {
         if errors.Is(err, pgx.ErrNoRows) {
-            gokart.RenderWithStatus(w, r, http.StatusNotFound, views.NotFoundPage())
+            web.RenderWithStatus(w, r, http.StatusNotFound, views.NotFoundPage())
         } else {
             log.Printf("get post: %v", err)
-            gokart.RenderWithStatus(w, r, http.StatusInternalServerError, views.ErrorPage())
+            web.RenderWithStatus(w, r, http.StatusInternalServerError, views.ErrorPage())
         }
         return
     }
@@ -358,7 +358,7 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
         // Show post without comments rather than error page
     }
 
-    gokart.Render(w, r, views.PostPage(post, comments))
+    web.Render(w, r, views.PostPage(post, comments))
 }
 ```
 
@@ -373,7 +373,7 @@ func handlePage(w http.ResponseWriter, r *http.Request) {
     primary, err := loadPrimaryData(r.Context())
     if err != nil {
         log.Printf("load primary: %v", err)
-        gokart.RenderWithStatus(w, r, http.StatusInternalServerError, views.ErrorPage())
+        web.RenderWithStatus(w, r, http.StatusInternalServerError, views.ErrorPage())
         return
     }
 
@@ -381,11 +381,11 @@ func handlePage(w http.ResponseWriter, r *http.Request) {
     if err != nil {
         log.Printf("load secondary: %v", err)
         // Render with empty secondary rather than error page
-        gokart.Render(w, r, views.Page(primary, nil))
+        web.Render(w, r, views.Page(primary, nil))
         return
     }
 
-    gokart.Render(w, r, views.Page(primary, secondary))
+    web.Render(w, r, views.Page(primary, secondary))
 }
 ```
 
@@ -393,15 +393,15 @@ func handlePage(w http.ResponseWriter, r *http.Request) {
 
 ```go
 func handleNotFound(w http.ResponseWriter, r *http.Request) {
-    gokart.RenderWithStatus(w, r, http.StatusNotFound, views.NotFoundPage())
+    web.RenderWithStatus(w, r, http.StatusNotFound, views.NotFoundPage())
 }
 
 func handleUnauthorized(w http.ResponseWriter, r *http.Request) {
-    gokart.RenderWithStatus(w, r, http.StatusUnauthorized, views.UnauthorizedPage())
+    web.RenderWithStatus(w, r, http.StatusUnauthorized, views.UnauthorizedPage())
 }
 
 func handleServerError(w http.ResponseWriter, r *http.Request) {
-    gokart.RenderWithStatus(w, r, http.StatusInternalServerError, views.ServerErrorPage())
+    web.RenderWithStatus(w, r, http.StatusInternalServerError, views.ServerErrorPage())
 }
 ```
 
@@ -409,7 +409,7 @@ func handleServerError(w http.ResponseWriter, r *http.Request) {
 
 ```go
 func handlePage(w http.ResponseWriter, r *http.Request) {
-    if err := gokart.Render(w, r, views.Page()); err != nil {
+    if err := web.Render(w, r, views.Page()); err != nil {
         log.Printf("render error: %v", err)
         // Render already failed, can't send another response
     }

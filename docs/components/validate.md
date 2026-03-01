@@ -6,16 +6,16 @@ Built on [go-playground/validator/v10](https://github.com/go-playground/validato
 ## Installation
 
 ```bash
-go get github.com/dotcommander/gokart
+go get github.com/dotcommander/gokart/web
 ```
 
 ## Quick Start
 
 ```go
-import "github.com/dotcommander/gokart"
+import "github.com/dotcommander/gokart/web"
 
 // Create validator with default settings
-v := gokart.NewValidator(gokart.ValidatorConfig{})
+v := web.NewValidator(web.ValidatorConfig{})
 
 type User struct {
     Email string `json:"email" validate:"required,email"`
@@ -24,7 +24,7 @@ type User struct {
 
 user := User{Email: "invalid", Age: 150}
 if err := v.Struct(user); err != nil {
-    for field, msg := range gokart.ValidationErrors(err) {
+    for field, msg := range web.ValidationErrors(err) {
         fmt.Printf("%s %s\n", field, msg)
     }
     // Output:
@@ -42,7 +42,7 @@ if err := v.Struct(user); err != nil {
 Creates a configured validator instance.
 
 ```go
-v := gokart.NewValidator(gokart.ValidatorConfig{
+v := web.NewValidator(web.ValidatorConfig{
     UseJSONNames: true,  // Use json tag names in errors (default)
 })
 ```
@@ -65,7 +65,7 @@ Creates a validator with default settings. Convenience wrapper for
 `NewValidator(ValidatorConfig{})`.
 
 ```go
-v := gokart.NewStandardValidator()
+v := web.NewStandardValidator()
 ```
 
 **Signature:**
@@ -103,7 +103,7 @@ err := v.Struct(user)
 When `UseJSONNames` is `false`, struct field names are used:
 
 ```go
-v := gokart.NewValidator(gokart.ValidatorConfig{UseJSONNames: false})
+v := web.NewValidator(web.ValidatorConfig{UseJSONNames: false})
 // errors["Email"] = "is required"
 //               ^^^^^ uses struct field
 ```
@@ -190,7 +190,7 @@ type Product struct {
 ### Validating a Struct
 
 ```go
-v := gokart.NewValidator(gokart.ValidatorConfig{})
+v := web.NewValidator(web.ValidatorConfig{})
 
 user := User{Email: "not-an-email", Age: -5}
 if err := v.Struct(user); err != nil {
@@ -226,7 +226,7 @@ Extracts field-level errors as a `map[string]string`:
 
 ```go
 if err := v.Struct(user); err != nil {
-    errors := gokart.ValidationErrors(err)
+    errors := web.ValidationErrors(err)
     for field, message := range errors {
         fmt.Printf("%s: %s\n", field, message)
     }
@@ -298,7 +298,7 @@ func handleCreateUser(w http.ResponseWriter, r *http.Request) {
     }
 
     if err := v.Struct(user); err != nil {
-        errors := gokart.ValidationErrors(err)
+        errors := web.ValidationErrors(err)
         w.Header().Set("Content-Type", "application/json")
         w.WriteHeader(http.StatusUnprocessableEntity)
         json.NewEncoder(w).Encode(map[string]any{
@@ -333,7 +333,7 @@ func handleCreateUser(w http.ResponseWriter, r *http.Request) {
 Always set `UseJSONNames: true` for HTTP APIs:
 
 ```go
-v := gokart.NewValidator(gokart.ValidatorConfig{UseJSONNames: true})
+v := web.NewValidator(web.ValidatorConfig{UseJSONNames: true})
 
 type Request struct {
     FirstName string `json:"first_name" validate:"required"`
@@ -384,7 +384,7 @@ func handleCreate(w http.ResponseWriter, r *http.Request) {
 Create validator once, reuse everywhere:
 
 ```go
-var v = gokart.NewStandardValidator()
+var v = web.NewStandardValidator()
 
 func main() {
     // Use v throughout application
