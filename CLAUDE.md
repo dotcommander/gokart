@@ -62,7 +62,9 @@ Root package provides logger, config, and state persistence.
 | `gokart/sqlite` | SQLite (zero CGO), transactions | `modernc.org/sqlite` |
 | `gokart/migrate` | Database migrations | `pressly/goose/v3` |
 | `gokart/ai` | OpenAI client | `openai/openai-go/v3` |
+| `gokart/cache` | Redis cache with Remember pattern | `redis/go-redis/v9` |
 | `gokart/cli` | CLI applications with styled output | `cobra`, `lipgloss` |
+| `gokart/logger` | Structured logging | `log/slog` |
 
 ### CLI Subpackage (`gokart/cli`)
 
