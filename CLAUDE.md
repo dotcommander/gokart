@@ -29,6 +29,18 @@ gokart new mycli --postgres         # With PostgreSQL wiring
 gokart new mycli --ai               # With OpenAI client (v3)
 ```
 
+### Add Integrations (`gokart add`)
+
+Surgically adds integrations to an existing structured project without re-scaffolding:
+```bash
+gokart add sqlite              # Add SQLite wiring
+gokart add ai                  # Add OpenAI client
+gokart add postgres --dry-run  # Preview changes
+gokart add ai --force          # Overwrite modified files
+```
+
+Only re-renders integration-affected files (`internal/app/context.go`, `internal/commands/root.go`), runs `go get` for dependencies, and updates the manifest. Does not touch `go.mod` directly — uses `go get` + `go mod tidy`.
+
 **Global mode** (default for structured, opt-in for flat):
 - Creates `~/.config/<app>/config.yaml` on first run
 - Generates CLAUDE.md documenting paths for AI assistants
