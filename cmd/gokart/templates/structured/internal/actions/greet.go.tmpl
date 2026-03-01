@@ -1,3 +1,4 @@
+{{- if .IncludeExample -}}
 package actions
 
 import (
@@ -46,3 +47,4 @@ func Greet(input GreetInput) (string, error) {
 	}
 	return msg, nil
 }
+{{- end -}}
