@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 
 	_ "modernc.org/sqlite"
@@ -24,7 +25,7 @@ type Config struct {
 	BusyTimeout time.Duration
 
 	// MaxOpenConns is the maximum number of open connections.
-	// Default: 25
+	// Default: 4
 	MaxOpenConns int
 
 	// MaxIdleConns is the maximum number of idle connections.
@@ -46,7 +47,8 @@ func DefaultConfig(path string) Config {
 		Path:            path,
 		WALMode:         true,
 		BusyTimeout:     5 * time.Second,
-		MaxOpenConns:    25,
+		// MaxOpenConns: 4 — SQLite is single-writer; more connections just queue.
+		MaxOpenConns: 4,
 		MaxIdleConns:    5,
 		ConnMaxLifetime: time.Hour,
 		ForeignKeys:     true,
@@ -87,7 +89,7 @@ func OpenContext(ctx context.Context, path string) (*sql.DB, error) {
 //	    MaxOpenConns: 50,
 //	})
 func OpenWithConfig(ctx context.Context, cfg Config) (*sql.DB, error) {
-	dsn := buildDSN(cfg.Path)
+	dsn := buildDSN(cfg)
 
 	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
@@ -95,11 +97,6 @@ func OpenWithConfig(ctx context.Context, cfg Config) (*sql.DB, error) {
 	}
 
 	configurePool(db, cfg)
-
-	if err := applyPragmas(ctx, db, cfg); err != nil {
-		db.Close()
-		return nil, err
-	}
 
 	if err := db.PingContext(ctx); err != nil {
 		db.Close()
@@ -109,11 +106,29 @@ func OpenWithConfig(ctx context.Context, cfg Config) (*sql.DB, error) {
 	return db, nil
 }
 
-func buildDSN(path string) string {
-	if path == ":memory:" {
-		return path
+func buildDSN(cfg Config) string {
+	var params []string
+
+	if cfg.Path != ":memory:" {
+		params = append(params, "_txlock=immediate")
 	}
-	return fmt.Sprintf("file:%s?_txlock=immediate", path)
+
+	if cfg.BusyTimeout > 0 {
+		params = append(params, fmt.Sprintf("_pragma=busy_timeout(%d)", cfg.BusyTimeout.Milliseconds()))
+	}
+	if cfg.ForeignKeys {
+		params = append(params, "_pragma=foreign_keys(1)")
+	}
+	if cfg.WALMode {
+		params = append(params, "_pragma=journal_mode(WAL)", "_pragma=synchronous(NORMAL)")
+	}
+	// Performance pragmas applied to every connection via DSN.
+	params = append(params,
+		"_pragma=cache_size(-2000)",
+		"_pragma=temp_store(MEMORY)",
+	)
+
+	return fmt.Sprintf("file:%s?%s", cfg.Path, strings.Join(params, "&"))
 }
 
 func configurePool(db *sql.DB, cfg Config) {
@@ -126,38 +141,6 @@ func configurePool(db *sql.DB, cfg Config) {
 	if cfg.ConnMaxLifetime > 0 {
 		db.SetConnMaxLifetime(cfg.ConnMaxLifetime)
 	}
-}
-
-func applyPragmas(ctx context.Context, db *sql.DB, cfg Config) error {
-	pragmas := buildPragmas(cfg)
-	for _, pragma := range pragmas {
-		if _, err := db.ExecContext(ctx, pragma); err != nil {
-			return fmt.Errorf("set pragma %q: %w", pragma, err)
-		}
-	}
-	return nil
-}
-
-func buildPragmas(cfg Config) []string {
-	pragmas := []string{}
-
-	if cfg.WALMode {
-		pragmas = append(pragmas, "PRAGMA journal_mode=WAL", "PRAGMA synchronous=NORMAL")
-	}
-	if cfg.BusyTimeout > 0 {
-		pragmas = append(pragmas, fmt.Sprintf("PRAGMA busy_timeout=%d", cfg.BusyTimeout.Milliseconds()))
-	}
-	if cfg.ForeignKeys {
-		pragmas = append(pragmas, "PRAGMA foreign_keys=ON")
-	}
-
-	// Performance pragmas
-	pragmas = append(pragmas,
-		"PRAGMA cache_size=-2000",  // 2MB cache
-		"PRAGMA temp_store=MEMORY", // temp tables in memory
-	)
-
-	return pragmas
 }
 
 // InMemory creates an in-memory SQLite database for testing.
