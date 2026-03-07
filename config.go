@@ -68,11 +68,10 @@ func LoadConfigWithDefaults[T any](defaults T, paths ...string) (T, error) {
 		return defaults, fmt.Errorf("no config file found in paths: %v", paths)
 	}
 
-	// Unmarshal into result type
-	var result T
-	if err := v.Unmarshal(&result); err != nil {
+	// Unmarshal into defaults so pre-populated values survive partial config files
+	if err := v.Unmarshal(&defaults); err != nil {
 		return defaults, fmt.Errorf("failed to unmarshal config: %w", err)
 	}
 
-	return result, nil
+	return defaults, nil
 }
