@@ -4,6 +4,7 @@ package cli
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 
@@ -139,7 +140,9 @@ func (a *App) initConfig() error {
 		a.viper.SetConfigName(a.configName)
 		a.viper.SetConfigType("yaml")
 		a.viper.AddConfigPath(".")
-		a.viper.AddConfigPath("$HOME/.config/" + a.name)
+		if configDir, err := os.UserConfigDir(); err == nil {
+			a.viper.AddConfigPath(filepath.Join(configDir, a.name))
+		}
 		a.viper.AddConfigPath("/etc/" + a.name)
 	}
 
