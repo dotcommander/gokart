@@ -4,7 +4,6 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
-	"os"
 	"os/signal"
 	"syscall"
 	"time"
@@ -12,6 +11,28 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 )
+
+// ServerConfig configures HTTP server behavior.
+type ServerConfig struct {
+	ReadHeaderTimeout time.Duration
+	ReadTimeout       time.Duration
+	WriteTimeout      time.Duration
+	IdleTimeout       time.Duration
+	MaxHeaderBytes    int
+	ShutdownTimeout   time.Duration
+}
+
+// DefaultServerConfig returns production-ready server defaults.
+func DefaultServerConfig() ServerConfig {
+	return ServerConfig{
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       30 * time.Second,
+		WriteTimeout:      30 * time.Second,
+		IdleTimeout:       120 * time.Second,
+		MaxHeaderBytes:    1 << 20, // 1MB
+		ShutdownTimeout:   30 * time.Second,
+	}
+}
 
 // RouterConfig configures HTTP router behavior.
 type RouterConfig struct {
@@ -61,19 +82,16 @@ func NewRouter(cfg RouterConfig) chi.Router {
 	return r
 }
 
-// ListenAndServe starts an HTTP server with graceful shutdown.
-// Blocks until SIGINT or SIGTERM is received, then gracefully shuts down
-// with a 30-second timeout.
-func ListenAndServe(addr string, handler http.Handler) error {
-	return ListenAndServeWithTimeout(addr, handler, 30*time.Second)
-}
-
-// ListenAndServeWithTimeout starts an HTTP server with graceful shutdown
-// and a custom shutdown timeout.
-func ListenAndServeWithTimeout(addr string, handler http.Handler, timeout time.Duration) error {
+// Serve starts an HTTP server that shuts down when ctx is cancelled.
+func Serve(ctx context.Context, addr string, handler http.Handler, cfg ServerConfig) error {
 	srv := &http.Server{
-		Addr:    addr,
-		Handler: handler,
+		Addr:              addr,
+		Handler:           handler,
+		ReadHeaderTimeout: cfg.ReadHeaderTimeout,
+		ReadTimeout:       cfg.ReadTimeout,
+		WriteTimeout:      cfg.WriteTimeout,
+		IdleTimeout:       cfg.IdleTimeout,
+		MaxHeaderBytes:    cfg.MaxHeaderBytes,
 	}
 
 	errCh := make(chan error, 1)
@@ -84,24 +102,43 @@ func ListenAndServeWithTimeout(addr string, handler http.Handler, timeout time.D
 		}
 	}()
 
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-
 	select {
 	case err := <-errCh:
 		return err
-	case sig := <-quit:
-		slog.Info("shutting down", "signal", sig.String())
+	case <-ctx.Done():
+		slog.Info("shutting down")
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	shutdownTimeout := cfg.ShutdownTimeout
+	if shutdownTimeout == 0 {
+		shutdownTimeout = 30 * time.Second
+	}
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer cancel()
 
-	if err := srv.Shutdown(ctx); err != nil {
+	if err := srv.Shutdown(shutdownCtx); err != nil {
 		slog.Error("shutdown error", "err", err)
 		return err
 	}
 
 	slog.Info("server stopped")
 	return nil
+}
+
+// ListenAndServe starts an HTTP server with graceful shutdown.
+// Blocks until SIGINT or SIGTERM is received, then gracefully shuts down
+// with a 30-second timeout.
+func ListenAndServe(addr string, handler http.Handler) error {
+	return ListenAndServeWithTimeout(addr, handler, 30*time.Second)
+}
+
+// ListenAndServeWithTimeout starts an HTTP server with graceful shutdown
+// and a custom shutdown timeout.
+func ListenAndServeWithTimeout(addr string, handler http.Handler, timeout time.Duration) error {
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	cfg := DefaultServerConfig()
+	cfg.ShutdownTimeout = timeout
+	return Serve(ctx, addr, handler, cfg)
 }
