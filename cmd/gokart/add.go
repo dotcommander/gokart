@@ -44,9 +44,9 @@ type integrationDep struct {
 }
 
 var integrationDeps = map[string]integrationDep{
-	integrationSQLite:   {Packages: []string{"github.com/dotcommander/gokart/sqlite@latest"}},
-	integrationPostgres: {Packages: []string{"github.com/dotcommander/gokart/postgres@latest", "github.com/jackc/pgx/v5@latest"}},
-	integrationAI:       {Packages: []string{"github.com/dotcommander/gokart/ai@latest", "github.com/openai/openai-go/v3@latest"}},
+	integrationSQLite:   {Packages: []string{"github.com/dotcommander/gokart/sqlite@" + defaultGokartSQLiteVersion}},
+	integrationPostgres: {Packages: []string{"github.com/dotcommander/gokart/postgres@" + defaultGokartPostgresVersion, "github.com/jackc/pgx/v5@latest"}},
+	integrationAI:       {Packages: []string{"github.com/dotcommander/gokart/ai@" + defaultGokartAIVersion, "github.com/openai/openai-go/v3@latest"}},
 }
 
 type addCommandOutput struct {
