@@ -1,4 +1,8 @@
 // Package ai provides OpenAI client factory functions.
+//
+// This package wraps the official openai/openai-go SDK (v3+) and is
+// specific to OpenAI-compatible APIs. For other LLM providers,
+// use their respective SDKs directly.
 package ai
 
 import (
