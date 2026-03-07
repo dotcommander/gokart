@@ -62,6 +62,8 @@ func (e *ExistingFileConflictError) Error() string {
 type ApplyLockError struct {
 	TargetDir string
 	Reason    string
+	PID       int
+	CreatedAt time.Time
 }
 
 func (e *ApplyLockError) Error() string {
@@ -69,11 +71,22 @@ func (e *ApplyLockError) Error() string {
 		return "another gokart scaffold is already running"
 	}
 
-	if strings.TrimSpace(e.Reason) == "" {
-		return fmt.Sprintf("another gokart scaffold is already running for %s", e.TargetDir)
+	var parts []string
+	if e.PID > 0 {
+		parts = append(parts, fmt.Sprintf("PID %d", e.PID))
+	}
+	if !e.CreatedAt.IsZero() {
+		parts = append(parts, fmt.Sprintf("age %s", time.Since(e.CreatedAt).Truncate(time.Second)))
+	}
+	if strings.TrimSpace(e.Reason) != "" {
+		parts = append(parts, e.Reason)
 	}
 
-	return fmt.Sprintf("another gokart scaffold is already running for %s (%s)", e.TargetDir, e.Reason)
+	detail := strings.Join(parts, ", ")
+	if detail == "" {
+		return fmt.Sprintf("another gokart scaffold is already running for %s", e.TargetDir)
+	}
+	return fmt.Sprintf("another gokart scaffold is already running for %s (%s)", e.TargetDir, detail)
 }
 
 type planAction uint8
