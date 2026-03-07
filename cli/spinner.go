@@ -7,7 +7,16 @@ import (
 	"os"
 	"sync"
 	"time"
+
+	"github.com/mattn/go-isatty"
 )
+
+func isTerminal(w io.Writer) bool {
+	if f, ok := w.(*os.File); ok {
+		return isatty.IsTerminal(f.Fd()) || isatty.IsCygwinTerminal(f.Fd())
+	}
+	return false
+}
 
 // Spinner shows an animated spinner with a message.
 type Spinner struct {
@@ -68,6 +77,7 @@ func (s *Spinner) Start() {
 
 // StartWithContext begins the spinner animation with context cancellation.
 // The spinner stops automatically when the context is cancelled.
+// In non-TTY environments, prints the message once without animation.
 func (s *Spinner) StartWithContext(ctx context.Context) {
 	s.mu.Lock()
 	if s.running {
@@ -77,6 +87,13 @@ func (s *Spinner) StartWithContext(ctx context.Context) {
 	s.running = true
 	s.done = make(chan struct{})
 	s.ctx, s.cancel = context.WithCancel(ctx)
+
+	// Skip animation in non-TTY environments
+	if !isTerminal(s.writer) {
+		fmt.Fprintln(s.writer, s.message)
+		s.mu.Unlock()
+		return
+	}
 	s.mu.Unlock()
 
 	go func() {
@@ -119,10 +136,13 @@ func (s *Spinner) Stop() {
 	if s.cancel != nil {
 		s.cancel()
 	}
+	w := s.writer
 	s.mu.Unlock()
 
-	// Clear the line
-	fmt.Fprintf(s.writer, "\r\033[K")
+	// Only clear line on TTY
+	if isTerminal(w) {
+		fmt.Fprintf(w, "\r\033[K")
+	}
 }
 
 // StopWithMessage stops and prints a final message.
@@ -231,7 +251,11 @@ func (p *Progress) render() {
 		}
 	}
 
-	fmt.Fprintf(p.writer, "\r%s [%s] %d/%d (%.0f%%)", p.message, bar, p.current, p.total, pct)
+	prefix := "\r"
+	if !isTerminal(p.writer) {
+		prefix = ""
+	}
+	fmt.Fprintf(p.writer, "%s%s [%s] %d/%d (%.0f%%)", prefix, p.message, bar, p.current, p.total, pct)
 }
 
 // Done completes the progress and moves to a new line.
