@@ -47,3 +47,4 @@ cmd/gokart/go.sum
 
 # Scratch / audits / specs (not for commit)
 .work/
+*_REPORT.md
