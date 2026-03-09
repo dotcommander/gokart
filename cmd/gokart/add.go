@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -11,7 +12,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dotcommander/gokart/cli"
 	"github.com/spf13/cobra"
 )
 
@@ -73,6 +73,26 @@ const (
 	fileSafetyConflict                         // hash differs → conflict
 )
 
+type addFlowError struct {
+	Err      error
+	Code     commandErrorCode
+	ExitCode int
+}
+
+func (e *addFlowError) Error() string {
+	if e == nil || e.Err == nil {
+		return ""
+	}
+	return e.Err.Error()
+}
+
+func (e *addFlowError) Unwrap() error {
+	if e == nil {
+		return nil
+	}
+	return e.Err
+}
+
 func newAddCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "add <integration>...",
@@ -101,182 +121,55 @@ func newAddCommand() *cobra.Command {
 
 func runAddCommand(cmd *cobra.Command, args []string) error {
 	jsonOutput, _ := cmd.Flags().GetBool(addFlagJSON)
-	if jsonOutput {
-		cmd.SilenceUsage = true
-		cmd.SilenceErrors = true
-	}
+	configureJSONCommand(cmd, jsonOutput)
 
-	dryRun, _ := cmd.Flags().GetBool(addFlagDryRun)
-	force, _ := cmd.Flags().GetBool(addFlagForce)
-	verify, _ := cmd.Flags().GetBool(addFlagVerify)
-	verifyTimeout, _ := cmd.Flags().GetDuration(addFlagVerifyTimeout)
-
-	output := addCommandOutput{
-		Outcome: commandOutcomeSuccess,
-		DryRun:  dryRun,
-	}
-
-	dir, err := os.Getwd()
+	integrations, err := collectAddIntegrations(args)
+	output := addCommandOutput{Outcome: commandOutcomeSuccess}
 	if err != nil {
-		return failAddCommand(fmt.Errorf("get working directory: %w", err), jsonOutput, &output, errorCodeScaffoldFailed, exitCodeScaffoldFailed)
+		return failAddCommand(err, jsonOutput, &output, errorCodeInvalidArguments, exitCodeInvalidArguments)
 	}
 
-	// Validate and deduplicate integration names
-	seen := make(map[string]bool, len(args))
-	var requested []string
-	for _, arg := range args {
-		name := strings.ToLower(strings.TrimSpace(arg))
-		if !validIntegrations[name] {
-			return failAddCommand(fmt.Errorf("unknown integration: %s (valid: sqlite, postgres, ai)", name), jsonOutput, &output, errorCodeInvalidArguments, exitCodeInvalidArguments)
-		}
-		if !seen[name] {
-			seen[name] = true
-			requested = append(requested, name)
-		}
-	}
-	output.Integrations = requested
-
-	// Read manifest
-	manifest, err := readAddManifest(dir)
+	req, err := buildAddRequest(cmd, integrations)
 	if err != nil {
-		return failAddCommand(err, jsonOutput, &output, errorCodeManifestNotFound, exitCodeManifestNotFound)
+		output.DryRun = false
+		output.Integrations = append([]string(nil), integrations...)
+		return failAddCommand(err, jsonOutput, &output, errorCodeScaffoldFailed, exitCodeScaffoldFailed)
 	}
 
-	// Reject flat projects
-	if isFlatProject(manifest) {
-		return failAddCommand(fmt.Errorf("gokart add requires a structured project (flat projects don't support integrations)"), jsonOutput, &output, errorCodeFlatModeUnsupported, exitCodeFlatUnsupported)
-	}
+	output.DryRun = req.DryRun
+	output.Integrations = append([]string(nil), req.Integrations...)
 
-	// Detect current integrations
-	goModModule, current := detectCurrentIntegrations(manifest, dir)
-
-	// Check which are new vs already present
-	var toAdd []string
-	for _, name := range requested {
-		if integrationAlreadyEnabled(current, name) {
-			output.AlreadyPresent = append(output.AlreadyPresent, name)
-		} else {
-			toAdd = append(toAdd, name)
-		}
-	}
-
-	if len(toAdd) == 0 {
-		for _, name := range output.AlreadyPresent {
-			if !jsonOutput {
-				cli.Warning("%s already enabled", name)
-			}
-		}
-		if jsonOutput {
-			_ = emitJSON(output)
-		}
-		return nil
-	}
-	output.Added = toAdd
-
-	// Reconstruct TemplateData with merged integrations
-	data, err := inferTemplateData(manifest, dir, current, toAdd, goModModule)
+	plan, err := planAddChanges(req, &output)
 	if err != nil {
-		return failAddCommand(fmt.Errorf("infer project state: %w", err), jsonOutput, &output, errorCodeScaffoldFailed, exitCodeScaffoldFailed)
-	}
-
-	// Render integration-affected templates
-	renderedFiles, err := renderIntegrationFiles(data)
-	if err != nil {
-		return failAddCommand(fmt.Errorf("render templates: %w", err), jsonOutput, &output, errorCodeScaffoldFailed, exitCodeScaffoldFailed)
-	}
-
-	// Sort rendered file paths for deterministic output
-	renderedPaths := make([]string, 0, len(renderedFiles))
-	for relPath := range renderedFiles {
-		renderedPaths = append(renderedPaths, relPath)
-	}
-	sort.Strings(renderedPaths)
-
-	// Safety check each file
-	for _, relPath := range renderedPaths {
-		safety := checkFileSafety(dir, relPath, manifest)
-		switch safety {
-		case fileSafetyCreate:
-			output.FilesCreated = append(output.FilesCreated, relPath)
-		case fileSafetySafe:
-			output.FilesOverwritten = append(output.FilesOverwritten, relPath)
-		case fileSafetyConflict:
-			if !force {
-				return failAddCommand(
-					fmt.Errorf("file %s has been modified (use --force to overwrite)", relPath),
-					jsonOutput, &output, errorCodeExistingFileConflict, exitCodeExistingFileConflict,
-				)
-			}
-			output.FilesOverwritten = append(output.FilesOverwritten, relPath)
-			output.Warnings = append(output.Warnings, fmt.Sprintf("force-overwriting modified file: %s", relPath))
+		var flowErr *addFlowError
+		if errors.As(err, &flowErr) {
+			return failAddCommand(err, jsonOutput, &output, flowErr.Code, flowErr.ExitCode)
 		}
+		return failAddCommand(err, jsonOutput, &output, errorCodeScaffoldFailed, exitCodeScaffoldFailed)
 	}
 
-	// Dry-run exits here
-	if dryRun {
-		if !jsonOutput {
-			cli.Info("Dry run: would add %s", strings.Join(toAdd, ", "))
-			for _, p := range output.FilesCreated {
-				cli.Dim("  create     %s", p)
-			}
-			for _, p := range output.FilesOverwritten {
-				cli.Dim("  overwrite  %s", p)
-			}
-		}
+	if len(plan.ToAdd) == 0 {
+		printAddAlreadyPresent(output, jsonOutput)
 		if jsonOutput {
 			_ = emitJSON(output)
 		}
 		return nil
 	}
 
-	// Write files
-	for _, relPath := range renderedPaths {
-		destPath := filepath.Join(dir, relPath)
-		if err := os.MkdirAll(filepath.Dir(destPath), 0755); err != nil {
-			return failAddCommand(fmt.Errorf("create directory for %s: %w", relPath, err), jsonOutput, &output, errorCodeScaffoldFailed, exitCodeScaffoldFailed)
+	if req.DryRun {
+		printAddResult(req, output)
+		if jsonOutput {
+			_ = emitJSON(output)
 		}
-		if err := writeFileAtomic(destPath, renderedFiles[relPath], 0644); err != nil {
-			return failAddCommand(fmt.Errorf("write %s: %w", relPath, err), jsonOutput, &output, errorCodeScaffoldFailed, exitCodeScaffoldFailed)
-		}
+		return nil
 	}
 
-	// Run go get for new dependencies
-	if err := addGoDependencies(dir, toAdd, !jsonOutput); err != nil {
-		return failAddCommand(fmt.Errorf("add dependencies: %w", err), jsonOutput, &output, errorCodeScaffoldFailed, exitCodeScaffoldFailed)
-	}
-
-	// Update manifest
-	if err := updateAddManifest(dir, manifest, data, renderedFiles); err != nil {
-		return failAddCommand(fmt.Errorf("update manifest: %w", err), jsonOutput, &output, errorCodeScaffoldFailed, exitCodeScaffoldFailed)
-	}
-
-	if !jsonOutput {
-		cli.Success("Added %s", strings.Join(toAdd, ", "))
-		for _, p := range output.FilesCreated {
-			cli.Dim("  create     %s", p)
+	if err := applyAddChanges(req, plan, &output); err != nil {
+		var flowErr *addFlowError
+		if errors.As(err, &flowErr) {
+			return failAddCommand(err, jsonOutput, &output, flowErr.Code, flowErr.ExitCode)
 		}
-		for _, p := range output.FilesOverwritten {
-			cli.Dim("  overwrite  %s", p)
-		}
-		for _, w := range output.Warnings {
-			cli.Warning("%s", w)
-		}
-	}
-
-	// Verify if requested
-	if verify {
-		output.VerifyRequested = true
-		if !jsonOutput {
-			cli.Info("Verifying project...")
-		}
-		if err := runVerify(dir, verifyTimeout, !jsonOutput); err != nil {
-			output.VerifyPassed = false
-			return failAddCommand(fmt.Errorf("verification failed: %w", err), jsonOutput, &output, errorCodeVerifyFailed, exitCodeVerifyFailed)
-		}
-		output.VerifyPassed = true
-		if !jsonOutput {
-			cli.Success("Verification passed")
-		}
+		return failAddCommand(err, jsonOutput, &output, errorCodeScaffoldFailed, exitCodeScaffoldFailed)
 	}
 
 	if jsonOutput {
@@ -420,7 +313,6 @@ func inferTemplateData(manifest *scaffoldManifest, dir string, current *manifest
 
 	return data, nil
 }
-
 
 func renderIntegrationFiles(data TemplateData) (map[string][]byte, error) {
 	result := make(map[string][]byte)

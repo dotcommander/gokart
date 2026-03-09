@@ -1,8 +1,6 @@
 package web
 
 import (
-	"encoding/json"
-	"fmt"
 	"net/http"
 )
 
@@ -13,20 +11,13 @@ func JSON(w http.ResponseWriter, data any) {
 
 // JSONStatus writes a JSON response with the given status code.
 func JSONStatus(w http.ResponseWriter, status int, data any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(data)
+	_ = writeJSON(w, status, data)
 }
 
 // JSONStatusE writes a JSON response with the given status code.
 // Returns an error if JSON encoding fails.
 func JSONStatusE(w http.ResponseWriter, status int, data any) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	if err := json.NewEncoder(w).Encode(data); err != nil {
-		return fmt.Errorf("json encode: %w", err)
-	}
-	return nil
+	return writeJSON(w, status, data)
 }
 
 // Error writes a JSON error response with the given status code.
