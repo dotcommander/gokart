@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dotcommander/gokart/cli"
 	"github.com/spf13/cobra"
 )
 
@@ -138,6 +139,7 @@ func runAddCommand(cmd *cobra.Command, args []string) error {
 
 	output.DryRun = req.DryRun
 	output.Integrations = append([]string(nil), req.Integrations...)
+	output.VerifyRequested = req.Verify
 
 	plan, err := planAddChanges(req, &output)
 	if err != nil {
@@ -149,7 +151,11 @@ func runAddCommand(cmd *cobra.Command, args []string) error {
 	}
 
 	if len(plan.ToAdd) == 0 {
-		printAddAlreadyPresent(output, jsonOutput)
+		if !jsonOutput {
+			for _, name := range output.AlreadyPresent {
+				cli.Warning("%s already enabled", name)
+			}
+		}
 		if jsonOutput {
 			_ = emitJSON(output)
 		}

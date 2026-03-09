@@ -145,19 +145,13 @@ func planAddChanges(req addRequest, output *addCommandOutput) (*addPlan, error) 
 	}, nil
 }
 
-func printAddAlreadyPresent(output addCommandOutput, jsonOutput bool) {
-	if jsonOutput {
+func printAddResult(req addRequest, output addCommandOutput) {
+	if req.JSONOutput {
 		return
 	}
 
 	for _, name := range output.AlreadyPresent {
 		cli.Warning("%s already enabled", name)
-	}
-}
-
-func printAddResult(req addRequest, output addCommandOutput) {
-	if req.JSONOutput {
-		return
 	}
 
 	if req.DryRun {
@@ -204,7 +198,6 @@ func applyAddChanges(req addRequest, plan *addPlan, output *addCommandOutput) er
 		return nil
 	}
 
-	output.VerifyRequested = true
 	if !req.JSONOutput {
 		cli.Info("Verifying project...")
 	}
