@@ -74,14 +74,9 @@ func DefaultConfig() Config {
 //	    Dialect: "postgres",
 //	})
 func Up(ctx context.Context, db *sql.DB, cfg Config) error {
-	migrateMu.Lock()
-	defer migrateMu.Unlock()
-
-	if err := setupMigration(&cfg); err != nil {
-		return err
-	}
-
-	if err := goose.UpContext(ctx, db, cfg.Dir); err != nil {
+	if err := withConfiguredGoose(ctx, db, &cfg, func() error {
+		return goose.UpContext(ctx, db, cfg.Dir)
+	}); err != nil {
 		return fmt.Errorf("migration failed: %w", err)
 	}
 
@@ -90,14 +85,9 @@ func Up(ctx context.Context, db *sql.DB, cfg Config) error {
 
 // Down rolls back the last migration.
 func Down(ctx context.Context, db *sql.DB, cfg Config) error {
-	migrateMu.Lock()
-	defer migrateMu.Unlock()
-
-	if err := setupMigration(&cfg); err != nil {
-		return err
-	}
-
-	if err := goose.DownContext(ctx, db, cfg.Dir); err != nil {
+	if err := withConfiguredGoose(ctx, db, &cfg, func() error {
+		return goose.DownContext(ctx, db, cfg.Dir)
+	}); err != nil {
 		return fmt.Errorf("rollback failed: %w", err)
 	}
 
@@ -106,14 +96,9 @@ func Down(ctx context.Context, db *sql.DB, cfg Config) error {
 
 // DownTo rolls back to a specific version.
 func DownTo(ctx context.Context, db *sql.DB, cfg Config, version int64) error {
-	migrateMu.Lock()
-	defer migrateMu.Unlock()
-
-	if err := setupMigration(&cfg); err != nil {
-		return err
-	}
-
-	if err := goose.DownToContext(ctx, db, cfg.Dir, version); err != nil {
+	if err := withConfiguredGoose(ctx, db, &cfg, func() error {
+		return goose.DownToContext(ctx, db, cfg.Dir, version)
+	}); err != nil {
 		return fmt.Errorf("rollback to version %d failed: %w", version, err)
 	}
 
@@ -127,14 +112,9 @@ func Reset(ctx context.Context, db *sql.DB, cfg Config) error {
 
 // Status prints the status of all migrations.
 func Status(ctx context.Context, db *sql.DB, cfg Config) error {
-	migrateMu.Lock()
-	defer migrateMu.Unlock()
-
-	if err := setupMigration(&cfg); err != nil {
-		return err
-	}
-
-	if err := goose.StatusContext(ctx, db, cfg.Dir); err != nil {
+	if err := withConfiguredGoose(ctx, db, &cfg, func() error {
+		return goose.StatusContext(ctx, db, cfg.Dir)
+	}); err != nil {
 		return fmt.Errorf("status failed: %w", err)
 	}
 
@@ -143,15 +123,12 @@ func Status(ctx context.Context, db *sql.DB, cfg Config) error {
 
 // Version returns the current migration version.
 func Version(ctx context.Context, db *sql.DB, cfg Config) (int64, error) {
-	migrateMu.Lock()
-	defer migrateMu.Unlock()
-
-	if err := setupMigration(&cfg); err != nil {
-		return 0, err
-	}
-
-	version, err := goose.GetDBVersionContext(ctx, db)
-	if err != nil {
+	var version int64
+	if err := withConfiguredGoose(ctx, db, &cfg, func() error {
+		var err error
+		version, err = goose.GetDBVersionContext(ctx, db)
+		return err
+	}); err != nil {
 		return 0, fmt.Errorf("failed to get version: %w", err)
 	}
 
@@ -222,5 +199,20 @@ func setupMigration(cfg *Config) error {
 	if cfg.FS != nil {
 		goose.SetBaseFS(cfg.FS)
 	}
+	return nil
+}
+
+func withConfiguredGoose(_ context.Context, _ *sql.DB, cfg *Config, fn func() error) error {
+	migrateMu.Lock()
+	defer migrateMu.Unlock()
+
+	if err := setupMigration(cfg); err != nil {
+		return err
+	}
+
+	if err := fn(); err != nil {
+		return err
+	}
+
 	return nil
 }

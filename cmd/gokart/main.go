@@ -375,10 +375,7 @@ func validateNewArgs(cmd *cobra.Command, args []string) error {
 
 func runNewCommand(cmd *cobra.Command, args []string) error {
 	jsonOutput, _ := cmd.Flags().GetBool(newFlagJSON)
-	if jsonOutput {
-		cmd.SilenceUsage = true
-		cmd.SilenceErrors = true
-	}
+	configureJSONCommand(cmd, jsonOutput)
 
 	req, err := buildNewRequest(cmd, args)
 	output := newCommandOutput{}
@@ -387,139 +384,8 @@ func runNewCommand(cmd *cobra.Command, args []string) error {
 	}
 
 	output = newCommandOutputFromRequest(req)
-	for _, warning := range req.Warnings {
-		if !jsonOutput {
-			cli.Warning("%s", warning)
-		}
-	}
-
-	if req.VerifyOnly {
-		output.VerifyRan = true
-		if !jsonOutput {
-			if req.VerifyTimeout > 0 {
-				cli.Info("Verification-only mode for %s (timeout %s)", req.TargetDir, req.VerifyTimeout)
-			} else {
-				cli.Info("Verification-only mode for %s", req.TargetDir)
-			}
-		}
-
-		if err := runVerifyForRequest(req, !jsonOutput); err != nil {
-			output.VerifyPassed = false
-			return failNewCommand(fmt.Errorf("verification failed for %s: %w", req.TargetDir, err), jsonOutput, &output, errorCodeVerifyFailed, commandOutcomeFailure, exitCodeVerifyFailed)
-		}
-
-		output.VerifyPassed = true
-		if !jsonOutput {
-			cli.Success("Verification passed")
-		}
-
-		if jsonOutput {
-			if err := emitJSON(output); err != nil {
-				return &commandError{Err: fmt.Errorf("encode JSON output: %w", err), Code: errorCodeJSONEncodeFailed, Outcome: commandOutcomeFailure, ExitCode: exitCodeJSONEncodeFailed}
-			}
-		}
-
-		return nil
-	}
-
-	opts := ApplyOptions{
-		DryRun:             req.DryRun,
-		ExistingFilePolicy: req.ExistingFilePolicy,
-		SkipManifest:       !req.WriteManifest,
-	}
-
-	var result *ApplyResult
-	if req.Mode == "flat" {
-		if req.UseSQLite || req.UsePostgres || req.UseAI {
-			flatWarning := "--sqlite, --postgres, and --ai flags are ignored in flat mode"
-			output.Warnings = append(output.Warnings, flatWarning)
-			if !jsonOutput {
-				cli.Warning("%s", flatWarning)
-			}
-		}
-		if req.DryRun && !jsonOutput {
-			cli.Info("Dry run: planning flat project (%s preset): %s", req.Preset, req.ProjectName)
-		} else if !jsonOutput {
-			cli.Info("Scaffolding flat project (%s preset): %s", req.Preset, req.ProjectName)
-		}
-		result, err = scaffoldFlatFunc(req.TargetDir, req.ProjectName, req.Module, req.UseGlobal, req.IncludeExample, opts)
-	} else {
-		if req.DryRun && !jsonOutput {
-			cli.Info("Dry run: planning structured project (%s preset): %s", req.Preset, req.ProjectName)
-		} else if !jsonOutput {
-			cli.Info("Scaffolding structured project (%s preset): %s", req.Preset, req.ProjectName)
-		}
-		result, err = scaffoldStructuredFunc(req.TargetDir, req.ProjectName, req.Module, req.UseSQLite, req.UsePostgres, req.UseAI, req.UseGlobal, req.IncludeExample, opts)
-	}
-	output.Mode = req.Mode
-	if err != nil {
-		var conflictErr *ExistingFileConflictError
-		if errors.As(err, &conflictErr) {
-			output.Conflicts = append([]string(nil), conflictErr.Paths...)
-			if !jsonOutput {
-				cli.Warning("Found %d conflicting existing file(s):", len(conflictErr.Paths))
-				for _, path := range conflictErr.Paths {
-					cli.Dim("  conflict   %s", path)
-				}
-			}
-			return failNewCommand(err, jsonOutput, &output, errorCodeExistingFileConflict, commandOutcomeFailure, exitCodeExistingFileConflict)
-		}
-
-		var lockErr *ApplyLockError
-		if errors.As(err, &lockErr) {
-			return failNewCommand(err, jsonOutput, &output, errorCodeTargetLocked, commandOutcomeFailure, exitCodeTargetLocked)
-		}
-
-		return failNewCommand(err, jsonOutput, &output, errorCodeScaffoldFailed, commandOutcomeFailure, exitCodeScaffoldFailed)
-	}
-	output.Result = result
-
-	if req.DryRun {
-		if !jsonOutput {
-			cli.Success("Dry run complete for %s", req.TargetDir)
-		}
-	} else {
-		if !jsonOutput {
-			cli.Success("Project created at %s", req.TargetDir)
-		}
-	}
-
-	if !jsonOutput {
-		printApplyResult(result, req.DryRun)
-	}
-
-	if req.Verify {
-		output.VerifyRan = true
-		if err := runVerifyForRequest(req, !jsonOutput); err != nil {
-			output.VerifyPassed = false
-			if req.DryRun {
-				return failNewCommand(fmt.Errorf("dry-run verification failed: %w", err), jsonOutput, &output, errorCodeVerifyFailed, commandOutcomeFailure, exitCodeVerifyFailed)
-			}
-			return failNewCommand(fmt.Errorf("project generated at %s, but verification failed: %w", req.TargetDir, err), jsonOutput, &output, errorCodeVerifyFailed, commandOutcomePartialSuccess, exitCodeVerifyFailed)
-		}
-		output.VerifyPassed = true
-		if !jsonOutput {
-			cli.Success("Verification passed")
-		}
-	}
-
-	if !req.DryRun {
-		nextHint := nextStep{Dir: req.TargetDir, Command: "go", Args: []string{"mod", "tidy"}}
-		output.Next = &nextHint
-		nextCommand := fmt.Sprintf("cd %s && go mod tidy", shellQuote(req.TargetDir))
-		output.NextCommand = nextCommand
-		if !jsonOutput {
-			cli.Dim("  %s", nextCommand)
-		}
-	}
-
-	if jsonOutput {
-		if err := emitJSON(output); err != nil {
-			return &commandError{Err: fmt.Errorf("encode JSON output: %w", err), Code: errorCodeJSONEncodeFailed, Outcome: commandOutcomeFailure, ExitCode: exitCodeJSONEncodeFailed}
-		}
-	}
-
-	return nil
+	printWarnings(jsonOutput, req.Warnings)
+	return runNewRequest(req, jsonOutput, &output)
 }
 
 func buildNewRequest(cmd *cobra.Command, args []string) (newRequest, error) {

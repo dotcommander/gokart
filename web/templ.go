@@ -17,8 +17,7 @@ import (
 //	    web.Render(w, r, views.HomePage("Welcome"))
 //	}
 func Render(w http.ResponseWriter, r *http.Request, component templ.Component) error {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	return component.Render(r.Context(), w)
+	return renderComponent(r.Context(), w, 0, component)
 }
 
 // RenderWithStatus renders a templ component with a custom status code.
@@ -29,9 +28,7 @@ func Render(w http.ResponseWriter, r *http.Request, component templ.Component) e
 //	    web.RenderWithStatus(w, r, http.StatusNotFound, views.NotFoundPage())
 //	}
 func RenderWithStatus(w http.ResponseWriter, r *http.Request, status int, component templ.Component) error {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.WriteHeader(status)
-	return component.Render(r.Context(), w)
+	return renderComponent(r.Context(), w, status, component)
 }
 
 // RenderCtx renders a templ component with a custom context.
@@ -41,8 +38,7 @@ func RenderWithStatus(w http.ResponseWriter, r *http.Request, status int, compon
 //	ctx := context.WithValue(r.Context(), "user", currentUser)
 //	web.RenderCtx(ctx, w, views.Dashboard(data))
 func RenderCtx(ctx context.Context, w http.ResponseWriter, component templ.Component) error {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	return component.Render(ctx, w)
+	return renderComponent(ctx, w, 0, component)
 }
 
 // TemplHandler creates an http.Handler from a templ component.
@@ -54,8 +50,7 @@ func RenderCtx(ctx context.Context, w http.ResponseWriter, component templ.Compo
 //	router.Get("/about", web.TemplHandler(views.AboutPage()))
 func TemplHandler(component templ.Component) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		if err := component.Render(r.Context(), w); err != nil {
+		if err := renderComponent(r.Context(), w, 0, component); err != nil {
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		}
 	})
@@ -74,9 +69,8 @@ func TemplHandler(component templ.Component) http.Handler {
 //	}))
 func TemplHandlerFunc(fn func(r *http.Request) templ.Component) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		component := fn(r)
-		if err := component.Render(r.Context(), w); err != nil {
+		if err := renderComponent(r.Context(), w, 0, component); err != nil {
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		}
 	}
@@ -100,8 +94,7 @@ func TemplHandlerFuncE(fn func(r *http.Request) (templ.Component, error)) http.H
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return
 		}
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		if err := component.Render(r.Context(), w); err != nil {
+		if err := renderComponent(r.Context(), w, 0, component); err != nil {
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		}
 	}

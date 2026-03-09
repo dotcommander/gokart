@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dotcommander/gokart/internal/sqltx"
 	_ "modernc.org/sqlite"
 )
 
@@ -44,11 +45,11 @@ type Config struct {
 // DefaultConfig returns production-ready defaults.
 func DefaultConfig(path string) Config {
 	return Config{
-		Path:            path,
-		WALMode:         true,
-		BusyTimeout:     5 * time.Second,
+		Path:        path,
+		WALMode:     true,
+		BusyTimeout: 5 * time.Second,
 		// MaxOpenConns: 4 — SQLite is single-writer; more connections just queue.
-		MaxOpenConns: 4,
+		MaxOpenConns:    4,
 		MaxIdleConns:    5,
 		ConnMaxLifetime: time.Hour,
 		ForeignKeys:     true,
@@ -173,28 +174,16 @@ func InMemory() (*sql.DB, error) {
 //	    return err
 //	})
 func Transaction(ctx context.Context, db *sql.DB, fn func(tx *sql.Tx) error) error {
-	tx, err := db.BeginTx(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("begin transaction: %w", err)
-	}
-
-	defer func() {
-		if p := recover(); p != nil {
-			_ = tx.Rollback()
-			panic(p)
-		}
-	}()
-
-	if err := fn(tx); err != nil {
-		if rbErr := tx.Rollback(); rbErr != nil {
-			return fmt.Errorf("rollback failed: %v (original error: %w)", rbErr, err)
-		}
-		return err
-	}
-
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("commit transaction: %w", err)
-	}
-
-	return nil
+	return sqltx.Run(
+		func() (*sql.Tx, error) {
+			return db.BeginTx(ctx, nil)
+		},
+		func(tx *sql.Tx) error {
+			return tx.Rollback()
+		},
+		func(tx *sql.Tx) error {
+			return tx.Commit()
+		},
+		fn,
+	)
 }

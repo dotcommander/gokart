@@ -44,18 +44,25 @@ type TemplateData struct {
 	GooseVersion          string
 }
 
+type scaffoldSpec struct {
+	Dir          string
+	TemplateRoot string
+	Data         TemplateData
+	Metadata     scaffoldManifestMetadata
+}
+
 // ScaffoldFlat creates a flat project structure with a single main.go.
 func ScaffoldFlat(dir, name, module string, useGlobal, includeExample bool, opts ApplyOptions) (*ApplyResult, error) {
-	data := baseTemplateData(name, module, useGlobal, includeExample)
-
-	useGlobalPtr := boolPtr(useGlobal)
-	opts.ManifestMetadata = &scaffoldManifestMetadata{
-		Mode:      "flat",
-		Module:    module,
-		UseGlobal: useGlobalPtr,
-	}
-
-	return Apply(templates, "templates/flat", dir, data, opts)
+	return applyScaffoldSpec(scaffoldSpec{
+		Dir:          dir,
+		TemplateRoot: "templates/flat",
+		Data:         baseTemplateData(name, module, useGlobal, includeExample),
+		Metadata: scaffoldManifestMetadata{
+			Mode:      "flat",
+			Module:    module,
+			UseGlobal: boolPtr(useGlobal),
+		},
+	}, opts)
 }
 
 // ScaffoldStructured creates a structured project with cmd/, internal/commands/, internal/actions/.
@@ -65,19 +72,26 @@ func ScaffoldStructured(dir, name, module string, useSQLite, usePostgres, useAI,
 	data.UsePostgres = usePostgres
 	data.UseAI = useAI
 
-	useGlobalPtr := boolPtr(useGlobal)
-	opts.ManifestMetadata = &scaffoldManifestMetadata{
-		Integrations: &manifestIntegrations{
-			SQLite:   useSQLite,
-			Postgres: usePostgres,
-			AI:       useAI,
+	return applyScaffoldSpec(scaffoldSpec{
+		Dir:          dir,
+		TemplateRoot: "templates/structured",
+		Data:         data,
+		Metadata: scaffoldManifestMetadata{
+			Integrations: &manifestIntegrations{
+				SQLite:   useSQLite,
+				Postgres: usePostgres,
+				AI:       useAI,
+			},
+			Mode:      "structured",
+			Module:    module,
+			UseGlobal: boolPtr(useGlobal),
 		},
-		Mode:      "structured",
-		Module:    module,
-		UseGlobal: useGlobalPtr,
-	}
+	}, opts)
+}
 
-	return Apply(templates, "templates/structured", dir, data, opts)
+func applyScaffoldSpec(spec scaffoldSpec, opts ApplyOptions) (*ApplyResult, error) {
+	opts.ManifestMetadata = &spec.Metadata
+	return Apply(templates, spec.TemplateRoot, spec.Dir, spec.Data, opts)
 }
 
 func baseTemplateData(name, module string, useGlobal, includeExample bool) TemplateData {

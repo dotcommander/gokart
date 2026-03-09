@@ -31,7 +31,7 @@ func BindJSON(r *http.Request, dst any) error {
 //	    return
 //	}
 func BindAndValidate(r *http.Request, v *validator.Validate, dst any) (map[string]string, error) {
-	if err := json.NewDecoder(r.Body).Decode(dst); err != nil {
+	if err := BindJSON(r, dst); err != nil {
 		return nil, err
 	}
 
