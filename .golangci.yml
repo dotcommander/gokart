@@ -1,0 +1,118 @@
+version: "2"
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+
+linters:
+  default: none
+  enable:
+    - errcheck
+    - govet
+    - staticcheck
+    - unused
+    - ineffassign
+    - gosec
+    - misspell
+    - revive
+    - gocritic
+    - gocyclo
+    - gocognit
+    - funlen
+    - nestif
+    - goconst
+    - dupl
+    - depguard
+    - perfsprint
+    - exhaustive
+    - errorlint
+    - unparam
+
+  settings:
+    gocyclo:
+      min-complexity: 15
+
+    gocognit:
+      min-complexity: 20
+
+    funlen:
+      lines: 80
+      statements: 50
+
+    nestif:
+      min-complexity: 4
+
+    dupl:
+      threshold: 100
+
+    goconst:
+      min-occurrences: 3
+
+    govet:
+      enable-all: true
+      disable:
+        - fieldalignment
+        - shadow
+
+    revive:
+      rules:
+        - name: indent-error-flow
+        - name: var-naming
+        - name: argument-limit
+          arguments: [5]
+        - name: function-result-limit
+          arguments: [3]
+
+    gosec:
+      excludes:
+        - G104
+        - G204
+        - G301
+        - G304
+        - G703
+
+    depguard:
+      rules:
+        banned-libs:
+          deny:
+            - pkg: github.com/rs/zerolog
+              desc: use log/slog
+            - pkg: github.com/sirupsen/logrus
+              desc: use log/slog
+            - pkg: github.com/urfave/cli
+              desc: use cobra
+            - pkg: github.com/gin-gonic/gin
+              desc: use chi/v5
+            - pkg: github.com/gorilla/mux
+              desc: use chi/v5
+            - pkg: github.com/knadh/koanf
+              desc: use viper
+            - pkg: github.com/joho/godotenv
+              desc: use viper
+            - pkg: github.com/kelseyhightower/envconfig
+              desc: use viper
+            - pkg: github.com/go-resty/resty
+              desc: use go-retryablehttp
+            - pkg: github.com/sashabaranov/go-openai
+              desc: use openai/openai-go v3+
+            - pkg: github.com/asaskevich/govalidator
+              desc: use validator/v10
+            - pkg: github.com/satori/go.uuid
+              desc: use google/uuid
+            - pkg: github.com/pkg/errors
+              desc: use fmt.Errorf with %w
+
+  exclusions:
+    rules:
+      - path: "_test\\.go"
+        linters:
+          - dupl
+          - goconst
+          - funlen
+          - gocognit
+          - errorlint
+          - gosec
+    paths:
+      - vendor
+      - \.work

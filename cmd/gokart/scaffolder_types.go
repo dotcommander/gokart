@@ -76,7 +76,7 @@ func (e *ApplyLockError) Error() string {
 
 	detail := strings.Join(parts, ", ")
 	if detail == "" {
-		return fmt.Sprintf("another gokart scaffold is already running for %s", e.TargetDir)
+		return "another gokart scaffold is already running for " + e.TargetDir
 	}
 	return fmt.Sprintf("another gokart scaffold is already running for %s (%s)", e.TargetDir, detail)
 }
@@ -134,6 +134,9 @@ const (
 	scaffoldManifestV1   = 1
 	scaffoldManifestV2   = 2
 	applyLockStaleAfter  = 30 * time.Minute
+
+	modeFlat       = "flat"
+	modeStructured = "structured"
 )
 
 type applyJournal struct {
@@ -209,4 +212,14 @@ func (e *journalRecoveryMismatchError) Error() string {
 		return e.Reason
 	}
 	return fmt.Sprintf("%s: %s", e.RelPath, e.Reason)
+}
+
+// notRegularFileError describes why a path failed the regular-file assertion.
+type notRegularFileError struct {
+	Path   string
+	Reason string
+}
+
+func (e *notRegularFileError) Error() string {
+	return fmt.Sprintf("%s: %s", e.Path, e.Reason)
 }

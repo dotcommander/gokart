@@ -310,7 +310,7 @@ func TestBuildNewRequestManifestDefaultsEnabled(t *testing.T) {
 
 func TestBuildNewRequestExampleFlagEnablesExampleScaffold(t *testing.T) {
 	cmd := newNewCommandForTest()
-	mustSetFlag(t, cmd, newFlagExample, "true")
+	mustSetFlagTrue(t, cmd, newFlagExample)
 
 	req, err := buildNewRequest(cmd, []string{"myapp"})
 	if err != nil {
@@ -340,8 +340,8 @@ func TestBuildNewRequestNoManifestDisablesManifest(t *testing.T) {
 
 func TestBuildNewRequestVerifyOnlyRejectsDryRun(t *testing.T) {
 	cmd := newNewCommandForTest()
-	mustSetFlag(t, cmd, "verify-only", "true")
-	mustSetFlag(t, cmd, "dry-run", "true")
+	mustSetFlagTrue(t, cmd, "verify-only")
+	mustSetFlagTrue(t, cmd, "dry-run")
 
 	if _, err := buildNewRequest(cmd, []string{"myapp"}); err == nil {
 		t.Fatal("expected error when --verify-only and --dry-run are combined")
@@ -350,7 +350,7 @@ func TestBuildNewRequestVerifyOnlyRejectsDryRun(t *testing.T) {
 
 func TestBuildNewRequestVerifyOnlyRequiresExistingTarget(t *testing.T) {
 	cmd := newNewCommandForTest()
-	mustSetFlag(t, cmd, "verify-only", "true")
+	mustSetFlagTrue(t, cmd, "verify-only")
 
 	missing := filepath.Join(t.TempDir(), "missing-app")
 	if _, err := buildNewRequest(cmd, []string{missing}); err == nil {
@@ -360,9 +360,9 @@ func TestBuildNewRequestVerifyOnlyRequiresExistingTarget(t *testing.T) {
 
 func TestBuildNewRequestVerifyOnlyIgnoresGenerationConflicts(t *testing.T) {
 	cmd := newNewCommandForTest()
-	mustSetFlag(t, cmd, "verify-only", "true")
-	mustSetFlag(t, cmd, "force", "true")
-	mustSetFlag(t, cmd, "skip-existing", "true")
+	mustSetFlagTrue(t, cmd, "verify-only")
+	mustSetFlagTrue(t, cmd, "force")
+	mustSetFlagTrue(t, cmd, "skip-existing")
 
 	targetDir := filepath.Join(t.TempDir(), "existing-app")
 	if err := os.MkdirAll(targetDir, 0755); err != nil {
@@ -411,10 +411,10 @@ func TestShellQuote(t *testing.T) {
 
 func TestRunNewCommandDryRunVerifyRunsAgainstTempScaffold(t *testing.T) {
 	cmd := newNewCommandForTest()
-	mustSetFlag(t, cmd, "flat", "true")
-	mustSetFlag(t, cmd, "dry-run", "true")
-	mustSetFlag(t, cmd, "verify", "true")
-	mustSetFlag(t, cmd, "json", "true")
+	mustSetFlagTrue(t, cmd, "flat")
+	mustSetFlagTrue(t, cmd, "dry-run")
+	mustSetFlagTrue(t, cmd, "verify")
+	mustSetFlagTrue(t, cmd, "json")
 
 	targetDir := filepath.Join(t.TempDir(), "dryrun-app")
 
@@ -475,8 +475,8 @@ func TestRunNewCommandDryRunVerifyRunsAgainstTempScaffold(t *testing.T) {
 
 func TestRunNewCommandDryRunStructuredIncludesGitignore(t *testing.T) {
 	cmd := newNewCommandForTest()
-	mustSetFlag(t, cmd, "dry-run", "true")
-	mustSetFlag(t, cmd, "json", "true")
+	mustSetFlagTrue(t, cmd, "dry-run")
+	mustSetFlagTrue(t, cmd, "json")
 
 	targetDir := filepath.Join(t.TempDir(), "structured-app")
 
@@ -504,9 +504,9 @@ func TestRunNewCommandDryRunStructuredIncludesGitignore(t *testing.T) {
 
 func TestRunNewCommandVerifyFailureReturnsExplicitError(t *testing.T) {
 	cmd := newNewCommandForTest()
-	mustSetFlag(t, cmd, "flat", "true")
-	mustSetFlag(t, cmd, "verify", "true")
-	mustSetFlag(t, cmd, "json", "true")
+	mustSetFlagTrue(t, cmd, "flat")
+	mustSetFlagTrue(t, cmd, "verify")
+	mustSetFlagTrue(t, cmd, "json")
 
 	targetDir := filepath.Join(t.TempDir(), "verify-fail-app")
 
@@ -549,8 +549,8 @@ func TestRunNewCommandVerifyFailureReturnsExplicitError(t *testing.T) {
 
 func TestRunNewCommandVerifyOnlyRunsVerifyWithoutScaffolding(t *testing.T) {
 	cmd := newNewCommandForTest()
-	mustSetFlag(t, cmd, "verify-only", "true")
-	mustSetFlag(t, cmd, "json", "true")
+	mustSetFlagTrue(t, cmd, "verify-only")
+	mustSetFlagTrue(t, cmd, "json")
 
 	targetDir := filepath.Join(t.TempDir(), "verify-only-app")
 	if err := os.MkdirAll(targetDir, 0755); err != nil {
@@ -610,7 +610,7 @@ func TestRunNewCommandVerifyOnlyRunsVerifyWithoutScaffolding(t *testing.T) {
 
 func TestHandlePersistentPreRunErrorEmitsJSON(t *testing.T) {
 	cmd := newNewCommandForTest()
-	mustSetFlag(t, cmd, "json", "true")
+	mustSetFlagTrue(t, cmd, "json")
 
 	var gotErr error
 	stdout := captureStdout(t, func() {
@@ -661,10 +661,10 @@ func newNewCommandForTest() *cobra.Command {
 	return cmd
 }
 
-func mustSetFlag(t *testing.T, cmd *cobra.Command, name, value string) {
+func mustSetFlagTrue(t *testing.T, cmd *cobra.Command, name string) {
 	t.Helper()
-	if err := cmd.Flags().Set(name, value); err != nil {
-		t.Fatalf("set flag %s=%s: %v", name, value, err)
+	if err := cmd.Flags().Set(name, "true"); err != nil {
+		t.Fatalf("set flag %s=true: %v", name, err)
 	}
 }
 
