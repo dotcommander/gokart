@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -85,14 +86,14 @@ func planAddChanges(req addRequest, output *addCommandOutput) (*addPlan, error) 
 	}
 
 	if isFlatProject(manifest) {
-		return nil, wrapAddFlowError(fmt.Errorf("gokart add requires a structured project (flat projects don't support integrations)"), errorCodeFlatModeUnsupported, exitCodeFlatUnsupported)
+		return nil, wrapAddFlowError(errors.New("gokart add requires a structured project (flat projects don't support integrations)"), errorCodeFlatModeUnsupported, exitCodeFlatUnsupported)
 	}
 
 	goModModule, current := detectCurrentIntegrations(manifest, req.Dir)
 
 	var toAdd []string
 	for _, name := range req.Integrations {
-		if integrationAlreadyEnabled(current, name) {
+		if integrationEnabled(current, name) {
 			output.AlreadyPresent = append(output.AlreadyPresent, name)
 			continue
 		}
@@ -132,7 +133,7 @@ func planAddChanges(req addRequest, output *addCommandOutput) (*addPlan, error) 
 				return nil, wrapAddFlowError(fmt.Errorf("file %s has been modified (use --force to overwrite)", relPath), errorCodeExistingFileConflict, exitCodeExistingFileConflict)
 			}
 			output.FilesOverwritten = append(output.FilesOverwritten, relPath)
-			output.Warnings = append(output.Warnings, fmt.Sprintf("force-overwriting modified file: %s", relPath))
+			output.Warnings = append(output.Warnings, "force-overwriting modified file: "+relPath)
 		}
 	}
 

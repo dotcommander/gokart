@@ -12,6 +12,8 @@ import (
 
 // Apply walks the template filesystem and renders templates to targetDir.
 // Files that render to empty content (whitespace only) are skipped.
+//
+//nolint:gocognit // orchestration function, complexity is inherent
 func Apply(fsys fs.FS, root string, targetDir string, data TemplateData, opts ApplyOptions) (result *ApplyResult, err error) {
 	normalizedOpts, err := normalizeApplyOptions(opts)
 	if err != nil {
@@ -24,7 +26,7 @@ func Apply(fsys fs.FS, root string, targetDir string, data TemplateData, opts Ap
 	}
 
 	var releaseLock func() error
-	if !normalizedOpts.DryRun {
+	if !normalizedOpts.DryRun { //nolint:nestif // lock acquisition with deferred release, nesting is inherent
 		releaseLock, err = acquireApplyLock(targetRoot)
 		if err != nil {
 			return nil, err
@@ -38,7 +40,7 @@ func Apply(fsys fs.FS, root string, targetDir string, data TemplateData, opts Ap
 				if err == nil {
 					err = fmt.Errorf("release scaffolding lock: %w", releaseErr)
 				} else {
-					err = fmt.Errorf("%w; release scaffolding lock: %v", err, releaseErr)
+					err = fmt.Errorf("%w; release scaffolding lock: %v", err, releaseErr) //nolint:errorlint // secondary error, primary already wrapped
 				}
 			}
 		}()
@@ -78,11 +80,12 @@ func Apply(fsys fs.FS, root string, targetDir string, data TemplateData, opts Ap
 	return result, nil
 }
 
+//nolint:revive // params are distinct concerns
 func applyPlanWrites(plan []plannedFile, result *ApplyResult, journal *applyJournal, targetRoot string, templateRoot string, opts ApplyOptions) error {
 	applied := make([]rollbackAction, 0, len(plan))
 
 	for _, file := range plan {
-		switch file.Action {
+		switch file.Action { //nolint:exhaustive // planActionSkip and planActionUnchanged are no-ops here
 		case planActionCreate:
 			perm := fs.FileMode(0644)
 			action := rollbackAction{
@@ -94,20 +97,11 @@ func applyPlanWrites(plan []plannedFile, result *ApplyResult, journal *applyJour
 				ExpectedSize:   int64(len(file.Rendered)),
 				ExpectedMode:   perm,
 			}
-			journalIndex, err := journal.appendAction(action)
+			var err error
+			applied, err = writeAndJournal(file, action, ensureCreateStateUnchanged, perm, journal, applied)
 			if err != nil {
-				return rollbackWithError(fmt.Errorf("record rollback intent for %s: %w", file.RelPath, err), applied, journal)
+				return err
 			}
-			if err := ensureCreateStateUnchanged(file); err != nil {
-				return rollbackWithError(err, applied, journal)
-			}
-			if err := writePlannedFile(file, perm); err != nil {
-				return rollbackWithError(err, applied, journal)
-			}
-			if err := journal.markActionApplied(journalIndex); err != nil {
-				return rollbackWithError(fmt.Errorf("mark rollback intent applied for %s: %w", file.RelPath, err), append(applied, action), journal)
-			}
-			applied = append(applied, action)
 			result.Created = append(result.Created, file.RelPath)
 		case planActionOverwrite:
 			perm := file.ExistingMode
@@ -125,21 +119,11 @@ func applyPlanWrites(plan []plannedFile, result *ApplyResult, journal *applyJour
 				ExpectedSize:   int64(len(file.Rendered)),
 				ExpectedMode:   perm,
 			}
-			journalIndex, err := journal.appendAction(action)
+			var err error
+			applied, err = writeAndJournal(file, action, ensureOverwriteStateUnchanged, perm, journal, applied)
 			if err != nil {
-				return rollbackWithError(fmt.Errorf("record rollback intent for %s: %w", file.RelPath, err), applied, journal)
+				return err
 			}
-			if err := ensureOverwriteStateUnchanged(file); err != nil {
-				return rollbackWithError(err, applied, journal)
-			}
-			if err := writePlannedFile(file, perm); err != nil {
-				return rollbackWithError(err, applied, journal)
-			}
-			if err := journal.markActionApplied(journalIndex); err != nil {
-				return rollbackWithError(fmt.Errorf("mark rollback intent applied for %s: %w", file.RelPath, err), append(applied, action), journal)
-			}
-			action.Mode = perm
-			applied = append(applied, action)
 			result.Overwritten = append(result.Overwritten, file.RelPath)
 		}
 	}
@@ -175,9 +159,34 @@ func applyPlanWrites(plan []plannedFile, result *ApplyResult, journal *applyJour
 		return rollbackWithError(fmt.Errorf("mark manifest rollback intent applied: %w", err), append(applied, manifestRollbackAction), journal)
 	}
 
-	applied = append(applied, manifestRollbackAction)
-
 	return nil
+}
+
+//nolint:revive // params are distinct concerns
+func writeAndJournal(
+	file plannedFile,
+	action rollbackAction,
+	ensureUnchanged func(plannedFile) error,
+	perm fs.FileMode,
+	journal *applyJournal,
+	applied []rollbackAction,
+) ([]rollbackAction, error) {
+	journalIndex, err := journal.appendAction(action)
+	if err != nil {
+		return applied, rollbackWithError(fmt.Errorf("record rollback intent for %s: %w", file.RelPath, err), applied, journal)
+	}
+	if err := ensureUnchanged(file); err != nil {
+		return applied, rollbackWithError(err, applied, journal)
+	}
+	if err := writePlannedFile(file, perm); err != nil {
+		return applied, rollbackWithError(err, applied, journal)
+	}
+	if err := journal.markActionApplied(journalIndex); err != nil {
+		return applied, rollbackWithError(fmt.Errorf("mark rollback intent applied for %s: %w", file.RelPath, err), append(applied, action), journal)
+	}
+	action.Mode = perm
+	applied = append(applied, action)
+	return applied, nil
 }
 
 func rollbackWithError(writeErr error, applied []rollbackAction, journal *applyJournal) error {
@@ -237,24 +246,16 @@ func rollbackActionForPath(targetRoot, path string) (rollbackAction, error) {
 		return rollbackAction{}, fmt.Errorf("destination path is unsafe: %w", err)
 	}
 
-	info, err := os.Lstat(path)
+	info, err := assertRegularFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return rollbackAction{Kind: rollbackRemove, Root: targetRoot, Path: path}, nil
 		}
+		var nrf *notRegularFileError
+		if errors.As(err, &nrf) {
+			return rollbackAction{}, fmt.Errorf("destination path %s %s", filepath.ToSlash(path), nrf.Reason)
+		}
 		return rollbackAction{}, fmt.Errorf("inspect destination path: %w", err)
-	}
-
-	if info.IsDir() {
-		return rollbackAction{}, fmt.Errorf("destination path %s is a directory", filepath.ToSlash(path))
-	}
-
-	if info.Mode()&os.ModeSymlink != 0 {
-		return rollbackAction{}, fmt.Errorf("destination path %s is a symlink", filepath.ToSlash(path))
-	}
-
-	if !info.Mode().IsRegular() {
-		return rollbackAction{}, fmt.Errorf("destination path %s is not a regular file", filepath.ToSlash(path))
 	}
 
 	content, err := os.ReadFile(path)

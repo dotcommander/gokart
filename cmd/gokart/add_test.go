@@ -129,10 +129,10 @@ func TestAddRejectsUnknownIntegration(t *testing.T) {
 
 func TestAddRejectsDuplicate(t *testing.T) {
 	current := &manifestIntegrations{SQLite: true}
-	if !integrationAlreadyEnabled(current, "sqlite") {
+	if !integrationEnabled(current, "sqlite") {
 		t.Fatal("sqlite should be detected as already enabled")
 	}
-	if integrationAlreadyEnabled(current, "ai") {
+	if integrationEnabled(current, "ai") {
 		t.Fatal("ai should not be detected as already enabled")
 	}
 }
@@ -509,8 +509,8 @@ func TestRunAddCommandJSONMarksVerifyRequestedOnFailure(t *testing.T) {
 	}()
 
 	cmd := newAddCommand()
-	mustSetFlag(t, cmd, addFlagJSON, "true")
-	mustSetFlag(t, cmd, addFlagVerify, "true")
+	mustSetFlagTrue(t, cmd, addFlagJSON)
+	mustSetFlagTrue(t, cmd, addFlagVerify)
 
 	stdout := captureStdout(t, func() {
 		err = runAddCommand(cmd, []string{"sqlite"})
