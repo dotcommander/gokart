@@ -52,13 +52,15 @@ type scaffoldSpec struct {
 }
 
 // ScaffoldFlat creates a flat project structure with a single main.go.
+//
+//nolint:revive // public API, params are distinct
 func ScaffoldFlat(dir, name, module string, useGlobal, includeExample bool, opts ApplyOptions) (*ApplyResult, error) {
 	return applyScaffoldSpec(scaffoldSpec{
 		Dir:          dir,
 		TemplateRoot: "templates/flat",
 		Data:         baseTemplateData(name, module, useGlobal, includeExample),
 		Metadata: scaffoldManifestMetadata{
-			Mode:      "flat",
+			Mode:      modeFlat,
 			Module:    module,
 			UseGlobal: boolPtr(useGlobal),
 		},
@@ -66,6 +68,8 @@ func ScaffoldFlat(dir, name, module string, useGlobal, includeExample bool, opts
 }
 
 // ScaffoldStructured creates a structured project with cmd/, internal/commands/, internal/actions/.
+//
+//nolint:revive // public API, boolean flags for each integration
 func ScaffoldStructured(dir, name, module string, useSQLite, usePostgres, useAI, useGlobal, includeExample bool, opts ApplyOptions) (*ApplyResult, error) {
 	data := baseTemplateData(name, module, useGlobal, includeExample)
 	data.UseSQLite = useSQLite
@@ -82,7 +86,7 @@ func ScaffoldStructured(dir, name, module string, useSQLite, usePostgres, useAI,
 				Postgres: usePostgres,
 				AI:       useAI,
 			},
-			Mode:      "structured",
+			Mode:      modeStructured,
 			Module:    module,
 			UseGlobal: boolPtr(useGlobal),
 		},

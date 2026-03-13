@@ -18,14 +18,14 @@ func runNewRequest(req newRequest, jsonOutput bool, output *newCommandOutput) er
 	}
 	output.Result = result
 
-	if req.Verify {
+	if req.Verify { //nolint:nestif // verify-on-scaffold flow, nesting is inherent
 		output.VerifyRan = true
 		if err := runVerifyForRequest(req, !jsonOutput); err != nil {
 			output.VerifyPassed = false
 			if req.DryRun {
-				return failNewCommand(fmt.Errorf("dry-run verification failed: %w", err), jsonOutput, output, errorCodeVerifyFailed, commandOutcomeFailure, exitCodeVerifyFailed)
+				return failNewCommand(fmt.Errorf("dry-run verification failed: %w", err), jsonOutput, output, commandFailureInfo{Code: errorCodeVerifyFailed, Outcome: commandOutcomeFailure, ExitCode: exitCodeVerifyFailed})
 			}
-			return failNewCommand(fmt.Errorf("project generated at %s, but verification failed: %w", req.TargetDir, err), jsonOutput, output, errorCodeVerifyFailed, commandOutcomePartialSuccess, exitCodeVerifyFailed)
+			return failNewCommand(fmt.Errorf("project generated at %s, but verification failed: %w", req.TargetDir, err), jsonOutput, output, commandFailureInfo{Code: errorCodeVerifyFailed, Outcome: commandOutcomePartialSuccess, ExitCode: exitCodeVerifyFailed})
 		}
 		output.VerifyPassed = true
 		if !jsonOutput {
@@ -56,7 +56,7 @@ func runNewVerifyOnlyFlow(req newRequest, jsonOutput bool, output *newCommandOut
 
 	if err := runVerifyForRequest(req, !jsonOutput); err != nil {
 		output.VerifyPassed = false
-		return failNewCommand(fmt.Errorf("verification failed for %s: %w", req.TargetDir, err), jsonOutput, output, errorCodeVerifyFailed, commandOutcomeFailure, exitCodeVerifyFailed)
+		return failNewCommand(fmt.Errorf("verification failed for %s: %w", req.TargetDir, err), jsonOutput, output, commandFailureInfo{Code: errorCodeVerifyFailed, Outcome: commandOutcomeFailure, ExitCode: exitCodeVerifyFailed})
 	}
 
 	output.VerifyPassed = true
@@ -72,7 +72,7 @@ func runNewVerifyOnlyFlow(req newRequest, jsonOutput bool, output *newCommandOut
 }
 
 func runNewScaffoldFlow(req newRequest, jsonOutput bool, output *newCommandOutput) (*ApplyResult, error) {
-	if req.Mode == "flat" && (req.UseSQLite || req.UsePostgres || req.UseAI) {
+	if req.Mode == modeFlat && (req.UseSQLite || req.UsePostgres || req.UseAI) {
 		flatWarning := "--sqlite, --postgres, and --ai flags are ignored in flat mode"
 		output.Warnings = append(output.Warnings, flatWarning)
 		if !jsonOutput {
@@ -112,15 +112,15 @@ func handleNewScaffoldError(err error, jsonOutput bool, output *newCommandOutput
 				cli.Dim("  conflict   %s", path)
 			}
 		}
-		return failNewCommand(err, jsonOutput, output, errorCodeExistingFileConflict, commandOutcomeFailure, exitCodeExistingFileConflict)
+		return failNewCommand(err, jsonOutput, output, commandFailureInfo{Code: errorCodeExistingFileConflict, Outcome: commandOutcomeFailure, ExitCode: exitCodeExistingFileConflict})
 	}
 
 	var lockErr *ApplyLockError
 	if errors.As(err, &lockErr) {
-		return failNewCommand(err, jsonOutput, output, errorCodeTargetLocked, commandOutcomeFailure, exitCodeTargetLocked)
+		return failNewCommand(err, jsonOutput, output, commandFailureInfo{Code: errorCodeTargetLocked, Outcome: commandOutcomeFailure, ExitCode: exitCodeTargetLocked})
 	}
 
-	return failNewCommand(err, jsonOutput, output, errorCodeScaffoldFailed, commandOutcomeFailure, exitCodeScaffoldFailed)
+	return failNewCommand(err, jsonOutput, output, commandFailureInfo{Code: errorCodeScaffoldFailed, Outcome: commandOutcomeFailure, ExitCode: exitCodeScaffoldFailed})
 }
 
 func printScaffoldStart(req newRequest, jsonOutput bool) {
@@ -146,9 +146,9 @@ func newApplyOptions(req newRequest) ApplyOptions {
 
 func scaffoldProject(req newRequest, opts ApplyOptions) (*ApplyResult, error) {
 	switch req.Mode {
-	case "flat":
+	case modeFlat:
 		return scaffoldFlatFunc(req.TargetDir, req.ProjectName, req.Module, req.UseGlobal, req.IncludeExample, opts)
-	case "structured":
+	case modeStructured:
 		return scaffoldStructuredFunc(req.TargetDir, req.ProjectName, req.Module, req.UseSQLite, req.UsePostgres, req.UseAI, req.UseGlobal, req.IncludeExample, opts)
 	default:
 		return nil, fmt.Errorf("unsupported mode %q", req.Mode)
