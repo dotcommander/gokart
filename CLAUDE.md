@@ -69,7 +69,7 @@ Root package provides logger, config, and state persistence.
 
 | Package | Purpose | Key dependencies |
 |---------|---------|-----------------|
-| `gokart/web` | HTTP router, server, response, templ, negotiate, flash, CSRF, pagination, assets | `chi/v5`, `a-h/templ`, `validator/v10` |
+| `gokart/web` | HTTP toolkit: router, server, response, templ, negotiate, flash, CSRF, pagination, assets (~980 lines across 11 files, each ≤144 lines — small focused helpers, not a framework) | `chi/v5`, `a-h/templ`, `validator/v10` |
 | `gokart/postgres` | PostgreSQL connection pool, transactions | `jackc/pgx/v5` |
 | `gokart/sqlite` | SQLite (zero CGO), transactions | `modernc.org/sqlite` |
 | `gokart/migrate` | Database migrations | `pressly/goose/v3` |
@@ -85,8 +85,9 @@ Wraps `spf13/cobra` + `charmbracelet/lipgloss` for CLI applications with styled 
 ## Design Principles
 
 - **Thin wrappers**: No business logic, just factory functions with sensible defaults
-- **Direct access**: Return underlying types, don't hide them
+- **Direct access**: Return underlying types, don't hide them — `*pgxpool.Pool`, `*sql.DB`, `chi.Router`, `*redis.Client`, `*validator.Validate`
 - **Fight for inclusion**: stdlib-sufficient things stay in stdlib (no error helpers, file utilities, string utilities)
+- **Web is not a framework**: `gokart/web` looks large because it lists many features, but it's 11 small files (~980 lines total) that each do one thing. Every function returns standard types (`chi.Router`, `http.Handler`). It's a toolkit of HTTP helpers sharing an import path, not an opinionated framework
 
 ## Key Patterns
 
