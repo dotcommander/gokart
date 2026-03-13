@@ -127,14 +127,14 @@ func runAddCommand(cmd *cobra.Command, args []string) error {
 	integrations, err := collectAddIntegrations(args)
 	output := addCommandOutput{Outcome: commandOutcomeSuccess}
 	if err != nil {
-		return failAddCommand(err, jsonOutput, &output, errorCodeInvalidArguments, exitCodeInvalidArguments)
+		return emitCommandError(err, jsonOutput, &output, commandFailureInfo{Code: errorCodeInvalidArguments, Outcome: commandOutcomeFailure, ExitCode: exitCodeInvalidArguments})
 	}
 
 	req, err := buildAddRequest(cmd, integrations)
 	if err != nil {
 		output.DryRun = false
 		output.Integrations = append([]string(nil), integrations...)
-		return failAddCommand(err, jsonOutput, &output, errorCodeScaffoldFailed, exitCodeScaffoldFailed)
+		return emitCommandError(err, jsonOutput, &output, commandFailureInfo{Code: errorCodeScaffoldFailed, Outcome: commandOutcomeFailure, ExitCode: exitCodeScaffoldFailed})
 	}
 
 	output.DryRun = req.DryRun
@@ -145,9 +145,9 @@ func runAddCommand(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		var flowErr *addFlowError
 		if errors.As(err, &flowErr) {
-			return failAddCommand(err, jsonOutput, &output, flowErr.Code, flowErr.ExitCode)
+			return emitCommandError(err, jsonOutput, &output, commandFailureInfo{Code: flowErr.Code, Outcome: commandOutcomeFailure, ExitCode: flowErr.ExitCode})
 		}
-		return failAddCommand(err, jsonOutput, &output, errorCodeScaffoldFailed, exitCodeScaffoldFailed)
+		return emitCommandError(err, jsonOutput, &output, commandFailureInfo{Code: errorCodeScaffoldFailed, Outcome: commandOutcomeFailure, ExitCode: exitCodeScaffoldFailed})
 	}
 
 	if len(plan.ToAdd) == 0 {
@@ -173,9 +173,9 @@ func runAddCommand(cmd *cobra.Command, args []string) error {
 	if err := applyAddChanges(req, plan, &output); err != nil {
 		var flowErr *addFlowError
 		if errors.As(err, &flowErr) {
-			return failAddCommand(err, jsonOutput, &output, flowErr.Code, flowErr.ExitCode)
+			return emitCommandError(err, jsonOutput, &output, commandFailureInfo{Code: flowErr.Code, Outcome: commandOutcomeFailure, ExitCode: flowErr.ExitCode})
 		}
-		return failAddCommand(err, jsonOutput, &output, errorCodeScaffoldFailed, exitCodeScaffoldFailed)
+		return emitCommandError(err, jsonOutput, &output, commandFailureInfo{Code: errorCodeScaffoldFailed, Outcome: commandOutcomeFailure, ExitCode: exitCodeScaffoldFailed})
 	}
 
 	if jsonOutput {
@@ -186,7 +186,7 @@ func runAddCommand(cmd *cobra.Command, args []string) error {
 }
 
 func isFlatProject(manifest *scaffoldManifest) bool {
-	return manifest.TemplateRoot == "templates/flat" || manifest.Mode == "flat"
+	return manifest.TemplateRoot == "templates/flat" || manifest.Mode == modeFlat
 }
 
 func readAddManifest(dir string) (*scaffoldManifest, error) {
@@ -246,7 +246,7 @@ func inferIntegrationsFromGoMod(dir string) (string, *manifestIntegrations) {
 	return module, result
 }
 
-func integrationAlreadyEnabled(current *manifestIntegrations, name string) bool {
+func integrationEnabled(current *manifestIntegrations, name string) bool {
 	if current == nil {
 		return false
 	}
@@ -262,20 +262,27 @@ func integrationAlreadyEnabled(current *manifestIntegrations, name string) bool 
 	}
 }
 
+func setIntegration(m *manifestIntegrations, name string, enable bool) {
+	if m == nil {
+		return
+	}
+	switch name {
+	case integrationSQLite:
+		m.SQLite = enable
+	case integrationPostgres:
+		m.Postgres = enable
+	case integrationAI:
+		m.AI = enable
+	}
+}
+
 func mergeIntegrations(current *manifestIntegrations, toAdd []string) *manifestIntegrations {
 	merged := &manifestIntegrations{}
 	if current != nil {
 		*merged = *current
 	}
 	for _, name := range toAdd {
-		switch name {
-		case integrationSQLite:
-			merged.SQLite = true
-		case integrationPostgres:
-			merged.Postgres = true
-		case integrationAI:
-			merged.AI = true
-		}
+		setIntegration(merged, name, true)
 	}
 	return merged
 }
@@ -286,7 +293,7 @@ func inferTemplateData(manifest *scaffoldManifest, dir string, current *manifest
 	if module == "" {
 		module = goModModule
 		if module == "" {
-			return TemplateData{}, fmt.Errorf("no module found in manifest or go.mod")
+			return TemplateData{}, errors.New("no module found in manifest or go.mod")
 		}
 	}
 
@@ -418,7 +425,7 @@ func updateAddManifest(dir string, manifest *scaffoldManifest, data TemplateData
 		manifest.Module = data.Module
 	}
 	if manifest.Mode == "" {
-		manifest.Mode = "structured"
+		manifest.Mode = modeStructured
 	}
 	if manifest.UseGlobal == nil {
 		manifest.UseGlobal = boolPtr(data.UseGlobal)
@@ -464,23 +471,4 @@ func updateAddManifest(dir string, manifest *scaffoldManifest, data TemplateData
 	manifestData = append(manifestData, '\n')
 
 	return writeScaffoldManifest(dir, manifestData)
-}
-
-func failAddCommand(err error, jsonOutput bool, output *addCommandOutput, code commandErrorCode, exitCode int) error {
-	cmdErr := &commandError{
-		Err:      err,
-		Code:     code,
-		Outcome:  commandOutcomeFailure,
-		ExitCode: exitCode,
-	}
-
-	if jsonOutput && output != nil {
-		output.Outcome = commandOutcomeFailure
-		output.ErrorCode = code
-		output.ExitCode = exitCode
-		output.Error = err.Error()
-		_ = emitJSON(output)
-	}
-
-	return cmdErr
 }

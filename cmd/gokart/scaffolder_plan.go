@@ -3,6 +3,8 @@ package main
 import (
 	"bytes"
 	"crypto/sha256"
+	"encoding/hex"
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -42,11 +44,6 @@ func buildPlan(fsys fs.FS, root, targetDir string, data TemplateData, policy Exi
 			return nil
 		}
 
-		outPath, err := templateOutputPath(root, path)
-		if err != nil {
-			return err
-		}
-
 		rendered, err := renderTemplate(fsys, path, data)
 		if err != nil {
 			return err
@@ -56,67 +53,14 @@ func buildPlan(fsys fs.FS, root, targetDir string, data TemplateData, policy Exi
 			return nil
 		}
 
-		destPath, err := safeDestinationPath(targetRoot, outPath)
+		entry, conflict, err := planFileAction(root, targetRoot, path, rendered, policy)
 		if err != nil {
 			return err
 		}
 
-		entry := plannedFile{
-			RelPath:    filepath.ToSlash(outPath),
-			TargetRoot: targetRoot,
-			DestPath:   destPath,
-			Rendered:   rendered,
-		}
-
-		info, err := os.Lstat(entry.DestPath)
-		if err != nil {
-			if os.IsNotExist(err) {
-				entry.Action = planActionCreate
-				entry.ExistingMode = 0644
-				plan = append(plan, entry)
-				return nil
-			}
-			return fmt.Errorf("check destination %s: %w", entry.RelPath, err)
-		}
-
-		if info.IsDir() {
-			return fmt.Errorf("destination path %s exists and is a directory", entry.RelPath)
-		}
-
-		if info.Mode()&os.ModeSymlink != 0 {
-			return fmt.Errorf("destination path %s exists and is a symlink", entry.RelPath)
-		}
-
-		if !info.Mode().IsRegular() {
-			return fmt.Errorf("destination path %s is not a regular file", entry.RelPath)
-		}
-
-		existing, err := os.ReadFile(entry.DestPath)
-		if err != nil {
-			return fmt.Errorf("read destination %s: %w", entry.RelPath, err)
-		}
-
-		entry.Existing = existing
-		entry.ExistingMode = info.Mode().Perm()
-		entry.ExistingInfo = info
-		entry.Fingerprint = fingerprintForFile(info, existing)
-
-		if bytes.Equal(existing, rendered) {
-			entry.Action = planActionUnchanged
-			plan = append(plan, entry)
+		if conflict != "" {
+			conflicts = append(conflicts, conflict)
 			return nil
-		}
-
-		switch policy {
-		case ExistingFilePolicyFail:
-			conflicts = append(conflicts, entry.RelPath)
-			return nil
-		case ExistingFilePolicySkip:
-			entry.Action = planActionSkip
-		case ExistingFilePolicyOverwrite:
-			entry.Action = planActionOverwrite
-		default:
-			return fmt.Errorf("invalid existing file policy %q", policy)
 		}
 
 		plan = append(plan, entry)
@@ -134,9 +78,82 @@ func buildPlan(fsys fs.FS, root, targetDir string, data TemplateData, policy Exi
 	return plan, nil
 }
 
+// planFileAction determines the planned action for a single template file.
+// It returns the populated plannedFile and an empty conflict string on success.
+// When the file conflicts with an existing file under ExistingFilePolicyFail,
+// it returns a zero plannedFile and the conflict path string instead.
+func planFileAction(root, targetRoot, path string, rendered []byte, policy ExistingFilePolicy) (plannedFile, string, error) {
+	outPath, err := templateOutputPath(root, path)
+	if err != nil {
+		return plannedFile{}, "", err
+	}
+
+	destPath, err := safeDestinationPath(targetRoot, outPath)
+	if err != nil {
+		return plannedFile{}, "", err
+	}
+
+	entry := plannedFile{
+		RelPath:    filepath.ToSlash(outPath),
+		TargetRoot: targetRoot,
+		DestPath:   destPath,
+		Rendered:   rendered,
+	}
+
+	info, err := os.Lstat(entry.DestPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			entry.Action = planActionCreate
+			entry.ExistingMode = 0644
+			return entry, "", nil
+		}
+		return plannedFile{}, "", fmt.Errorf("check destination %s: %w", entry.RelPath, err)
+	}
+
+	if info.IsDir() {
+		return plannedFile{}, "", fmt.Errorf("destination path %s exists and is a directory", entry.RelPath)
+	}
+
+	if info.Mode()&os.ModeSymlink != 0 {
+		return plannedFile{}, "", fmt.Errorf("destination path %s exists and is a symlink", entry.RelPath)
+	}
+
+	if !info.Mode().IsRegular() {
+		return plannedFile{}, "", fmt.Errorf("destination path %s is not a regular file", entry.RelPath)
+	}
+
+	existing, err := os.ReadFile(entry.DestPath)
+	if err != nil {
+		return plannedFile{}, "", fmt.Errorf("read destination %s: %w", entry.RelPath, err)
+	}
+
+	entry.Existing = existing
+	entry.ExistingMode = info.Mode().Perm()
+	entry.ExistingInfo = info
+	entry.Fingerprint = fingerprintForFile(info, existing)
+
+	if bytes.Equal(existing, rendered) {
+		entry.Action = planActionUnchanged
+		return entry, "", nil
+	}
+
+	switch policy {
+	case ExistingFilePolicyFail:
+		return plannedFile{}, entry.RelPath, nil
+	case ExistingFilePolicySkip:
+		entry.Action = planActionSkip
+	case ExistingFilePolicyOverwrite:
+		entry.Action = planActionOverwrite
+	default:
+		return plannedFile{}, "", fmt.Errorf("invalid existing file policy %q", policy)
+	}
+
+	return entry, "", nil
+}
+
 func safeDestinationPath(targetRoot, relPath string) (string, error) {
 	cleanRel := filepath.Clean(relPath)
-	if cleanRel == "." || cleanRel == ".." || filepath.IsAbs(cleanRel) || strings.HasPrefix(cleanRel, ".."+string(filepath.Separator)) {
+	if cleanRel == "." || cleanRel == ".." || filepath.IsAbs(cleanRel) || strings.HasPrefix(cleanRel, ".."+string(filepath.Separator)) { //nolint:goconst // ".." is a well-known path literal used in path-safety checks across multiple files
 		return "", fmt.Errorf("invalid destination path %q", relPath)
 	}
 
@@ -156,6 +173,7 @@ func safeDestinationPath(targetRoot, relPath string) (string, error) {
 	return destPath, nil
 }
 
+//nolint:gocognit,gocyclo // security check, iterates path components
 func ensureNoSymlinkFromRoot(rootPath, path string) error {
 	rootAbs, err := filepath.Abs(rootPath)
 	if err != nil {
@@ -292,7 +310,15 @@ func collectResult(plan []plannedFile, dryRun bool) *ApplyResult {
 
 func sha256Hex(data []byte) string {
 	sum := sha256.Sum256(data)
-	return fmt.Sprintf("%x", sum[:])
+	return hex.EncodeToString(sum[:])
+}
+
+func checkRegularFileAfterPlan(err error, relPath string) error {
+	var nrf *notRegularFileError
+	if errors.As(err, &nrf) {
+		return fmt.Errorf("destination path %s %s after planning", relPath, nrf.Reason)
+	}
+	return nil
 }
 
 func ensureCreateStateUnchanged(file plannedFile) error {
@@ -300,20 +326,15 @@ func ensureCreateStateUnchanged(file plannedFile) error {
 		return fmt.Errorf("destination path %s became unsafe after planning: %w", file.RelPath, err)
 	}
 
-	info, err := os.Lstat(file.DestPath)
+	_, err := assertRegularFile(file.DestPath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil
 		}
+		if msg := checkRegularFileAfterPlan(err, file.RelPath); msg != nil {
+			return msg
+		}
 		return fmt.Errorf("check destination %s before write: %w", file.RelPath, err)
-	}
-
-	if info.Mode()&os.ModeSymlink != 0 {
-		return fmt.Errorf("destination path %s became a symlink after planning", file.RelPath)
-	}
-
-	if info.IsDir() {
-		return fmt.Errorf("destination path %s became a directory after planning", file.RelPath)
 	}
 
 	return fmt.Errorf("destination file %s appeared after planning; rerun command (or use --force/--skip-existing)", file.RelPath)
@@ -324,24 +345,15 @@ func ensureOverwriteStateUnchanged(file plannedFile) error {
 		return fmt.Errorf("destination path %s became unsafe after planning: %w", file.RelPath, err)
 	}
 
-	info, err := os.Lstat(file.DestPath)
+	info, err := assertRegularFile(file.DestPath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return fmt.Errorf("destination file %s was removed after planning; rerun command", file.RelPath)
 		}
+		if msg := checkRegularFileAfterPlan(err, file.RelPath); msg != nil {
+			return msg
+		}
 		return fmt.Errorf("check destination %s before write: %w", file.RelPath, err)
-	}
-
-	if info.Mode()&os.ModeSymlink != 0 {
-		return fmt.Errorf("destination path %s became a symlink after planning", file.RelPath)
-	}
-
-	if info.IsDir() {
-		return fmt.Errorf("destination path %s became a directory after planning", file.RelPath)
-	}
-
-	if !info.Mode().IsRegular() {
-		return fmt.Errorf("destination path %s is not a regular file", file.RelPath)
 	}
 
 	current, err := os.ReadFile(file.DestPath)
