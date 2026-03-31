@@ -8,6 +8,8 @@ require (
 	github.com/go-playground/validator/v10 v10.30.1
 	github.com/hashicorp/go-retryablehttp v0.7.8
 	github.com/stretchr/testify v1.11.1
+	golang.org/x/sync v0.19.0
+	golang.org/x/time v0.15.0
 )
 
 require (
