@@ -113,8 +113,8 @@ func TestAddRejectsFlat(t *testing.T) {
 }
 
 func TestAddRejectsUnknownIntegration(t *testing.T) {
-	if validIntegrations["redis"] {
-		t.Fatal("redis should not be a valid integration")
+	if validIntegrations["mysql"] {
+		t.Fatal("mysql should not be a valid integration")
 	}
 	if !validIntegrations["sqlite"] {
 		t.Fatal("sqlite should be valid")
@@ -124,6 +124,9 @@ func TestAddRejectsUnknownIntegration(t *testing.T) {
 	}
 	if !validIntegrations["ai"] {
 		t.Fatal("ai should be valid")
+	}
+	if !validIntegrations["redis"] {
+		t.Fatal("redis should be valid")
 	}
 }
 

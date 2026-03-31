@@ -226,6 +226,7 @@ func TestNewCommandFlagDefaultsContract(t *testing.T) {
 		{name: newFlagSQLite, wantDefVal: "false"},
 		{name: newFlagPostgres, wantDefVal: "false"},
 		{name: newFlagAI, wantDefVal: "false"},
+		{name: newFlagRedis, wantDefVal: "false"},
 		{name: newFlagExample, wantDefVal: "false"},
 		{name: newFlagLocal, wantDefVal: "false"},
 		{name: newFlagGlobal, wantDefVal: "false"},
@@ -573,7 +574,7 @@ func TestRunNewCommandVerifyOnlyRunsVerifyWithoutScaffolding(t *testing.T) {
 		t.Fatalf("scaffoldFlatFunc should not be called in --verify-only mode")
 		return nil, nil
 	}
-	scaffoldStructuredFunc = func(dir, name, module string, useSQLite, usePostgres, useAI, useGlobal, includeExample bool, opts ApplyOptions) (*ApplyResult, error) {
+	scaffoldStructuredFunc = func(dir, name, module string, useSQLite, usePostgres, useAI, useRedis, useGlobal, includeExample bool, opts ApplyOptions) (*ApplyResult, error) {
 		t.Fatalf("scaffoldStructuredFunc should not be called in --verify-only mode")
 		return nil, nil
 	}

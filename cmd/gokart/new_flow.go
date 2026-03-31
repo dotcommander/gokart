@@ -72,8 +72,8 @@ func runNewVerifyOnlyFlow(req newRequest, jsonOutput bool, output *newCommandOut
 }
 
 func runNewScaffoldFlow(req newRequest, jsonOutput bool, output *newCommandOutput) (*ApplyResult, error) {
-	if req.Mode == modeFlat && (req.UseSQLite || req.UsePostgres || req.UseAI) {
-		flatWarning := "--sqlite, --postgres, and --ai flags are ignored in flat mode"
+	if req.Mode == modeFlat && (req.UseSQLite || req.UsePostgres || req.UseAI || req.UseRedis) {
+		flatWarning := "--sqlite, --postgres, --ai, and --redis flags are ignored in flat mode"
 		output.Warnings = append(output.Warnings, flatWarning)
 		if !jsonOutput {
 			cli.Warning("%s", flatWarning)
@@ -149,7 +149,7 @@ func scaffoldProject(req newRequest, opts ApplyOptions) (*ApplyResult, error) {
 	case modeFlat:
 		return scaffoldFlatFunc(req.TargetDir, req.ProjectName, req.Module, req.UseGlobal, req.IncludeExample, opts)
 	case modeStructured:
-		return scaffoldStructuredFunc(req.TargetDir, req.ProjectName, req.Module, req.UseSQLite, req.UsePostgres, req.UseAI, req.UseGlobal, req.IncludeExample, opts)
+		return scaffoldStructuredFunc(req.TargetDir, req.ProjectName, req.Module, req.UseSQLite, req.UsePostgres, req.UseAI, req.UseRedis, req.UseGlobal, req.IncludeExample, opts)
 	default:
 		return nil, fmt.Errorf("unsupported mode %q", req.Mode)
 	}

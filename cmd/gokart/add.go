@@ -32,12 +32,14 @@ const (
 	integrationSQLite   = "sqlite"
 	integrationPostgres = "postgres"
 	integrationAI       = "ai"
+	integrationRedis    = "redis"
 )
 
 var validIntegrations = map[string]bool{
 	integrationSQLite:   true,
 	integrationPostgres: true,
 	integrationAI:       true,
+	integrationRedis:    true,
 }
 
 type integrationDep struct {
@@ -48,6 +50,7 @@ var integrationDeps = map[string]integrationDep{
 	integrationSQLite:   {Packages: []string{"github.com/dotcommander/gokart/sqlite@" + defaultGokartSQLiteVersion}},
 	integrationPostgres: {Packages: []string{"github.com/dotcommander/gokart/postgres@" + defaultGokartPostgresVersion, "github.com/jackc/pgx/v5@latest"}},
 	integrationAI:       {Packages: []string{"github.com/dotcommander/gokart/ai@" + defaultGokartAIVersion, "github.com/openai/openai-go/v3@latest"}},
+	integrationRedis:    {Packages: []string{"github.com/dotcommander/gokart/cache@" + defaultGokartCacheVersion, "github.com/redis/go-redis/v9@" + defaultRedisVersion}},
 }
 
 type addCommandOutput struct {
@@ -98,7 +101,7 @@ func newAddCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "add <integration>...",
 		Short: "Add integrations to an existing GoKart project",
-		Long:  "Add SQLite, PostgreSQL, or OpenAI integrations to an existing structured project.\nRe-renders only integration-affected files (context.go, root.go) and runs go get.",
+		Long:  "Add SQLite, PostgreSQL, Redis, or OpenAI integrations to an existing structured project.\nRe-renders only integration-affected files (context.go, root.go) and runs go get.",
 		Example: `  gokart add sqlite
   gokart add ai
   gokart add sqlite ai
@@ -243,6 +246,9 @@ func inferIntegrationsFromGoMod(dir string) (string, *manifestIntegrations) {
 	if strings.Contains(content, "gokart/ai") {
 		result.AI = true
 	}
+	if strings.Contains(content, "gokart/cache") {
+		result.Redis = true
+	}
 	return module, result
 }
 
@@ -257,6 +263,8 @@ func integrationEnabled(current *manifestIntegrations, name string) bool {
 		return current.Postgres
 	case integrationAI:
 		return current.AI
+	case integrationRedis:
+		return current.Redis
 	default:
 		return false
 	}
@@ -273,6 +281,8 @@ func setIntegration(m *manifestIntegrations, name string, enable bool) {
 		m.Postgres = enable
 	case integrationAI:
 		m.AI = enable
+	case integrationRedis:
+		m.Redis = enable
 	}
 }
 
@@ -323,6 +333,7 @@ func inferTemplateData(manifest *scaffoldManifest, dir string, current *manifest
 	data.UseSQLite = merged.SQLite
 	data.UsePostgres = merged.Postgres
 	data.UseAI = merged.AI
+	data.UseRedis = merged.Redis
 
 	return data, nil
 }
@@ -416,6 +427,7 @@ func updateAddManifest(dir string, manifest *scaffoldManifest, data TemplateData
 		SQLite:   data.UseSQLite,
 		Postgres: data.UsePostgres,
 		AI:       data.UseAI,
+		Redis:    data.UseRedis,
 	}
 
 	// Update manifest to v2

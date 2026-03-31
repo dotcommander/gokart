@@ -48,6 +48,7 @@ const (
 	newFlagSQLite        = "sqlite"
 	newFlagPostgres      = "postgres"
 	newFlagAI            = "ai"
+	newFlagRedis         = "redis"
 	newFlagExample       = "example"
 	newFlagLocal         = "local"
 	newFlagGlobal        = "global"
@@ -71,6 +72,7 @@ var (
 		newFlagSQLite,
 		newFlagPostgres,
 		newFlagAI,
+		newFlagRedis,
 		newFlagExample,
 		newFlagLocal,
 		newFlagGlobal,
@@ -122,6 +124,7 @@ const rootLongDescription = logo + `
   --sqlite         SQLite database (modernc.org/sqlite)
   --postgres       PostgreSQL pool (pgx/v5)
   --ai             OpenAI client (openai-go/v3)
+  --redis          Redis cache (go-redis/v9)
   --example        Include example greet command/action scaffold
   --flat           Single main.go (no internal/)
   --local          No global config (structured: default is global)
@@ -158,6 +161,9 @@ const newCommandExample = `  # Basic structured project
   # With PostgreSQL and OpenAI
   gokart new myapi --postgres --ai
 
+  # With Redis cache
+  gokart new myapi --redis
+
   # Include example command/action scaffold
   gokart new myapi --example
 
@@ -190,6 +196,7 @@ const rootHelpTemplate = `{{.Long}}
   gokart new myapp
   gokart new cli myapp
   gokart new myapp --postgres --ai
+  gokart new myapp --redis
   gokart add sqlite ai
 
   gokart new --help    Full options
@@ -245,6 +252,7 @@ func configureNewCommandFlags(cmd *cobra.Command) {
 	flags.Bool(newFlagSQLite, false, "Include SQLite database wiring (modernc.org/sqlite)")
 	flags.Bool(newFlagPostgres, false, "Include PostgreSQL connection pool (pgx/v5)")
 	flags.Bool(newFlagAI, false, "Include OpenAI client (openai-go/v3)")
+	flags.Bool(newFlagRedis, false, "Include Redis cache (go-redis/v9)")
 	flags.Bool(newFlagExample, false, "Include example greet command and action")
 	flags.Bool(newFlagLocal, false, "Disable global config (structured only, default is global)")
 	flags.Bool(newFlagGlobal, false, "Enable global config (flat only, default is local)")

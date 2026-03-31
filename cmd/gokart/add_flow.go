@@ -67,7 +67,7 @@ func collectAddIntegrations(args []string) ([]string, error) {
 	for _, arg := range args {
 		name := strings.ToLower(strings.TrimSpace(arg))
 		if !validIntegrations[name] {
-			return nil, fmt.Errorf("unknown integration: %s (valid: sqlite, postgres, ai)", name)
+			return nil, fmt.Errorf("unknown integration: %s (valid: sqlite, postgres, ai, redis)", name)
 		}
 		if seen[name] {
 			continue

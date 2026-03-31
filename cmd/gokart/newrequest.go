@@ -20,6 +20,7 @@ type newRequest struct {
 	UseSQLite          bool
 	UsePostgres        bool
 	UseAI              bool
+	UseRedis           bool
 	IncludeExample     bool
 	UseGlobal          bool
 	DryRun             bool
@@ -49,6 +50,7 @@ func buildNewRequest(cmd *cobra.Command, args []string) (newRequest, error) {
 	req.UseSQLite, _ = cmd.Flags().GetBool(newFlagSQLite)
 	req.UsePostgres, _ = cmd.Flags().GetBool(newFlagPostgres)
 	req.UseAI, _ = cmd.Flags().GetBool(newFlagAI)
+	req.UseRedis, _ = cmd.Flags().GetBool(newFlagRedis)
 	req.IncludeExample, _ = cmd.Flags().GetBool(newFlagExample)
 	local, _ := cmd.Flags().GetBool(newFlagLocal)
 	global, _ := cmd.Flags().GetBool(newFlagGlobal)

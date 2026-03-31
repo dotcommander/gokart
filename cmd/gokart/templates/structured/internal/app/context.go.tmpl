@@ -1,18 +1,22 @@
-{{- if or .UseSQLite .UsePostgres .UseAI -}}
+{{- if or .UseSQLite .UsePostgres .UseAI .UseRedis -}}
 package app
 
 import (
-{{- if .UsePostgres }}
+{{- if or .UsePostgres .UseRedis }}
 	"context"
 {{- end }}
 {{- if .UseSQLite }}
 	"database/sql"
 {{- end }}
-{{- if .UsePostgres }}
+{{- if or .UsePostgres .UseRedis }}
 	"fmt"
 {{- end }}
 	"log/slog"
 	"os"
+{{- if .UseRedis }}
+
+	"github.com/dotcommander/gokart/cache"
+{{- end }}
 {{- if .UseSQLite }}
 	"path/filepath"
 {{- end }}
@@ -44,6 +48,9 @@ type Context struct {
 {{- end }}
 {{- if .UseAI }}
 	AI  openai.Client
+{{- end }}
+{{- if .UseRedis }}
+	Cache *cache.Cache
 {{- end }}
 }
 
@@ -105,6 +112,22 @@ func New(appName string, v *viper.Viper) (*Context, error) {
 	}
 	ctx.AI = ai.NewOpenAIClientWithKey(apiKey)
 {{- end }}
+{{- if .UseRedis }}
+
+	// Setup Redis cache
+	redisAddr := v.GetString("redis_addr")
+	if redisAddr == "" {
+		redisAddr = os.Getenv("REDIS_ADDR")
+	}
+	if redisAddr == "" {
+		redisAddr = "localhost:6379"
+	}
+	cacheClient, err := cache.Open(context.Background(), redisAddr)
+	if err != nil {
+		return nil, fmt.Errorf("open cache: %w", err)
+	}
+	ctx.Cache = cacheClient
+{{- end }}
 
 	return ctx, nil
 }
@@ -119,6 +142,11 @@ func (c *Context) Close() {
 {{- if .UsePostgres }}
 	if c.Pool != nil {
 		c.Pool.Close()
+	}
+{{- end }}
+{{- if .UseRedis }}
+	if c.Cache != nil {
+		c.Cache.Close()
 	}
 {{- end }}
 }
