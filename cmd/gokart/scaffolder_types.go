@@ -190,6 +190,7 @@ type manifestIntegrations struct {
 	SQLite   bool `json:"sqlite"`
 	Postgres bool `json:"postgres"`
 	AI       bool `json:"ai"`
+	Redis    bool `json:"redis"`
 }
 
 type scaffoldManifestMetadata struct {

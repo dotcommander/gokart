@@ -2,7 +2,7 @@ package commands
 
 import (
 	"github.com/dotcommander/gokart/cli"
-{{- if or .UseSQLite .UsePostgres .UseAI .UseGlobal }}
+{{- if or .UseSQLite .UsePostgres .UseAI .UseRedis .UseGlobal }}
 	"github.com/spf13/cobra"
 	"{{.Module}}/internal/app"
 {{- end }}
@@ -11,7 +11,7 @@ import (
 // Execute runs the CLI application.
 func Execute(version string) error {
 	cliApp := cli.NewApp("{{.Name}}", version).
-		WithDescription("{{.Name}} - a GoKart CLI application"){{if or .UseSQLite .UsePostgres .UseAI}}.
+		WithDescription("{{.Name}} - a GoKart CLI application"){{if or .UseSQLite .UsePostgres .UseAI .UseRedis}}.
 		WithEnvPrefix("{{.Name | upper}}").
 		WithStandardFlags()
 

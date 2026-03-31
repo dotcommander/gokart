@@ -44,7 +44,7 @@ func runDryRunVerify(req newRequest, verbose bool) error {
 			return fmt.Errorf("prepare dry-run verification scaffold: %w", err)
 		}
 	case modeStructured:
-		if _, err := scaffoldStructuredFunc(tempDir, req.ProjectName, req.Module, req.UseSQLite, req.UsePostgres, req.UseAI, req.UseGlobal, req.IncludeExample, opts); err != nil {
+		if _, err := scaffoldStructuredFunc(tempDir, req.ProjectName, req.Module, req.UseSQLite, req.UsePostgres, req.UseAI, req.UseRedis, req.UseGlobal, req.IncludeExample, opts); err != nil {
 			return fmt.Errorf("prepare dry-run verification scaffold: %w", err)
 		}
 	default:

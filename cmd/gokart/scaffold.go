@@ -14,11 +14,13 @@ const (
 	defaultGokartSQLiteVersion   = "v0.0.0-20260301050059-af15bf731eeb"
 	defaultGokartPostgresVersion = "v0.0.0-20260301050059-af15bf731eeb"
 	defaultGokartAIVersion       = "v0.0.0-20260301050059-af15bf731eeb"
+	defaultGokartCacheVersion    = "v0.0.0-20260301050059-af15bf731eeb"
 
 	defaultCobraVersion  = "v1.10.2"
 	defaultViperVersion  = "v1.21.0"
 	defaultPGXVersion    = "v5.8.0"
 	defaultOpenAIVersion = "v3.24.0"
+	defaultRedisVersion  = "v9.7.0"
 	defaultGooseVersion  = "v3.27.0"
 )
 
@@ -30,6 +32,7 @@ type TemplateData struct {
 	UseSQLite      bool
 	UsePostgres    bool
 	UseAI          bool
+	UseRedis       bool
 	IncludeExample bool
 	UseGlobal      bool
 
@@ -37,6 +40,8 @@ type TemplateData struct {
 	GokartSQLiteVersion   string
 	GokartPostgresVersion string
 	GokartAIVersion       string
+	GokartCacheVersion    string
+	RedisVersion          string
 	CobraVersion          string
 	ViperVersion          string
 	PGXVersion            string
@@ -70,11 +75,12 @@ func ScaffoldFlat(dir, name, module string, useGlobal, includeExample bool, opts
 // ScaffoldStructured creates a structured project with cmd/, internal/commands/, internal/actions/.
 //
 //nolint:revive // public API, boolean flags for each integration
-func ScaffoldStructured(dir, name, module string, useSQLite, usePostgres, useAI, useGlobal, includeExample bool, opts ApplyOptions) (*ApplyResult, error) {
+func ScaffoldStructured(dir, name, module string, useSQLite, usePostgres, useAI, useRedis, useGlobal, includeExample bool, opts ApplyOptions) (*ApplyResult, error) {
 	data := baseTemplateData(name, module, useGlobal, includeExample)
 	data.UseSQLite = useSQLite
 	data.UsePostgres = usePostgres
 	data.UseAI = useAI
+	data.UseRedis = useRedis
 
 	return applyScaffoldSpec(scaffoldSpec{
 		Dir:          dir,
@@ -85,6 +91,7 @@ func ScaffoldStructured(dir, name, module string, useSQLite, usePostgres, useAI,
 				SQLite:   useSQLite,
 				Postgres: usePostgres,
 				AI:       useAI,
+				Redis:    useRedis,
 			},
 			Mode:      modeStructured,
 			Module:    module,
@@ -110,6 +117,8 @@ func baseTemplateData(name, module string, useGlobal, includeExample bool) Templ
 		GokartSQLiteVersion:   defaultGokartSQLiteVersion,
 		GokartPostgresVersion: defaultGokartPostgresVersion,
 		GokartAIVersion:       defaultGokartAIVersion,
+		GokartCacheVersion:    defaultGokartCacheVersion,
+		RedisVersion:          defaultRedisVersion,
 		CobraVersion:          defaultCobraVersion,
 		ViperVersion:          defaultViperVersion,
 		PGXVersion:            defaultPGXVersion,
