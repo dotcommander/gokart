@@ -85,11 +85,13 @@ No wrapper types. No `.Unwrap()`. If GoKart's defaults don't fit, reach past the
 |---------|---------|-------|
 | `gokart` | typed config, state persistence, logger aliases | viper, slog |
 | `gokart/cli` | `*cli.App`, styled output, tables, spinners, editor bridge | cobra, lipgloss |
-| `gokart/web` | `chi.Router`, graceful server, response helpers, templ, CSRF, pagination | chi/v5, a-h/templ, validator/v10 |
+| `gokart/web` | `chi.Router`, graceful server, response helpers, templ, CSRF, pagination, health checks, rate limiting, auth middleware | chi/v5, a-h/templ, validator/v10 |
 | `gokart/postgres` | `*pgxpool.Pool`, transaction helper | pgx/v5 |
 | `gokart/sqlite` | `*sql.DB`, WAL mode, transaction helper | modernc.org/sqlite |
 | `gokart/migrate` | schema migrations, embedded FS support | goose/v3 |
 | `gokart/cache` | `*redis.Client`, Remember pattern, distributed locks | go-redis/v9 |
+| `gokart/kv` | `*KV` expanded Redis (hash, sorted set, set, list, counters) | go-redis/v9 |
+| `gokart/fs` | atomic writes, config dir, read-or-create | stdlib only |
 | `gokart/ai` | `*openai.Client` factory | openai-go v3 |
 | `gokart/logger` | JSON/text slog, file logger for TUI tools | log/slog |
 
@@ -106,6 +108,7 @@ gokart new mycli --flat             # Single main.go
 gokart new mycli --sqlite           # With SQLite wiring
 gokart new mycli --postgres         # With PostgreSQL wiring
 gokart new mycli --ai               # With OpenAI client
+gokart new mycli --redis            # With Redis cache
 gokart new mycli --postgres --ai    # Combined
 ```
 
@@ -114,6 +117,7 @@ gokart new mycli --postgres --ai    # Combined
 ```bash
 gokart add sqlite
 gokart add ai --force       # overwrite modified files
+gokart add redis
 gokart add postgres --dry-run
 ```
 
@@ -122,7 +126,7 @@ gokart add postgres --dry-run
 - **Modular** — import only what you need, no forced dependencies.
 - **Thin wrappers** — factory functions, sensible defaults, real types returned.
 - **Fight for inclusion** — if stdlib or the underlying package already solves it, GoKart stays out of the way.
-- **Web looks big, isn't** — `gokart/web` lists many features but it's 11 small files (~980 lines total), each ≤144 lines, each returning standard types. It's a toolkit of HTTP helpers sharing an import path, not a framework.
+- **Web looks big, isn't** — `gokart/web` lists many features but it's 17 small files (~1300 lines total), each ≤144 lines, each returning standard types. It's a toolkit of HTTP helpers sharing an import path, not a framework.
 
 ## Examples
 

@@ -27,6 +27,7 @@ gokart new mycli --flat --global    # Single main.go, global config
 gokart new mycli --sqlite           # With SQLite wiring
 gokart new mycli --postgres         # With PostgreSQL wiring
 gokart new mycli --ai               # With OpenAI client (v3)
+gokart new mycli --redis            # With Redis cache
 ```
 
 ### Add Integrations (`gokart add`)
@@ -35,6 +36,7 @@ Surgically adds integrations to an existing structured project without re-scaffo
 ```bash
 gokart add sqlite              # Add SQLite wiring
 gokart add ai                  # Add OpenAI client
+gokart add redis               # Add Redis cache
 gokart add postgres --dry-run  # Preview changes
 gokart add ai --force          # Overwrite modified files
 ```
@@ -69,12 +71,14 @@ Root package provides logger, config, and state persistence.
 
 | Package | Purpose | Key dependencies |
 |---------|---------|-----------------|
-| `gokart/web` | HTTP toolkit: router, server, response, templ, negotiate, flash, CSRF, pagination, assets (~980 lines across 11 files, each ≤144 lines — small focused helpers, not a framework) | `chi/v5`, `a-h/templ`, `validator/v10` |
+| `gokart/web` | HTTP toolkit: router, server, response, templ, negotiate, flash, CSRF, pagination, assets, health checks, rate limiting, auth middleware (~1300 lines across 17 files, each ≤144 lines — small focused helpers, not a framework) | `chi/v5`, `a-h/templ`, `validator/v10`, `golang.org/x/time` |
 | `gokart/postgres` | PostgreSQL connection pool, transactions | `jackc/pgx/v5` |
 | `gokart/sqlite` | SQLite (zero CGO), transactions | `modernc.org/sqlite` |
 | `gokart/migrate` | Database migrations | `pressly/goose/v3` |
 | `gokart/ai` | OpenAI client | `openai/openai-go/v3` |
 | `gokart/cache` | Redis cache with Remember pattern | `redis/go-redis/v9` |
+| `gokart/kv` | Expanded Redis operations (hash, sorted set, set, list, counters) — accepts `*redis.Client` from cache | `redis/go-redis/v9` |
+| `gokart/fs` | Atomic file writes, config dir resolution, read-or-create | stdlib only |
 | `gokart/cli` | CLI applications with styled output | `cobra`, `lipgloss` |
 | `gokart/logger` | Structured logging | `log/slog` |
 
@@ -132,3 +136,33 @@ text, _ := cli.CaptureInput("# Enter description", "md")
 ```
 
 Migrations support embedded files via `embed.FS`.
+
+Atomic file writes and config directory resolution:
+```go
+dir, _ := fs.ConfigDir("myapp")                          // ~/.config/myapp/ (creates if missing)
+fs.WriteFile("config.yaml", data, 0644)                  // atomic: temp file + rename
+data, _ := fs.ReadOrCreate("state.json", []byte("{}"))   // reads or creates with default
+```
+
+Health and readiness endpoints with parallel dependency checks:
+```go
+r.Get("/health", web.HealthHandler(
+    web.HealthCheck{Name: "database", Fn: pool.Ping},
+    web.HealthCheck{Name: "cache", Fn: redisClient.Ping},
+))
+r.Get("/ready", web.ReadyHandler(dbCheck, cacheCheck))
+```
+
+Per-IP rate limiting and auth middleware:
+```go
+r.Use(web.RateLimit(10, 20))                                    // 10 req/s, burst 20
+r.Use(web.BearerAuth(func(ctx context.Context, token string) (context.Context, error) { ... }))
+r.Use(web.APIKeyAuth(func(ctx context.Context, key string) (context.Context, error) { ... }))
+```
+
+Expanded Redis data structures via kv (from cache.Client):
+```go
+kv := kv.New(cacheClient.Client())
+kv.ZAdd(ctx, "leaderboard", redis.Z{Score: 100, Member: "player1"})
+members, _ := kv.ZRange(ctx, "leaderboard", 0, -1)
+```
