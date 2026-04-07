@@ -116,8 +116,8 @@ Redis caching with go-redis. Demonstrates:
 - Key prefixing for namespacing
 
 ```go
-cache, _ := cache.Open(ctx, "localhost:6379")
-cache.RememberJSON(ctx, "user:123", time.Hour, &user, func() (interface{}, error) {
+c, _ := cache.Open(ctx, "localhost:6379")
+c.RememberJSON(ctx, "user:123", time.Hour, &user, func() (interface{}, error) {
     return db.GetUser(ctx, 123) // Only called on cache miss
 })
 ```
