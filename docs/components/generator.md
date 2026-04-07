@@ -17,6 +17,8 @@ Creates a new Go project in a subdirectory of the current working directory. Acc
 ```bash
 gokart new <project-name> [flags]
 gokart new cli <project-name> [flags]   # explicit preset (same output)
+gokart init <project-name>              # alias for new
+gokart create <project-name>            # alias for new
 ```
 
 ### Basic Examples
@@ -51,7 +53,7 @@ gokart new mycli --dry-run --json
 
 **Structured** (default) creates a multi-package project with a `cmd/` entry point and `internal/` packages.
 
-**Flat** (`--flat`) creates a single `main.go` file. Useful for quick scripts. Integration flags (`--sqlite`, `--postgres`, `--ai`) are ignored in flat mode.
+**Flat** (`--flat`) creates a single `main.go` file. Useful for quick scripts. Combining `--flat` with integration flags (`--sqlite`, `--postgres`, `--ai`, `--redis`) is an error — flat projects don't support integrations.
 
 ```bash
 gokart new mycli            # structured
@@ -73,7 +75,7 @@ mycli/
 ├── internal/
 │   ├── app/
 │   │   ├── config.go                  # Global config helper (structured + global scope)
-│   │   └── context.go                 # App context (present when --sqlite, --postgres, or --ai)
+│   │   └── context.go                 # App context (present when --sqlite, --postgres, --ai, or --redis)
 │   └── commands/
 │       └── root.go                    # Cobra root command
 └── go.mod
@@ -108,12 +110,15 @@ These flags wire a data store or API client into the project at generation time.
 | `--sqlite` | `github.com/dotcommander/gokart/sqlite` | `*sql.DB` via `sqlite.Open` |
 | `--postgres` | `github.com/dotcommander/gokart/postgres`, `github.com/jackc/pgx/v5` | `*pgxpool.Pool` via `postgres.Connect` |
 | `--ai` | `github.com/dotcommander/gokart/ai`, `github.com/openai/openai-go/v3` | `*openai.Client` via `ai.NewClient` |
+| `--redis` | `github.com/dotcommander/gokart/cache`, `github.com/redis/go-redis/v9` | `*redis.Client` via `cache.Open` |
 
 Flags may be combined:
 
 ```bash
 gokart new mycli --postgres --ai
 gokart new mycli --sqlite --example
+gokart new mycli --redis
+gokart new mycli --redis --postgres
 ```
 
 ### Config Scope
@@ -163,6 +168,7 @@ When `--dry-run --verify` is used together, the scaffolder writes to a temporary
 | `--sqlite` | bool | false | Add SQLite wiring |
 | `--postgres` | bool | false | Add PostgreSQL wiring |
 | `--ai` | bool | false | Add OpenAI client wiring |
+| `--redis` | bool | false | Add Redis cache wiring |
 | `--example` | bool | false | Include example `greet` command and action |
 | `--config-scope` | string | `auto` | Config scope: `auto`, `local`, or `global` |
 | `--local` | bool | false | Shorthand for `--config-scope local` |
@@ -186,13 +192,14 @@ Adds integrations to an existing structured project without re-scaffolding. Run 
 gokart add <integration>... [flags]
 ```
 
-Valid integrations: `sqlite`, `postgres`, `ai`. Multiple integrations can be added in a single invocation.
+Valid integrations: `sqlite`, `postgres`, `ai`, `redis`. Multiple integrations can be added in a single invocation.
 
 ### Examples
 
 ```bash
 gokart add sqlite
 gokart add ai
+gokart add redis
 gokart add sqlite ai           # add both at once
 gokart add postgres --dry-run  # preview changes
 gokart add ai --force          # overwrite user-modified files
@@ -239,6 +246,7 @@ Use `--dry-run` to preview which files would be created or overwritten before co
 | `sqlite` | `github.com/dotcommander/gokart/sqlite@latest` |
 | `postgres` | `github.com/dotcommander/gokart/postgres@latest`, `github.com/jackc/pgx/v5@latest` |
 | `ai` | `github.com/dotcommander/gokart/ai@latest`, `github.com/openai/openai-go/v3@latest` |
+| `redis` | `github.com/dotcommander/gokart/cache@latest`, `github.com/redis/go-redis/v9@latest` |
 
 ### All `gokart add` Flags
 
@@ -249,6 +257,28 @@ Use `--dry-run` to preview which files would be created or overwritten before co
 | `--verify` | bool | false | Run `go test ./...` after adding integrations |
 | `--verify-timeout` | duration | `5m` | Maximum time for verify commands (`0` = no timeout) |
 | `--json` | bool | false | Print machine-readable JSON result |
+
+---
+
+## `gokart config`
+
+### `gokart config show`
+
+Prints where gokart stores data on this machine.
+
+```bash
+gokart config show
+```
+
+Output:
+
+```
+Version:     v0.9.0
+Config dir:  /Users/you/Library/Application Support
+Binary:      /Users/you/go/bin/gokart
+```
+
+Useful for debugging when multiple gokart binaries exist or when verifying the installed version matches the expected tag.
 
 ---
 
@@ -281,7 +311,7 @@ Use `--dry-run` to preview which files would be created or overwritten before co
 ```json
 {
   "version": 2,
-  "generator": "gokart/0.1.0",
+  "generator": "gokart/0.9.0",
   "template_root": "templates/structured",
   "existing_file_policy": "fail",
   "generated_at": "2026-03-01T12:00:00Z",
@@ -406,6 +436,7 @@ On failure the object includes `error_code` and `error`:
 | `--sqlite` | | false | SQLite wiring |
 | `--postgres` | | false | PostgreSQL wiring |
 | `--ai` | | false | OpenAI client wiring |
+| `--redis` | | false | Redis cache wiring |
 | `--example` | | false | Include greet command and action |
 | `--config-scope` | | `auto` | `auto`, `local`, or `global` |
 | `--local` | | false | Shorthand: `--config-scope local` |

@@ -234,7 +234,10 @@ err := pool.QueryRow(ctx, "SELECT name, email FROM users WHERE id = $1", userID)
 ### Multiple Rows
 
 ```go
-rows, _ := pool.Query(ctx, "SELECT id, name FROM users WHERE active = true")
+rows, err := pool.Query(ctx, "SELECT id, name FROM users WHERE active = true")
+if err != nil {
+    return err
+}
 defer rows.Close()
 
 for rows.Next() {
