@@ -45,6 +45,9 @@ cmd/gokart/gokart
 cmd/gokart/go.mod
 cmd/gokart/go.sum
 
+# Override global gitignore for project directories
+!cache/
+
 # Scratch / audits / specs (not for commit)
 .work/
 *_REPORT.md
