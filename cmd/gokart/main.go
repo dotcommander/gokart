@@ -10,9 +10,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var gokartVersion = "dev"
+
 const (
 	gokartAppName = "gokart"
-	gokartVersion = "0.1.0"
 
 	defaultPreset = "cli"
 
@@ -132,8 +133,8 @@ const rootLongDescription = logo + `
   --config-scope   Config scope: auto|local|global
   --module         Custom module path
   --dry-run        Preview scaffold operations without writing files
-  --force          Overwrite existing generated files
-  --skip-existing  Keep existing files and write only missing ones
+  --force          Overwrite ALL existing files (including user edits)
+  --skip-existing  Skip files that already exist; only write new/missing ones
   --no-manifest    Skip writing .gokart-manifest.json
   --verify         Run go mod tidy and go test ./... after generation
   --verify-only    Run verification only against an existing project directory
@@ -195,6 +196,7 @@ const rootHelpTemplate = `{{.Long}}
 
   gokart new myapp
   gokart new cli myapp
+  gokart init myapp              (alias for new)
   gokart new myapp --postgres --ai
   gokart new myapp --redis
   gokart add sqlite ai
@@ -224,6 +226,7 @@ func newGokartApp(version string) *cli.App {
 	app.AddCommand(newNewCommand())
 	app.AddCommand(newAddCommand())
 	app.AddCommand(newVersionCommand(version))
+	app.AddCommand(newConfigCommand())
 	configureRootCommand(app.Root())
 
 	return app
@@ -262,8 +265,8 @@ func configureNewCommandFlags(cmd *cobra.Command) {
 	flags.Bool(newFlagGlobal, false, "Enable global config (flat only, default is local)")
 	flags.String(newFlagConfigScope, configScopeAuto, "Config scope: auto|local|global")
 	flags.Bool(newFlagDryRun, false, "Preview scaffold operations without writing files")
-	flags.Bool(newFlagForce, false, "Overwrite existing generated files")
-	flags.Bool(newFlagSkipExisting, false, "Keep existing files and only generate missing files")
+	flags.Bool(newFlagForce, false, "Overwrite ALL existing files (including user edits)")
+	flags.Bool(newFlagSkipExisting, false, "Skip files that already exist; only write new/missing ones")
 	flags.Bool(newFlagNoManifest, false, "Skip writing .gokart-manifest.json")
 	flags.Bool(newFlagVerify, false, "Run go mod tidy and go test ./... after generation")
 	flags.Bool(newFlagVerifyOnly, false, "Run go mod tidy and go test ./... without scaffolding")

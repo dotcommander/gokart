@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sort"
+	"slices"
 	"strings"
 	"time"
 
@@ -109,7 +109,12 @@ func newAddCommand() *cobra.Command {
   gokart add ai --force
   gokart add ai --json
   gokart add ai --verify`,
-		Args: cobra.MinimumNArgs(1),
+		Args: func(cmd *cobra.Command, args []string) error {
+			if len(args) == 0 {
+				return errors.New("specify at least one integration: sqlite, postgres, ai, redis\n\nExamples:\n  gokart add sqlite\n  gokart add ai\n  gokart add sqlite ai postgres")
+			}
+			return nil
+		},
 		RunE: runAddCommand,
 	}
 
@@ -468,8 +473,8 @@ func updateAddManifest(dir string, manifest *scaffoldManifest, data TemplateData
 	}
 
 	// Sort files for deterministic output
-	sort.Slice(manifest.Files, func(i, j int) bool {
-		return manifest.Files[i].Path < manifest.Files[j].Path
+	slices.SortFunc(manifest.Files, func(a, b scaffoldManifestFile) int {
+		return strings.Compare(a.Path, b.Path)
 	})
 
 	// Write manifest
