@@ -192,7 +192,7 @@ if err := json.Unmarshal([]byte(completion.Choices[0].Message.Content), &result)
 
 ### Streaming Long Responses
 
-For user-facing output, prefer streaming over blocking. It writes tokens as they arrive, which reduces perceived latency significantly for long responses:
+For user-facing output, prefer streaming over blocking. It writes tokens as they arrive, which reduces perceived latency for long responses:
 
 ```go
 stream := client.Chat.Completions.NewStreaming(ctx, openai.ChatCompletionNewParams{
@@ -237,7 +237,9 @@ if len(completion.Choices) == 0 {
 
 ### Reuse the Client
 
-`ai.NewOpenAIClient()` returns an `openai.Client` that is safe to share across requests and goroutines. Create it once — in your app context or command setup — and inject it wherever it is needed. Calling the constructor per request adds unnecessary overhead and bypasses the connection pool built into the underlying HTTP client.
+`ai.NewOpenAIClient()` returns an `openai.Client` that is safe to share across requests and goroutines. Calling the constructor per request adds unnecessary overhead and bypasses the connection pool built into the underlying HTTP client.
+
+> **Tip:** Create the client once — in your app context or command setup — and inject it wherever needed.
 
 ### Model Constants
 

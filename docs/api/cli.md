@@ -2,11 +2,6 @@
 
 API reference for the `gokart/cli` subpackage. Wraps Cobra and Lipgloss for CLI applications with styled output.
 
-## Related Documentation
-
-- [Configuration](/api/gokart#configuration) - Config loading utilities
-- [State](/components/state) - CLI state persistence
-
 ## Application Builder
 
 ### `type App struct`
@@ -477,3 +472,10 @@ Prints a numbered list.
 ```go
 cli.NumberedList("First", "Second", "Third")
 ```
+
+---
+
+## See Also
+
+- [Configuration](/api/gokart#configuration) - Config loading utilities
+- [State](/components/state) - CLI state persistence

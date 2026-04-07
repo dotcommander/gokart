@@ -128,7 +128,7 @@ export CACHE_PASSWORD="secret"
 export CACHE_DB="0"
 ```
 
-When using with [`gokart.LoadConfig`](/components/config/), env vars bind automatically:
+When using with [`gokart.LoadConfig`](/api/gokart), env vars bind automatically:
 
 ```go
 type Config struct {

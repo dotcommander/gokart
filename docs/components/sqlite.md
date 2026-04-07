@@ -111,7 +111,7 @@ PRAGMA temp_store=MEMORY;          -- Temp tables in memory
 | `:memory:` | In-memory database (testing only) |
 | `file:/path/to/db?_txlock=immediate` | Custom DSN options |
 
-**Important:** For in-memory databases, **always** use `sqlite.InMemory()` helper. Direct connection to `:memory:` with multiple connections creates separate databases per connection.
+> **Warning:** For in-memory databases, always use `sqlite.InMemory()`. Direct connection to `:memory:` with multiple connections creates separate databases per connection.
 
 ---
 

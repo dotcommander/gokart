@@ -305,36 +305,6 @@ func handleDashboard(w http.ResponseWriter, r *http.Request) {
 }
 ```
 
-### Static Routes with Handler Adapter
-
-```go
-func setupRoutes(r chi.Router) {
-    // Public pages
-    r.Get("/", web.TemplHandler(views.HomePage()))
-    r.Get("/about", web.TemplHandler(views.AboutPage()))
-    r.Get("/contact", web.TemplHandler(views.ContactPage()))
-
-    // Protected pages
-    r.Group(func(r chi.Router) {
-        r.Use(middleware.RequireAuth)
-        r.Get("/dashboard", web.TemplHandlerFunc(dashboardHandler))
-        r.Get("/settings", web.TemplHandlerFunc(settingsHandler))
-    })
-}
-
-func dashboardHandler(r *http.Request) templ.Component {
-    user := middleware.GetUser(r.Context())
-    data := getDashboardData(user.ID)
-    return views.Dashboard(data)
-}
-
-func settingsHandler(r *http.Request) templ.Component {
-    user := middleware.GetUser(r.Context())
-    settings := getSettings(user.ID)
-    return views.SettingsPage(settings)
-}
-```
-
 ### Handler with Error Handling
 
 ```go

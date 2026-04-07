@@ -32,7 +32,7 @@ cfg, err := gokart.LoadConfig[Config]("config.yaml", "config.json")
 
 Loads configuration with default values pre-populated.
 
-The defaults parameter provides fallback values that will be overridden by values from config files or environment variables.
+Config files and environment variables override the defaults you pass.
 
 **Example:**
 ```go

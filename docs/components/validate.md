@@ -312,18 +312,6 @@ func handleCreateUser(w http.ResponseWriter, r *http.Request) {
 }
 ```
 
-**Response example:**
-
-```json
-{
-  "error": "validation failed",
-  "fields": {
-    "email": "must be a valid email",
-    "age": "must be greater than or equal to 0"
-  }
-}
-```
-
 ---
 
 ## Best Practices
