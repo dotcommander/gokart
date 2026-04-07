@@ -1,8 +1,7 @@
 # gokart — Go toolkit multi-module repo
 
-# All submodules (order: leaves first, then modules with cross-deps)
-# Submodules with tracked content (cache and cmd/gokart excluded — not published)
-modules := "ai cli fs kv logger migrate postgres sqlite web"
+# All published submodules (cmd/gokart excluded — build tool, not a library)
+modules := "ai cache cli fs logger migrate postgres sqlite web"
 
 # Build all modules
 build:
