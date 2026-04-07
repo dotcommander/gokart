@@ -84,11 +84,14 @@ func runNewVerifyOnlyFlow(req newRequest, jsonOutput bool, output *newCommandOut
 
 func runNewScaffoldFlow(req newRequest, jsonOutput bool, output *newCommandOutput) (*ApplyResult, error) {
 	if req.Mode == modeFlat && (req.UseSQLite || req.UsePostgres || req.UseAI || req.UseRedis) {
-		flatWarning := "integrations require structured mode — remove --flat to use them, or use --flat for a minimal single-file project"
-		output.Warnings = append(output.Warnings, flatWarning)
-		if !jsonOutput {
-			cli.Warning("%s", flatWarning)
-		}
+		return nil, failNewCommand(
+			errors.New("integrations (--sqlite, --postgres, --ai, --redis) require structured mode — remove --flat or omit the integration flags"),
+			jsonOutput, output, commandFailureInfo{
+				Code:     errorCodeInvalidArguments,
+				Outcome:  commandOutcomeFailure,
+				ExitCode: exitCodeInvalidArguments,
+			},
+		)
 	}
 
 	printScaffoldStart(req, jsonOutput)

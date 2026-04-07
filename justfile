@@ -7,6 +7,10 @@ modules := "ai cache cli fs logger migrate postgres sqlite web"
 build:
     go build ./...
 
+# Install gokart CLI with version from git tag
+install:
+    go install -ldflags "-X main.gokartVersion=$(git describe --tags --match 'v[0-9]*' --always --dirty)" ./cmd/gokart
+
 # Test all modules
 test:
     go test ./...
