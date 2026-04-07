@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
@@ -17,6 +18,16 @@ func runNewRequest(req newRequest, jsonOutput bool, output *newCommandOutput) er
 		return err
 	}
 	output.Result = result
+
+	if !req.DryRun {
+		if err := resolveNewDependencies(req, !jsonOutput); err != nil {
+			if !jsonOutput {
+				cli.Warning("Dependency resolution failed: %v", err)
+				cli.Dim("  Run manually: cd %s && go get ./... && go mod tidy", shellQuote(req.TargetDir))
+			}
+			output.Warnings = append(output.Warnings, fmt.Sprintf("dependency resolution failed: %v", err))
+		}
+	}
 
 	if req.Verify { //nolint:nestif // verify-on-scaffold flow, nesting is inherent
 		output.VerifyRan = true
@@ -73,7 +84,7 @@ func runNewVerifyOnlyFlow(req newRequest, jsonOutput bool, output *newCommandOut
 
 func runNewScaffoldFlow(req newRequest, jsonOutput bool, output *newCommandOutput) (*ApplyResult, error) {
 	if req.Mode == modeFlat && (req.UseSQLite || req.UsePostgres || req.UseAI || req.UseRedis) {
-		flatWarning := "--sqlite, --postgres, --ai, and --redis flags are ignored in flat mode"
+		flatWarning := "integrations require structured mode — remove --flat to use them, or use --flat for a minimal single-file project"
 		output.Warnings = append(output.Warnings, flatWarning)
 		if !jsonOutput {
 			cli.Warning("%s", flatWarning)
@@ -156,11 +167,40 @@ func scaffoldProject(req newRequest, opts ApplyOptions) (*ApplyResult, error) {
 }
 
 func setNewNextStep(req newRequest, jsonOutput bool, output *newCommandOutput) {
-	nextHint := nextStep{Dir: req.TargetDir, Command: "go", Args: []string{"mod", "tidy"}}
+	nextHint := nextStep{Dir: req.TargetDir, Command: "go", Args: []string{"build", "./..."}}
 	output.Next = &nextHint
-	nextCommand := fmt.Sprintf("cd %s && go mod tidy", shellQuote(req.TargetDir))
+	nextCommand := fmt.Sprintf("cd %s && go build ./...", shellQuote(req.TargetDir))
 	output.NextCommand = nextCommand
 	if !jsonOutput {
 		cli.Dim("  %s", nextCommand)
 	}
+}
+
+func resolveNewDependencies(req newRequest, verbose bool) error {
+	packages := []string{"github.com/dotcommander/gokart/cli@" + defaultGokartCLIVersion}
+	if req.UseSQLite {
+		packages = append(packages, "github.com/dotcommander/gokart/sqlite@"+defaultGokartSQLiteVersion)
+	}
+	if req.UsePostgres {
+		packages = append(packages, "github.com/dotcommander/gokart/postgres@"+defaultGokartPostgresVersion)
+	}
+	if req.UseAI {
+		packages = append(packages, "github.com/dotcommander/gokart/ai@"+defaultGokartAIVersion)
+	}
+	if req.UseRedis {
+		packages = append(packages, "github.com/dotcommander/gokart/cache@"+defaultGokartCacheVersion)
+	}
+
+	ctx := context.Background()
+
+	goGetArgs := append([]string{"get"}, packages...)
+	if err := runCommand(ctx, req.TargetDir, verbose, "go", goGetArgs...); err != nil {
+		return fmt.Errorf("go get: %w", err)
+	}
+
+	if err := runCommand(ctx, req.TargetDir, verbose, "go", "mod", "tidy"); err != nil {
+		return fmt.Errorf("go mod tidy: %w", err)
+	}
+
+	return nil
 }

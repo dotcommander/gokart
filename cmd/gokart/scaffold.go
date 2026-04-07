@@ -10,11 +10,11 @@ import (
 var templates embed.FS
 
 const (
-	defaultGokartCLIVersion      = "v0.0.0-20260301050059-af15bf731eeb"
-	defaultGokartSQLiteVersion   = "v0.0.0-20260301050059-af15bf731eeb"
-	defaultGokartPostgresVersion = "v0.0.0-20260301050059-af15bf731eeb"
-	defaultGokartAIVersion       = "v0.0.0-20260301050059-af15bf731eeb"
-	defaultGokartCacheVersion    = "v0.0.0-20260301050059-af15bf731eeb"
+	defaultGokartCLIVersion      = "latest"
+	defaultGokartSQLiteVersion   = "latest"
+	defaultGokartPostgresVersion = "latest"
+	defaultGokartAIVersion       = "latest"
+	defaultGokartCacheVersion    = "latest"
 
 	defaultCobraVersion  = "v1.10.2"
 	defaultViperVersion  = "v1.21.0"

@@ -198,6 +198,30 @@ func TestNewGokartAppStartupContract(t *testing.T) {
 		t.Fatalf("new command Use = %q", newCmd.Use)
 	}
 
+	versionCmd, _, vErr := root.Find([]string{"version"})
+	if vErr != nil {
+		t.Fatalf("find version command: %v", vErr)
+	}
+	if versionCmd == nil || versionCmd.Name() != "version" {
+		t.Fatal("expected version command")
+	}
+
+	createCmd, _, cErr := root.Find([]string{"create"})
+	if cErr != nil {
+		t.Fatalf("find create alias: %v", cErr)
+	}
+	if createCmd == nil || createCmd.Name() != "new" {
+		t.Fatal("expected 'create' to resolve to 'new' command")
+	}
+
+	initCmd, _, iErr := root.Find([]string{"init"})
+	if iErr != nil {
+		t.Fatalf("find init alias: %v", iErr)
+	}
+	if initCmd == nil || initCmd.Name() != "new" {
+		t.Fatal("expected 'init' to resolve to 'new' command")
+	}
+
 	if err := newCmd.Args(newCmd, []string{"myapp"}); err != nil {
 		t.Fatalf("new command rejected valid args: %v", err)
 	}
@@ -690,6 +714,39 @@ func captureStdout(t *testing.T, fn func()) string {
 	_ = r.Close()
 
 	return string(data)
+}
+
+func TestValidateTargetDirRejectsNonEmptyWithFailPolicy(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "existing.txt"), []byte("data"), 0644); err != nil {
+		t.Fatalf("create test file: %v", err)
+	}
+
+	err := validateTargetDir(dir, ExistingFilePolicyFail)
+	if err == nil {
+		t.Fatal("expected error for non-empty directory with fail policy")
+	}
+	if !strings.Contains(err.Error(), "already exists") {
+		t.Fatalf("unexpected error message: %v", err)
+	}
+
+	// --force should pass
+	if err := validateTargetDir(dir, ExistingFilePolicyOverwrite); err != nil {
+		t.Fatalf("expected overwrite policy to pass: %v", err)
+	}
+
+	// Empty dir should pass even with fail policy
+	emptyDir := t.TempDir()
+	if err := validateTargetDir(emptyDir, ExistingFilePolicyFail); err != nil {
+		t.Fatalf("expected empty dir to pass: %v", err)
+	}
+
+	// Non-existent dir should pass
+	if err := validateTargetDir(filepath.Join(t.TempDir(), "missing"), ExistingFilePolicyFail); err != nil {
+		t.Fatalf("expected missing dir to pass: %v", err)
+	}
 }
 
 func containsString(values []string, want string) bool {
