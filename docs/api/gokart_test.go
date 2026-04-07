@@ -32,35 +32,6 @@ func TestGokartAPI_HasAllPublicFunctions(t *testing.T) {
 	}
 }
 
-// TestGokartAPI_DeprecatedSection verifies that deprecated functions
-// are documented in a separate section
-func TestGokartAPI_DeprecatedSection(t *testing.T) {
-	content, err := os.ReadFile("gokart.md")
-	if err != nil {
-		t.Fatalf("failed to read gokart.md: %v", err)
-	}
-
-	doc := string(content)
-
-	// Should have a deprecated section
-	if !strings.Contains(doc, "## Deprecated Functions") {
-		t.Error("documentation missing deprecated section")
-	}
-
-	// Check that deprecated logger functions are documented
-	deprecatedFunctions := []string{
-		"NewLogger",
-		"NewFileLogger",
-		"LogPath",
-	}
-
-	for _, fn := range deprecatedFunctions {
-		if !strings.Contains(doc, fn) {
-			t.Errorf("deprecated section missing function: %s", fn)
-		}
-	}
-}
-
 // TestGokartAPI_SubpackagesSection verifies that the doc has a
 // subpackages reference section listing all moved components
 func TestGokartAPI_SubpackagesSection(t *testing.T) {

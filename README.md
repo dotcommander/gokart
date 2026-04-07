@@ -89,8 +89,7 @@ No wrapper types. No `.Unwrap()`. If GoKart's defaults don't fit, reach past the
 | `gokart/postgres` | `*pgxpool.Pool`, transaction helper | pgx/v5 |
 | `gokart/sqlite` | `*sql.DB`, WAL mode, transaction helper | modernc.org/sqlite |
 | `gokart/migrate` | schema migrations, embedded FS support | goose/v3 |
-| `gokart/cache` | `*redis.Client`, Remember pattern, distributed locks | go-redis/v9 |
-| `gokart/kv` | `*KV` expanded Redis (hash, sorted set, set, list, counters) | go-redis/v9 |
+| `gokart/cache` | `*redis.Client`, Remember pattern, distributed locks, data structures (hash, sorted set, set, list) | go-redis/v9 |
 | `gokart/fs` | atomic writes, config dir, read-or-create | stdlib only |
 | `gokart/ai` | `*openai.Client` factory | openai-go v3 |
 | `gokart/logger` | JSON/text slog, file logger for TUI tools | log/slog |

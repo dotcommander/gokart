@@ -129,15 +129,3 @@ The following components have moved to dedicated subpackages. See their componen
 | Logger | `github.com/dotcommander/gokart/logger` | [logger](/components/logger) |
 | CLI | `github.com/dotcommander/gokart/cli` | [cli](/api/cli) |
 
----
-
-## Deprecated Functions
-
-The following functions exist in the root package as aliases for backward compatibility. Use the subpackage imports directly for new code.
-
-### Logger (use `github.com/dotcommander/gokart/logger`)
-
-- `type LogConfig` → `logger.Config`
-- `func NewLogger(cfg LogConfig) *slog.Logger` → `logger.New(cfg)`
-- `func NewFileLogger(appName string) (*slog.Logger, func(), error)` → `logger.NewFile(appName)`
-- `func LogPath(appName string) string` → `logger.Path(appName)`
