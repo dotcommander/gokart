@@ -9,7 +9,6 @@
 //   - Config: viper wrapper for config files + env vars
 //   - State: JSON state persistence for CLI tools
 //   - Server: HTTP server with graceful shutdown
-//   - Logger: slog aliases (use gokart/logger directly)
 //
 // Submodules:
 //   - gokart/logger: slog wrapper with JSON/text formatting
