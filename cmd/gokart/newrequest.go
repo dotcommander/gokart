@@ -127,7 +127,7 @@ func buildNewRequest(cmd *cobra.Command, args []string) (newRequest, error) {
 		return req, fmt.Errorf("invalid module path %q: %w", module, err)
 	}
 
-	if err := validateTargetDir(targetDir); err != nil {
+	if err := validateTargetDir(targetDir, existingPolicy); err != nil {
 		return req, err
 	}
 
@@ -240,7 +240,7 @@ func resolveExistingFilePolicy(force, skipExisting bool) (ExistingFilePolicy, er
 	return ExistingFilePolicyFail, nil
 }
 
-func validateTargetDir(targetDir string) error {
+func validateTargetDir(targetDir string, policy ExistingFilePolicy) error {
 	info, err := os.Stat(targetDir)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -251,6 +251,16 @@ func validateTargetDir(targetDir string) error {
 
 	if !info.IsDir() {
 		return fmt.Errorf("target path %q exists and is not a directory", targetDir)
+	}
+
+	if policy == ExistingFilePolicyFail {
+		entries, readErr := os.ReadDir(targetDir)
+		if readErr != nil {
+			return fmt.Errorf("read target directory: %w", readErr)
+		}
+		if len(entries) > 0 {
+			return fmt.Errorf("directory %q already exists and is not empty (use --force to overwrite)", targetDir)
+		}
 	}
 
 	return nil

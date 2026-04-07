@@ -199,6 +199,8 @@ const rootHelpTemplate = `{{.Long}}
   gokart new myapp --redis
   gokart add sqlite ai
 
+  Defaults: structured = global config · flat = local config
+
   gokart new --help    Full options
   gokart add --help    Add integrations
 `
@@ -221,6 +223,7 @@ func newGokartApp(version string) *cli.App {
 
 	app.AddCommand(newNewCommand())
 	app.AddCommand(newAddCommand())
+	app.AddCommand(newVersionCommand(version))
 	configureRootCommand(app.Root())
 
 	return app
@@ -229,6 +232,7 @@ func newGokartApp(version string) *cli.App {
 func newNewCommand() *cobra.Command {
 	newCmd := &cobra.Command{
 		Use:     "new <project-name> | new cli <project-name>",
+		Aliases: []string{"create", "init"},
 		Short:   "Create a new GoKart project",
 		Long:    newCommandLong,
 		Example: newCommandExample,
@@ -265,6 +269,17 @@ func configureNewCommandFlags(cmd *cobra.Command) {
 	flags.Bool(newFlagVerifyOnly, false, "Run go mod tidy and go test ./... without scaffolding")
 	flags.Duration(newFlagVerifyTimeout, defaultVerifyTimeout, "Maximum time for --verify commands (e.g. 2m, 30s; 0 disables timeout)")
 	flags.Bool(newFlagJSON, false, "Print machine-readable JSON result")
+}
+
+func newVersionCommand(version string) *cobra.Command {
+	return &cobra.Command{
+		Use:   "version",
+		Short: "Print the version number",
+		Args:  cobra.NoArgs,
+		Run: func(cmd *cobra.Command, args []string) {
+			fmt.Printf("%s version %s\n", gokartAppName, version)
+		},
+	}
 }
 
 func configureRootCommand(root *cobra.Command) {
