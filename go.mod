@@ -3,7 +3,7 @@ module github.com/dotcommander/gokart
 go 1.26.0
 
 require (
-	github.com/dotcommander/gokart/logger v0.0.0
+	github.com/dotcommander/gokart/logger v0.7.0
 	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.11.1
 )
