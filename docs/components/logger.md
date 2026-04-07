@@ -81,7 +81,7 @@ log := logger.New(logger.Config{
 
 ### `NewDefault() *slog.Logger`
 
-Creates a logger with zero-config defaults: `info` level, JSON format, writing to `os.Stderr`. Use this when you want structured logging without any setup.
+Creates a logger with zero-config defaults (JSON format, `os.Stderr`, `Info` level). Use this when you want structured logging without any setup.
 
 ```go
 log := logger.NewDefault()
@@ -169,7 +169,7 @@ tail -f /tmp/mytui.log
 
 ### Pass the logger as a dependency
 
-Do not store the logger in a package-level variable. Pass it explicitly through constructors or a dependencies struct. This makes components testable and keeps coupling explicit.
+Don't store the logger in a package-level variable. Pass it explicitly through constructors or a dependencies struct. This makes components testable and keeps coupling explicit.
 
 ```go
 // Right

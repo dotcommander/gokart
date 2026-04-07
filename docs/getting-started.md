@@ -74,6 +74,9 @@ myapp/
 ```bash
 go mod tidy
 go build -o myapp ./cmd
+
+# Release build with version from git tag
+go build -ldflags "-X main.version=$(git describe --tags)" -o myapp ./cmd
 ```
 
 Run with no arguments to see available commands:
@@ -254,7 +257,7 @@ Run again:
 ✓ counter "hits" = 2
 ```
 
-The count persists in `~/Library/Caches/myapp/data.db` (macOS) or `~/.cache/myapp/data.db` (Linux). No configuration needed — the path is set automatically in `internal/app/context.go`.
+The count persists in `~/Library/Application Support/myapp/data.db` (macOS) or `~/.config/myapp/data.db` (Linux) — the exact path is returned by `os.UserConfigDir()` and varies by platform. No configuration needed — the path is set automatically in `internal/app/context.go`.
 
 ---
 

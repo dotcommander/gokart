@@ -275,7 +275,7 @@ State files use standard Unix permissions:
 | **Directory** | `0755` | Owner: rwx, Group/Others: r-x |
 | **File** | `0644` | Owner: rw-, Group/Others: r-- |
 
-Files are human-readable (not encrypted) - do not store secrets or sensitive credentials.
+> **Warning:** State files are human-readable and not encrypted. Don't store secrets, tokens, or credentials in state.
 
 ---
 

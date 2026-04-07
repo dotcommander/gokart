@@ -302,7 +302,7 @@ DROP TABLE users;
 
 For complex logic, use Go migrations:
 
-```go
+```sql
 -- +goose Up
 -- +goose StatementBegin
 SELECT 'up SQL here'

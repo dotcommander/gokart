@@ -330,7 +330,9 @@ router.Get("/items", func(w http.ResponseWriter, r *http.Request) {
 
 ## CSRF protection
 
-Uses Go 1.23's `http.NewCrossOriginProtection`, which inspects `Sec-Fetch-Site` and `Origin` headers. Non-browser clients that omit these headers pass through unchanged.
+Uses Go 1.23's `http.NewCrossOriginProtection`, which inspects `Sec-Fetch-Site` and `Origin` headers.
+
+> **Note:** Non-browser clients that omit CSRF headers pass through unchanged — API clients won't be blocked.
 
 ```go
 func CSRFProtect() func(http.Handler) http.Handler

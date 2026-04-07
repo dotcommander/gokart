@@ -125,7 +125,7 @@ func Error(w http.ResponseWriter, status int, message string)
 
 ```go
 func handleDelete(w http.ResponseWriter, r *http.Request) {
-    id := r.PathValue("id")
+    id := chi.URLParam(r, "id")
 
     if id == "" {
         web.Error(w, http.StatusBadRequest, "Missing user ID")
