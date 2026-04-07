@@ -76,8 +76,7 @@ Root package provides logger, config, and state persistence.
 | `gokart/sqlite` | SQLite (zero CGO), transactions | `modernc.org/sqlite` |
 | `gokart/migrate` | Database migrations | `pressly/goose/v3` |
 | `gokart/ai` | OpenAI client | `openai/openai-go/v3` |
-| `gokart/cache` | Redis cache with Remember pattern | `redis/go-redis/v9` |
-| `gokart/kv` | Expanded Redis operations (hash, sorted set, set, list, counters) — accepts `*redis.Client` from cache | `redis/go-redis/v9` |
+| `gokart/cache` | Redis cache, Remember pattern, and data structures (hash, sorted set, set, list, counters) | `redis/go-redis/v9` |
 | `gokart/fs` | Atomic file writes, config dir resolution, read-or-create | stdlib only |
 | `gokart/cli` | CLI applications with styled output | `cobra`, `lipgloss` |
 | `gokart/logger` | Structured logging | `log/slog` |
@@ -124,7 +123,7 @@ Scaffolded global CLIs use `~/.config/<app>/` on all platforms for consistency.
 
 File logger keeps stdout clean for UI:
 ```go
-logger, cleanup, _ := gokart.NewFileLogger("myapp")
+log, cleanup, _ := logger.NewFile("myapp")
 defer cleanup()
 // Writes to /tmp/myapp.log
 ```
@@ -160,9 +159,9 @@ r.Use(web.BearerAuth(func(ctx context.Context, token string) (context.Context, e
 r.Use(web.APIKeyAuth(func(ctx context.Context, key string) (context.Context, error) { ... }))
 ```
 
-Expanded Redis data structures via kv (from cache.Client):
+Redis data structures (hash, sorted set, set, list) on the cache client:
 ```go
-kv := kv.New(cacheClient.Client())
-kv.ZAdd(ctx, "leaderboard", redis.Z{Score: 100, Member: "player1"})
-members, _ := kv.ZRange(ctx, "leaderboard", 0, -1)
+c.ZAdd(ctx, "leaderboard", redis.Z{Score: 100, Member: "player1"})
+members, _ := c.ZRange(ctx, "leaderboard", 0, -1)
+c.HSet(ctx, "user:1", "name", "Alice", "score", "42")
 ```

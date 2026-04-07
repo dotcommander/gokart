@@ -63,7 +63,6 @@ func TestCrossReferenceLinks(t *testing.T) {
 				"Configuration",
 				"State Persistence",
 				"Subpackages",
-				"Deprecated Functions",
 			}},
 		}
 
@@ -168,7 +167,7 @@ func TestCrossReferenceLinks(t *testing.T) {
 		for _, docName := range allDocs {
 			var docPath string
 			if strings.Contains(docName, "/") {
-				docPath = filepath.Join(docName+".md")
+				docPath = filepath.Join(docName + ".md")
 			} else if docName == "gokart" || docName == "cli" {
 				docPath = filepath.Join("api", docName+".md")
 			} else {

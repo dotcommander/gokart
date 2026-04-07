@@ -1,6 +1,6 @@
 # Cache
 
-Production-ready Redis client with convenient key-value operations and Remember pattern for automatic cache-population. Built on [go-redis/v9](https://github.com/redis/go-redis).
+Production-ready Redis client with string operations, the Remember pattern for automatic cache-population, and data structures (hash, sorted set, set, list). Built on [go-redis/v9](https://github.com/redis/go-redis).
 
 ## Installation
 
@@ -357,15 +357,108 @@ if acquired {
 
 ### Accessing Underlying Client
 
+For operations not covered by `Cache` methods, access the underlying `*redis.Client`:
+
 ```go
 client := c.Client()
 
-// Use full go-redis API
-result := client.ZAdd(ctx, "leaderboard", redis.Z{
-    Score:  100,
-    Member: "player1",
-})
+// Pipeline multiple commands
+pipe := client.Pipeline()
+pipe.Set(ctx, "k1", "v1", time.Hour)
+pipe.Set(ctx, "k2", "v2", time.Hour)
+_, err := pipe.Exec(ctx)
 ```
+
+---
+
+## Data Structures
+
+Hash, sorted set, set, and list operations are available directly on the cache client. All keys respect `KeyPrefix`.
+
+### Hashes
+
+```go
+// Store multiple fields
+c.HSet(ctx, "user:1", "name", "Alice", "email", "alice@example.com")
+
+// Get one field
+name, err := c.HGet(ctx, "user:1", "name")
+
+// Get all fields
+fields, err := c.HGetAll(ctx, "user:1")
+// fields == map[string]string{"name": "Alice", "email": "alice@example.com"}
+
+// Delete a field
+c.HDel(ctx, "user:1", "email")
+
+// Atomic increment on a hash field
+views, err := c.HIncrBy(ctx, "stats:2024", "pageviews", 1)
+```
+
+### Sorted Sets
+
+```go
+// Add members with scores
+c.ZAdd(ctx, "leaderboard", redis.Z{Score: 100, Member: "alice"})
+c.ZAdd(ctx, "leaderboard", redis.Z{Score: 85, Member: "bob"})
+
+// Range by rank (lowest score first)
+members, err := c.ZRange(ctx, "leaderboard", 0, -1)
+
+// Range by score
+members, err := c.ZRangeByScore(ctx, "leaderboard", &redis.ZRangeBy{
+    Min: "80", Max: "+inf",
+})
+
+// Score for a member
+score, err := c.ZScore(ctx, "leaderboard", "alice")
+
+// Remove a member
+c.ZRem(ctx, "leaderboard", "bob")
+
+// Count members
+count, err := c.ZCard(ctx, "leaderboard")
+```
+
+### Sets
+
+```go
+// Add members
+c.SAdd(ctx, "tags:post:1", "go", "redis", "caching")
+
+// Check membership
+isMember, err := c.SIsMember(ctx, "tags:post:1", "go")
+
+// All members
+tags, err := c.SMembers(ctx, "tags:post:1")
+
+// Remove a member
+c.SRem(ctx, "tags:post:1", "caching")
+```
+
+### Lists
+
+```go
+// Push to front / back
+c.LPush(ctx, "queue:jobs", "job-1")
+c.RPush(ctx, "queue:jobs", "job-2")
+
+// Read without removing
+items, err := c.LRange(ctx, "queue:jobs", 0, -1)
+
+// Pop from front / back
+job, err := c.LPop(ctx, "queue:jobs")
+job, err := c.RPop(ctx, "queue:jobs")
+```
+
+### Decrement Counters
+
+```go
+count, err := c.Decr(ctx, "credits:user:1")
+count, err := c.DecrBy(ctx, "credits:user:1", 5)
+```
+
+> **Note:** Increment operations (`Incr`, `IncrBy`) are in [Advanced Operations](#counters).
 
 ---
 
@@ -515,11 +608,53 @@ json.Unmarshal([]byte(data), &user)  // Unnecessary work
 | `TTL` | `(time.Duration, error)` | Get remaining TTL |
 | `Incr` | `(int64, error)` | Increment counter by 1 |
 | `IncrBy` | `(int64, error)` | Increment counter by amount |
+| `Decr` | `(int64, error)` | Decrement counter by 1 |
+| `DecrBy` | `(int64, error)` | Decrement counter by amount |
 | `SetNX` | `(bool, error)` | Set if not exists (lock) |
 | `Remember` | `(string, error)` | Get or compute string value |
 | `RememberJSON` | `error` | Get or compute JSON value |
 | `Client` | `*redis.Client` | Access underlying client |
 | `Close` | `error` | Close connection |
+
+**Hashes:**
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `HSet` | `error` | Set one or more hash fields |
+| `HGet` | `(string, error)` | Get a hash field |
+| `HGetAll` | `(map[string]string, error)` | Get all fields and values |
+| `HDel` | `error` | Delete one or more hash fields |
+| `HIncrBy` | `(int64, error)` | Increment a hash field by integer |
+
+**Sorted Sets:**
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `ZAdd` | `error` | Add members with scores |
+| `ZRange` | `([]string, error)` | Range by rank (asc) |
+| `ZRangeByScore` | `([]string, error)` | Range by score |
+| `ZScore` | `(float64, error)` | Get member score |
+| `ZRem` | `error` | Remove members |
+| `ZCard` | `(int64, error)` | Count members |
+
+**Sets:**
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `SAdd` | `error` | Add members |
+| `SRem` | `error` | Remove members |
+| `SMembers` | `([]string, error)` | Get all members |
+| `SIsMember` | `(bool, error)` | Check membership |
+
+**Lists:**
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `LPush` | `error` | Push to front |
+| `RPush` | `error` | Push to back |
+| `LRange` | `([]string, error)` | Read range without removing |
+| `LPop` | `(string, error)` | Pop from front |
+| `RPop` | `(string, error)` | Pop from back |
 
 ### Utility Functions
 
