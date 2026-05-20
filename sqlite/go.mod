@@ -2,6 +2,8 @@ module github.com/dotcommander/gokart/sqlite
 
 go 1.26.0
 
+toolchain go1.26.3
+
 require modernc.org/sqlite v1.43.0
 
 require (
