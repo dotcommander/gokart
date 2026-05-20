@@ -53,7 +53,7 @@ cfg, err := gokart.LoadConfigWithDefaults(defaults, "config.yaml")
 
 Saves typed state to the platform config directory under `{appName}/{filename}`. See `StatePath` for the platform-specific base path.
 
-The file is written as indented JSON for human readability. Directory is created with 0755, files with 0644 permissions.
+The file is written as indented JSON for human readability. Directory is created with 0755, files with 0600 permissions.
 
 **Example:**
 ```go
