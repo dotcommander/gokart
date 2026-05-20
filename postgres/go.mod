@@ -2,6 +2,8 @@ module github.com/dotcommander/gokart/postgres
 
 go 1.26.0
 
+toolchain go1.26.3
+
 require github.com/jackc/pgx/v5 v5.8.0
 
 require (

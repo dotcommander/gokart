@@ -2,6 +2,8 @@ module github.com/dotcommander/gokart/ai
 
 go 1.26.0
 
+toolchain go1.26.3
+
 require github.com/openai/openai-go/v3 v3.16.0
 
 require (

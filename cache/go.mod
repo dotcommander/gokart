@@ -2,6 +2,8 @@ module github.com/dotcommander/gokart/cache
 
 go 1.26.0
 
+toolchain go1.26.3
+
 require github.com/redis/go-redis/v9 v9.17.2
 
 require (

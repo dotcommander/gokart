@@ -2,6 +2,8 @@ module github.com/dotcommander/gokart/cli
 
 go 1.26.0
 
+toolchain go1.26.3
+
 require (
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/spf13/cobra v1.10.2
