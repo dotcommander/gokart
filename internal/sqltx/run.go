@@ -1,6 +1,9 @@
 package sqltx
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
 
 // Run executes fn within a transaction lifecycle supplied by the caller.
 // It preserves rollback-on-error/panic and commit-on-success semantics.
@@ -19,7 +22,7 @@ func Run[T any](begin func() (T, error), rollback func(T) error, commit func(T) 
 
 	if err := fn(tx); err != nil {
 		if rbErr := rollback(tx); rbErr != nil {
-			return fmt.Errorf("rollback failed: %v (original error: %w)", rbErr, err)
+			return errors.Join(fmt.Errorf("rollback failed: %w", rbErr), err)
 		}
 		return err
 	}
