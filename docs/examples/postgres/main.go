@@ -14,12 +14,13 @@
 //     export DATABASE_URL="postgres://user:password@localhost:5432/mydb"
 //
 // To create a test table:
-//   CREATE TABLE users (
-//       id SERIAL PRIMARY KEY,
-//       name TEXT NOT NULL,
-//       email TEXT NOT NULL UNIQUE,
-//       created_at TIMESTAMP DEFAULT NOW()
-//   );
+//
+//	CREATE TABLE users (
+//	    id SERIAL PRIMARY KEY,
+//	    name TEXT NOT NULL,
+//	    email TEXT NOT NULL UNIQUE,
+//	    created_at TIMESTAMP DEFAULT NOW()
+//	);
 package main
 
 import (
@@ -122,8 +123,8 @@ func main() {
 	// Useful for high-traffic scenarios
 	customPool, err := postgres.OpenWithConfig(ctx, postgres.Config{
 		URL:               url,
-		MaxConns:          50,  // Increase max connections
-		MinConns:          10,  // Keep more warm connections
+		MaxConns:          50, // Increase max connections
+		MinConns:          10, // Keep more warm connections
 		MaxConnLifetime:   2 * time.Hour,
 		MaxConnIdleTime:   15 * time.Minute,
 		HealthCheckPeriod: 30 * time.Second,

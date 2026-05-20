@@ -10,9 +10,10 @@
 //
 // Run with: go run main.go
 // Then test with:
-//   curl http://localhost:8080/health
-//   curl http://localhost:8080/api/users
-//   curl http://localhost:8080/api/users/123
+//
+//	curl http://localhost:8080/health
+//	curl http://localhost:8080/api/users
+//	curl http://localhost:8080/api/users/123
 package main
 
 import (
