@@ -82,7 +82,7 @@ func SaveState[T any](appName, filename string, data T) error
 **Behavior:**
 
 - Creates directory with `0755` permissions if needed
-- Writes file with `0644` permissions
+- Writes file with `0600` permissions
 - Formats JSON with 2-space indentation for human readability
 - Overwrites existing file
 
@@ -273,7 +273,7 @@ State files use standard Unix permissions:
 | Resource | Permissions | Meaning |
 |----------|-------------|---------|
 | **Directory** | `0755` | Owner: rwx, Group/Others: r-x |
-| **File** | `0644` | Owner: rw-, Group/Others: r-- |
+| **File** | `0600` | Owner: rw-, Group/Others: --- |
 
 > **Warning:** State files are human-readable and not encrypted. Don't store secrets, tokens, or credentials in state.
 

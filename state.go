@@ -11,7 +11,7 @@ import (
 // SaveState saves typed state to ~/.config/{appName}/{filename}.
 //
 // The file is written as indented JSON for human readability.
-// Directory is created with 0755, files with 0644 permissions.
+// Directory is created with 0755, files with 0600 permissions.
 //
 // Example:
 //
@@ -39,7 +39,7 @@ func SaveState[T any](appName, filename string, data T) error {
 	}
 
 	path := filepath.Join(dir, filename)
-	if err := os.WriteFile(path, content, 0644); err != nil {
+	if err := os.WriteFile(path, content, 0600); err != nil {
 		return fmt.Errorf("write state file: %w", err)
 	}
 
