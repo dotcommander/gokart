@@ -189,9 +189,9 @@ func TestAssetsHandler_CacheHeaders(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name    string
-		maxAge  int
-		wantCC  string
+		name   string
+		maxAge int
+		wantCC string
 	}{
 		{
 			name:   "default max-age",

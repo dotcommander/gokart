@@ -41,9 +41,9 @@ type Config struct {
 	} `mapstructure:"database"`
 
 	Features struct {
-		EnableCache bool   `mapstructure:"enable_cache"`
-		CacheTTL    int    `mapstructure:"cache_ttl"`
-		DebugMode   bool   `mapstructure:"debug_mode"`
+		EnableCache bool `mapstructure:"enable_cache"`
+		CacheTTL    int  `mapstructure:"cache_ttl"`
+		DebugMode   bool `mapstructure:"debug_mode"`
 	} `mapstructure:"features"`
 }
 
