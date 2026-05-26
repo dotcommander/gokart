@@ -1,6 +1,8 @@
 package web_test
 
 import (
+	"errors"
+	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -70,6 +72,28 @@ func TestBindAndValidate(t *testing.T) {
 	t.Parallel()
 	v := web.NewStandardValidator()
 
+	// Decode errors: both cases must return (nil, non-nil error).
+	for _, tc := range []struct {
+		name string
+		body string
+	}{
+		{"malformed JSON", "{bad"},
+		{"empty body", ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			r := httptest.NewRequest("POST", "/", strings.NewReader(tc.body))
+			var u bindTestUser
+			fields, err := web.BindAndValidate(r, v, &u)
+			if err == nil {
+				t.Fatal("expected decode error")
+			}
+			if fields != nil {
+				t.Fatal("expected nil fields on decode error")
+			}
+		})
+	}
+
 	t.Run("valid JSON and valid struct", func(t *testing.T) {
 		t.Parallel()
 		body := `{"name":"Alice","email":"alice@example.com","age":25}`
@@ -87,19 +111,6 @@ func TestBindAndValidate(t *testing.T) {
 		}
 	})
 
-	t.Run("malformed JSON", func(t *testing.T) {
-		t.Parallel()
-		r := httptest.NewRequest("POST", "/", strings.NewReader("{bad"))
-		var u bindTestUser
-		fields, err := web.BindAndValidate(r, v, &u)
-		if err == nil {
-			t.Fatal("expected decode error")
-		}
-		if fields != nil {
-			t.Fatal("expected nil fields on decode error")
-		}
-	})
-
 	t.Run("validation failure multiple fields", func(t *testing.T) {
 		t.Parallel()
 		body := `{"name":"","email":"not-an-email","age":-5}`
@@ -112,24 +123,10 @@ func TestBindAndValidate(t *testing.T) {
 		if fields == nil {
 			t.Fatal("expected field errors")
 		}
-		if _, ok := fields["name"]; !ok {
-			t.Error("expected error for field 'name'")
-		}
-		if _, ok := fields["email"]; !ok {
-			t.Error("expected error for field 'email'")
-		}
-		if _, ok := fields["age"]; !ok {
-			t.Error("expected error for field 'age'")
-		}
-	})
-
-	t.Run("empty body", func(t *testing.T) {
-		t.Parallel()
-		r := httptest.NewRequest("POST", "/", strings.NewReader(""))
-		var u bindTestUser
-		_, err := web.BindAndValidate(r, v, &u)
-		if err == nil {
-			t.Fatal("expected decode error for empty body")
+		for _, field := range []string{"name", "email", "age"} {
+			if _, ok := fields[field]; !ok {
+				t.Errorf("expected error for field %q", field)
+			}
 		}
 	})
 
@@ -149,4 +146,63 @@ func TestBindAndValidate(t *testing.T) {
 			t.Errorf("expected at least 3 field errors, got %d: %v", len(fields), fields)
 		}
 	})
+}
+
+// TestBindJSONWithLimit_RejectsOversized verifies the explicit-limit form
+// wraps *http.MaxBytesError so callers can distinguish 413 from 400.
+func TestBindJSONWithLimit_RejectsOversized(t *testing.T) {
+	t.Parallel()
+
+	// 128-byte cap, body of ~200 bytes — guaranteed overrun.
+	body := `{"name":"` + strings.Repeat("a", 200) + `","email":"a@b","age":1}`
+	r := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+
+	var u bindTestUser
+	err := web.BindJSONWithLimit(r, &u, 128)
+	if err == nil {
+		t.Fatal("expected error for oversized body, got nil")
+	}
+	var maxBytesErr *http.MaxBytesError
+	if !errors.As(err, &maxBytesErr) {
+		t.Errorf("error %v does not wrap *http.MaxBytesError; callers cannot return 413", err)
+	}
+}
+
+// TestBindJSON_AppliesDefaultCap asserts that the package-level default
+// cap is in force — a body larger than DefaultMaxRequestBodyBytes must
+// produce a MaxBytesError without callers passing an explicit limit.
+func TestBindJSON_AppliesDefaultCap(t *testing.T) {
+	t.Parallel()
+
+	// Construct a payload one byte beyond the default cap.
+	pad := strings.Repeat("a", int(web.DefaultMaxRequestBodyBytes)+1)
+	body := `{"name":"` + pad + `","email":"a@b.example","age":1}`
+	r := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+
+	var u bindTestUser
+	err := web.BindJSON(r, &u)
+	if err == nil {
+		t.Fatal("expected error for body exceeding default cap, got nil")
+	}
+	var maxBytesErr *http.MaxBytesError
+	if !errors.As(err, &maxBytesErr) {
+		t.Errorf("error %v does not wrap *http.MaxBytesError", err)
+	}
+}
+
+// TestBindJSONWithLimit_ZeroDisables verifies that passing limit<=0 bypasses
+// the cap (the documented opt-out for callers who size bodies elsewhere).
+func TestBindJSONWithLimit_ZeroDisables(t *testing.T) {
+	t.Parallel()
+
+	body := `{"name":"Alice","email":"a@b.example","age":1}`
+	r := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+
+	var u bindTestUser
+	if err := web.BindJSONWithLimit(r, &u, 0); err != nil {
+		t.Fatalf("limit=0 should disable cap; got error %v", err)
+	}
+	if u.Name != "Alice" {
+		t.Errorf("expected Name Alice, got %q", u.Name)
+	}
 }
