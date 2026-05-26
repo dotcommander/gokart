@@ -133,6 +133,8 @@ See [`examples/`](examples/) for complete working projects:
 - [`http-service/`](examples/http-service/) — Minimal HTTP API with chi router
 - [`cli-app/`](examples/cli-app/) — CLI with commands, tables, and spinners
 
+Run `just verify` to build, test, and vet every workspace module and compile the ignored example files.
+
 ## Compatibility
 
 Minimum Go version: 1.22+ (1.26+ recommended)
