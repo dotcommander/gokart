@@ -5,7 +5,7 @@ modules := "ai cache cli fs logger migrate postgres sqlite web"
 
 # Build all modules
 build:
-    go build ./...
+    scripts/verify-workspace.sh build
 
 # Install gokart CLI with version from git tag
 install:
@@ -13,11 +13,15 @@ install:
 
 # Test all modules
 test:
-    go test ./...
+    scripts/verify-workspace.sh test
 
 # Vet all modules
 vet:
-    go vet ./...
+    scripts/verify-workspace.sh vet
+
+# Verify all workspace modules and ignored example files
+verify:
+    scripts/verify-workspace.sh all
 
 # Tag all submodules + root with the given version, then push.
 # Usage: just tag v0.8.0

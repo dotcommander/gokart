@@ -5,10 +5,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Build & Test Commands
 
 ```bash
-go build ./...           # Build all packages
-go test ./...            # Run all tests
-go test -v ./...         # Verbose test output
-go test -run TestName    # Run specific test
+just verify              # Build/test/vet all workspace modules and compile examples
+just build               # Build all workspace modules
+just test                # Test all workspace modules
+just vet                 # Vet all workspace modules
+go test -v ./...         # Verbose test output for the current module
+go test -run TestName    # Run specific test in the current module
 go install ./cmd/gokart  # Install gokart CLI
 ```
 

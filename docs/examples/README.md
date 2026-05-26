@@ -218,18 +218,18 @@ Examples can serve as integration tests when services are available:
 
 ```bash
 # Run all examples that don't require external services
-go run ./docs/examples/logger
-go run ./docs/examples/config
-go run ./docs/examples/sqlite
+go run docs/examples/logger/main.go
+go run docs/examples/config/main.go
+go run docs/examples/sqlite/main.go
 
 # With PostgreSQL
 export DATABASE_URL="postgres://user:pass@localhost:5432/testdb"
-go run ./docs/examples/postgres
+go run docs/examples/postgres/main.go
 
 # With Redis
-go run ./docs/examples/cache
+go run docs/examples/cache/main.go
 
 # With OpenAI
 export OPENAI_API_KEY="sk-..."
-go run ./docs/examples/openai
+go run docs/examples/openai/main.go
 ```
