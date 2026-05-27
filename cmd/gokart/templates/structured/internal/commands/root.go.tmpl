@@ -30,7 +30,7 @@ func Execute(version string) error {
 		}
 {{- end }}
 		var err error
-		appCtx, err = app.New("{{.Name}}", cliApp.Viper())
+		appCtx, err = app.New(cmd.Context(), "{{.Name}}", cliApp.Viper())
 		return err
 	}
 
