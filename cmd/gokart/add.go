@@ -178,7 +178,7 @@ func runAddCommand(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	if err := applyAddChanges(req, plan, &output); err != nil {
+	if err := applyAddChanges(cmdContext(cmd), req, plan, &output); err != nil {
 		var flowErr *addFlowError
 		if errors.As(err, &flowErr) {
 			return emitCommandError(err, jsonOutput, &output, commandFailureInfo{Code: flowErr.Code, Outcome: commandOutcomeFailure, ExitCode: flowErr.ExitCode})
@@ -398,7 +398,7 @@ func checkFileSafety(dir, relPath string, manifest *scaffoldManifest) fileSafety
 	return fileSafetyConflict
 }
 
-func addGoDependencies(dir string, integrations []string, verbose bool) error {
+func addGoDependencies(ctx context.Context, dir string, integrations []string, verbose bool) error {
 	var packages []string
 	for _, name := range integrations {
 		dep, ok := integrationDeps[name]
@@ -411,8 +411,6 @@ func addGoDependencies(dir string, integrations []string, verbose bool) error {
 	if len(packages) == 0 {
 		return nil
 	}
-
-	ctx := context.Background()
 
 	goGetArgs := append([]string{"get"}, packages...)
 	if err := runCommand(ctx, dir, verbose, "go", goGetArgs...); err != nil {
