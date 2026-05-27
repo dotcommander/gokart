@@ -9,8 +9,8 @@ import (
 
 func TestDefaultConfigMaxOpenConns(t *testing.T) {
 	cfg := DefaultConfig("test.db")
-	if cfg.MaxOpenConns != 4 {
-		t.Errorf("expected MaxOpenConns=4, got %d", cfg.MaxOpenConns)
+	if cfg.MaxOpenConns != 1 {
+		t.Errorf("expected MaxOpenConns=1, got %d", cfg.MaxOpenConns)
 	}
 }
 

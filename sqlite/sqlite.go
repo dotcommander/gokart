@@ -48,8 +48,9 @@ func DefaultConfig(path string) Config {
 		Path:        path,
 		WALMode:     true,
 		BusyTimeout: 5 * time.Second,
-		// MaxOpenConns: 4 — SQLite is single-writer; more connections just queue.
-		MaxOpenConns:    4,
+		// MaxOpenConns: 1 — SQLite is single-writer; capping at 1 preserves the
+		// _txlock=immediate guarantee. Workspace rule (CLAUDE.md SQLite section).
+		MaxOpenConns:    1,
 		MaxIdleConns:    5,
 		ConnMaxLifetime: time.Hour,
 		ForeignKeys:     true,
