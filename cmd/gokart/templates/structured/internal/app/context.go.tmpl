@@ -2,9 +2,7 @@
 package app
 
 import (
-{{- if or .UsePostgres .UseRedis }}
 	"context"
-{{- end }}
 {{- if .UseSQLite }}
 	"database/sql"
 {{- end }}
@@ -55,10 +53,10 @@ type Context struct {
 }
 
 // New creates a new application context with config from viper.
-func New(appName string, v *viper.Viper) (*Context, error) {
+func New(ctx context.Context, appName string, v *viper.Viper) (*Context, error) {
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
 
-	ctx := &Context{
+	appCtx := &Context{
 		Log: logger,
 	}
 {{- if .UseSQLite }}
@@ -81,7 +79,7 @@ func New(appName string, v *viper.Viper) (*Context, error) {
 	if err != nil {
 		return nil, err
 	}
-	ctx.DB = db
+	appCtx.DB = db
 {{- end }}
 {{- if .UsePostgres }}
 
@@ -93,11 +91,11 @@ func New(appName string, v *viper.Viper) (*Context, error) {
 	if dbURL == "" {
 		logger.Warn("DATABASE_URL not set, PostgreSQL features will not work")
 	} else {
-		pool, err := pgxpool.New(context.Background(), dbURL)
+		pool, err := pgxpool.New(ctx, dbURL)
 		if err != nil {
 			return nil, fmt.Errorf("connect to postgres: %w", err)
 		}
-		ctx.Pool = pool
+		appCtx.Pool = pool
 	}
 {{- end }}
 {{- if .UseAI }}
@@ -110,7 +108,7 @@ func New(appName string, v *viper.Viper) (*Context, error) {
 	if apiKey == "" {
 		logger.Warn("OPENAI_API_KEY not set, AI features will not work")
 	}
-	ctx.AI = ai.NewOpenAIClientWithKey(apiKey)
+	appCtx.AI = ai.NewOpenAIClientWithKey(apiKey)
 {{- end }}
 {{- if .UseRedis }}
 
@@ -122,14 +120,14 @@ func New(appName string, v *viper.Viper) (*Context, error) {
 	if redisAddr == "" {
 		redisAddr = "localhost:6379"
 	}
-	cacheClient, err := cache.Open(context.Background(), redisAddr)
+	cacheClient, err := cache.Open(ctx, redisAddr)
 	if err != nil {
 		return nil, fmt.Errorf("open cache: %w", err)
 	}
-	ctx.Cache = cacheClient
+	appCtx.Cache = cacheClient
 {{- end }}
 
-	return ctx, nil
+	return appCtx, nil
 }
 
 // Close releases resources.

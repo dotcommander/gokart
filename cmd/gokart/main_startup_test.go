@@ -22,6 +22,7 @@ func findRequiredCommand(t *testing.T, root *cobra.Command, path []string) *cobr
 }
 
 func TestNewGokartAppStartupContractRootCommand(t *testing.T) {
+	t.Parallel()
 	root := newGokartApp("test-version").Root()
 
 	if root == nil {
@@ -39,6 +40,7 @@ func TestNewGokartAppStartupContractRootCommand(t *testing.T) {
 }
 
 func TestNewGokartAppStartupContractNewCommand(t *testing.T) {
+	t.Parallel()
 	root := newGokartApp("test-version").Root()
 
 	newCmd := findRequiredCommand(t, root, []string{"new"})
@@ -53,6 +55,7 @@ func TestNewGokartAppStartupContractNewCommand(t *testing.T) {
 }
 
 func TestNewGokartAppStartupContractVersionCommand(t *testing.T) {
+	t.Parallel()
 	root := newGokartApp("test-version").Root()
 
 	versionCmd := findRequiredCommand(t, root, []string{"version"})
@@ -62,11 +65,15 @@ func TestNewGokartAppStartupContractVersionCommand(t *testing.T) {
 }
 
 func TestNewGokartAppStartupContractNewAliases(t *testing.T) {
-	root := newGokartApp("test-version").Root()
+	t.Parallel()
 
 	aliases := []string{"create", "init"}
 	for _, alias := range aliases {
 		t.Run(alias, func(t *testing.T) {
+			t.Parallel()
+			// Build a fresh root per subtest — cobra's Find mutates internal
+			// state, so a shared root races under parallel subtests.
+			root := newGokartApp("test-version").Root()
 			cmd := findRequiredCommand(t, root, []string{alias})
 			if cmd.Name() != "new" {
 				t.Fatalf("expected %q to resolve to 'new' command, got %q", alias, cmd.Name())
@@ -76,6 +83,7 @@ func TestNewGokartAppStartupContractNewAliases(t *testing.T) {
 }
 
 func TestNewGokartAppStartupContractCompletionHidden(t *testing.T) {
+	t.Parallel()
 	root := newGokartApp("test-version").Root()
 
 	for _, cmd := range root.Commands() {

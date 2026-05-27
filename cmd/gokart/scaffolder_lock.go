@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"syscall"
 	"time"
 )
 
@@ -251,27 +250,6 @@ func parseApplyLockMetadata(content []byte) (applyLockMetadata, error) {
 	}
 
 	return metadata, nil
-}
-
-func processIsRunning(pid int) (bool, error) {
-	if pid <= 0 {
-		return false, nil
-	}
-
-	err := syscall.Kill(pid, 0)
-	if err == nil {
-		return true, nil
-	}
-
-	if errors.Is(err, syscall.ESRCH) {
-		return false, nil
-	}
-
-	if errors.Is(err, syscall.EPERM) {
-		return true, nil
-	}
-
-	return false, err
 }
 
 func parsePositiveInt(value string) (int, error) {
