@@ -208,34 +208,34 @@ var (
 	registerHelpTemplateFuncsOnce sync.Once
 )
 
-// Success prints a success message.
+// Success prints a success message to the package output writer (default stdout).
 func Success(format string, args ...interface{}) {
-	fmt.Println(styleSuccess.Render("✓ " + fmt.Sprintf(format, args...)))
+	fmt.Fprintln(Output(), styleSuccess.Render("✓ "+fmt.Sprintf(format, args...)))
 }
 
-// Error prints an error message.
+// Error prints an error message to the package error writer (default stderr).
 func Error(format string, args ...interface{}) {
-	fmt.Fprintln(os.Stderr, styleError.Render("✗ "+fmt.Sprintf(format, args...)))
+	fmt.Fprintln(ErrOutput(), styleError.Render("✗ "+fmt.Sprintf(format, args...)))
 }
 
-// Warning prints a warning message.
+// Warning prints a warning message to the package output writer.
 func Warning(format string, args ...interface{}) {
-	fmt.Println(styleWarning.Render("⚠ " + fmt.Sprintf(format, args...)))
+	fmt.Fprintln(Output(), styleWarning.Render("⚠ "+fmt.Sprintf(format, args...)))
 }
 
-// Info prints an info message.
+// Info prints an info message to the package output writer.
 func Info(format string, args ...interface{}) {
-	fmt.Println(styleInfo.Render("→ " + fmt.Sprintf(format, args...)))
+	fmt.Fprintln(Output(), styleInfo.Render("→ "+fmt.Sprintf(format, args...)))
 }
 
-// Dim prints dimmed text.
+// Dim prints dimmed text to the package output writer.
 func Dim(format string, args ...interface{}) {
-	fmt.Println(styleDim.Render(fmt.Sprintf(format, args...)))
+	fmt.Fprintln(Output(), styleDim.Render(fmt.Sprintf(format, args...)))
 }
 
-// Bold prints bold text.
+// Bold prints bold text to the package output writer.
 func Bold(format string, args ...interface{}) {
-	fmt.Println(styleBold.Render(fmt.Sprintf(format, args...)))
+	fmt.Fprintln(Output(), styleBold.Render(fmt.Sprintf(format, args...)))
 }
 
 // --- Fatal helpers ---

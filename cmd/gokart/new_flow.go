@@ -6,9 +6,22 @@ import (
 	"fmt"
 
 	"github.com/dotcommander/gokart/cli"
+	"github.com/spf13/cobra"
 )
 
-func runNewRequest(req newRequest, jsonOutput bool, output *newCommandOutput) error {
+// cmdContext returns the cobra command's context, falling back to context.Background
+// when callers (notably tests) invoke RunE without ExecuteContext. This is the cobra
+// RunE entry boundary, where context.Background() is permitted per workspace rules.
+func cmdContext(cmd *cobra.Command) context.Context {
+	if cmd != nil {
+		if ctx := cmd.Context(); ctx != nil {
+			return ctx
+		}
+	}
+	return context.Background()
+}
+
+func runNewRequest(ctx context.Context, req newRequest, jsonOutput bool, output *newCommandOutput) error {
 	if req.VerifyOnly {
 		return runNewVerifyOnlyFlow(req, jsonOutput, output)
 	}
@@ -20,7 +33,7 @@ func runNewRequest(req newRequest, jsonOutput bool, output *newCommandOutput) er
 	output.Result = result
 
 	if !req.DryRun {
-		if err := resolveNewDependencies(req, !jsonOutput); err != nil {
+		if err := resolveNewDependencies(ctx, req, !jsonOutput); err != nil {
 			if !jsonOutput {
 				cli.Warning("Dependency resolution failed: %v", err)
 				cli.Dim("  Run manually: cd %s && go get ./... && go mod tidy", shellQuote(req.TargetDir))
@@ -179,7 +192,7 @@ func setNewNextStep(req newRequest, jsonOutput bool, output *newCommandOutput) {
 	}
 }
 
-func resolveNewDependencies(req newRequest, verbose bool) error {
+func resolveNewDependencies(ctx context.Context, req newRequest, verbose bool) error {
 	packages := []string{"github.com/dotcommander/gokart/cli@" + defaultGokartCLIVersion}
 	if req.UseSQLite {
 		packages = append(packages, "github.com/dotcommander/gokart/sqlite@"+defaultGokartSQLiteVersion)
@@ -193,8 +206,6 @@ func resolveNewDependencies(req newRequest, verbose bool) error {
 	if req.UseRedis {
 		packages = append(packages, "github.com/dotcommander/gokart/cache@"+defaultGokartCacheVersion)
 	}
-
-	ctx := context.Background()
 
 	goGetArgs := append([]string{"get"}, packages...)
 	if err := runCommand(ctx, req.TargetDir, verbose, "go", goGetArgs...); err != nil {

@@ -351,5 +351,5 @@ func runNewCommand(cmd *cobra.Command, args []string) error {
 
 	output = newCommandOutputFromRequest(req)
 	printWarnings(jsonOutput, req.Warnings)
-	return runNewRequest(req, jsonOutput, &output)
+	return runNewRequest(cmdContext(cmd), req, jsonOutput, &output)
 }

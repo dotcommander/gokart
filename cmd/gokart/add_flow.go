@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -172,7 +173,7 @@ func printAddResult(req addRequest, output addCommandOutput) {
 	}
 }
 
-func applyAddChanges(req addRequest, plan *addPlan, output *addCommandOutput) error {
+func applyAddChanges(ctx context.Context, req addRequest, plan *addPlan, output *addCommandOutput) error {
 	for _, relPath := range plan.RenderedPaths {
 		destPath := filepath.Join(req.Dir, relPath)
 		if err := os.MkdirAll(filepath.Dir(destPath), 0755); err != nil {
@@ -183,7 +184,7 @@ func applyAddChanges(req addRequest, plan *addPlan, output *addCommandOutput) er
 		}
 	}
 
-	if err := addGoDependencies(req.Dir, plan.ToAdd, !req.JSONOutput); err != nil {
+	if err := addGoDependencies(ctx, req.Dir, plan.ToAdd, !req.JSONOutput); err != nil {
 		return wrapAddFlowError(fmt.Errorf("add dependencies: %w", err), errorCodeScaffoldFailed, exitCodeScaffoldFailed)
 	}
 

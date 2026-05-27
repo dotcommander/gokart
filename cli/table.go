@@ -3,7 +3,6 @@ package cli
 import (
 	"fmt"
 	"io"
-	"os"
 	"sort"
 	"strings"
 
@@ -30,7 +29,7 @@ func NewTable(headers ...string) *Table {
 	return &Table{
 		headers: headers,
 		rows:    make([][]string, 0),
-		writer:  os.Stdout,
+		writer:  Output(),
 	}
 }
 
@@ -120,8 +119,9 @@ func KeyValue(data map[string]string) {
 	}
 	sort.Strings(keys)
 
+	w := Output()
 	for _, k := range keys {
-		fmt.Printf("%s %s\n", keyStyle.Render(k+":"), valStyle.Render(data[k]))
+		fmt.Fprintf(w, "%s %s\n", keyStyle.Render(k+":"), valStyle.Render(data[k]))
 	}
 }
 
@@ -132,8 +132,9 @@ func KeyValue(data map[string]string) {
 //	cli.List("Item 1", "Item 2", "Item 3")
 func List(items ...string) {
 	bullet := lipgloss.NewStyle().Foreground(lipgloss.Color("12")).Render("•")
+	w := Output()
 	for _, item := range items {
-		fmt.Printf("  %s %s\n", bullet, item)
+		fmt.Fprintf(w, "  %s %s\n", bullet, item)
 	}
 }
 
@@ -144,7 +145,8 @@ func List(items ...string) {
 //	cli.NumberedList("First", "Second", "Third")
 func NumberedList(items ...string) {
 	numStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("12")).Width(4)
+	w := Output()
 	for i, item := range items {
-		fmt.Printf("%s %s\n", numStyle.Render(fmt.Sprintf("%d.", i+1)), item)
+		fmt.Fprintf(w, "%s %s\n", numStyle.Render(fmt.Sprintf("%d.", i+1)), item)
 	}
 }
