@@ -26,7 +26,7 @@ type Config struct {
 	BusyTimeout time.Duration
 
 	// MaxOpenConns is the maximum number of open connections.
-	// Default: 4
+	// Default: 1
 	MaxOpenConns int
 
 	// MaxIdleConns is the maximum number of idle connections.

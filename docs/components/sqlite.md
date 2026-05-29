@@ -84,7 +84,7 @@ defer db.Close()
 | `Path` | `string` | *required* | Database file path (`:memory:` for in-memory) |
 | `WALMode` | `bool` | `true` | Enable Write-Ahead Logging for better concurrency |
 | `BusyTimeout` | `time.Duration` | `5s` | How long to wait when database is locked |
-| `MaxOpenConns` | `int` | `25` | Maximum number of open connections |
+| `MaxOpenConns` | `int` | `1` | Maximum number of open connections |
 | `MaxIdleConns` | `int` | `5` | Maximum number of idle connections |
 | `ConnMaxLifetime` | `time.Duration` | `1 hour` | Maximum connection reuse duration |
 | `ForeignKeys` | `bool` | `true` | Enable foreign key constraints |
@@ -270,10 +270,10 @@ For single-writer workloads (typical SQLite):
 cfg.MaxOpenConns = 1  // Prevents write contention
 ```
 
-For read-heavy workloads:
+For read-heavy workloads that can tolerate multiple SQLite connections:
 
 ```go
-cfg.MaxOpenConns = 25  // Default in GoKart
+cfg.MaxOpenConns = 25  // Opt in for higher read concurrency
 ```
 
 ### Context Timeouts

@@ -128,6 +128,38 @@ Creates a command group (no run function, just subcommands).
 
 ## Output Styling
 
+Package-level output helpers write to configurable package writers. By default,
+stdout helpers use the current `os.Stdout` and error helpers use the current
+`os.Stderr`.
+
+### `func SetOutput(w io.Writer)`
+
+Redirects `Success`, `Warning`, `Info`, `Dim`, `Bold`, `KeyValue`, `List`, and
+`NumberedList`. Pass `nil` to return to the current `os.Stdout`.
+
+---
+
+### `func SetErrOutput(w io.Writer)`
+
+Redirects `Error`, `Fatal`, and `FatalErr`. Pass `nil` to return to the current
+`os.Stderr`.
+
+---
+
+### `func Output() io.Writer`
+
+Returns the configured stdout writer, or the current `os.Stdout` when no
+override is set.
+
+---
+
+### `func ErrOutput() io.Writer`
+
+Returns the configured stderr writer, or the current `os.Stderr` when no
+override is set.
+
+---
+
 ### `func Success(format string, args ...interface{})`
 
 Prints a success message with green checkmark.
