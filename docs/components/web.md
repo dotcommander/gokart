@@ -225,15 +225,21 @@ func handleCreate(w http.ResponseWriter, r *http.Request) {
 
 ### BindJSON
 
-Decodes a JSON request body into dst.
+Decodes a JSON request body into dst. `BindJSON` caps the body at 10 MiB by default; use `BindJSONWithLimit` when an endpoint needs a different cap.
 
 ```go
 func BindJSON(r *http.Request, dst any) error
+func BindJSONWithLimit(r *http.Request, dst any, limit int64) error
 ```
 
 ```go
 var req CreateUserRequest
 if err := web.BindJSON(r, &req); err != nil {
+    var maxBytesErr *http.MaxBytesError
+    if errors.As(err, &maxBytesErr) {
+        web.Error(w, http.StatusRequestEntityTooLarge, "request body too large")
+        return
+    }
     web.Error(w, http.StatusBadRequest, "invalid JSON")
     return
 }
@@ -252,7 +258,7 @@ Return semantics:
 | fields | err | Meaning |
 |--------|-----|---------|
 | `nil` | `nil` | Success |
-| `nil` | non-nil | Malformed JSON — send 400 |
+| `nil` | non-nil | Malformed JSON or oversized body - send 400 or 413 |
 | non-nil | `nil` | Validation failed — send 422 |
 
 ```go
@@ -261,6 +267,11 @@ var req CreateUserRequest
 
 fields, err := web.BindAndValidate(r, v, &req)
 if err != nil {
+    var maxBytesErr *http.MaxBytesError
+    if errors.As(err, &maxBytesErr) {
+        web.Error(w, http.StatusRequestEntityTooLarge, "request body too large")
+        return
+    }
     web.Error(w, http.StatusBadRequest, "invalid JSON")
     return
 }
@@ -491,8 +502,9 @@ Quick lookup for all exports in the `web` package. For detailed usage, see [Resp
 
 | Function | Returns | Description |
 |----------|---------|-------------|
-| `BindJSON(r, dst)` | `error` | Decode JSON body |
-| `BindAndValidate(r, v, dst)` | `(map[string]string, error)` | Decode and validate |
+| `BindJSON(r, dst)` | `error` | Decode JSON body with the default 10 MiB cap |
+| `BindJSONWithLimit(r, dst, limit)` | `error` | Decode JSON body with a custom cap; `limit <= 0` disables the cap |
+| `BindAndValidate(r, v, dst)` | `(map[string]string, error)` | Decode with the default body cap, then validate |
 | `NewValidator(cfg)` | `*validator.Validate` | Configured validator |
 | `NewStandardValidator()` | `*validator.Validate` | Validator with defaults |
 | `ValidationErrors(err)` | `map[string]string` | Extract field errors |
