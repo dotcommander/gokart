@@ -9,6 +9,7 @@ import (
 )
 
 func TestApplyDryRunDoesNotWriteFiles(t *testing.T) {
+	t.Parallel()
 	fsys := fstest.MapFS{
 		"templates/basic/main.go.tmpl": {Data: []byte("package main\n")},
 	}
@@ -29,6 +30,7 @@ func TestApplyDryRunDoesNotWriteFiles(t *testing.T) {
 }
 
 func TestApplyFailsWhenExistingFileConflicts(t *testing.T) {
+	t.Parallel()
 	fsys := fstest.MapFS{
 		"templates/basic/main.go.tmpl": {Data: []byte("package main\n")},
 	}
@@ -46,6 +48,7 @@ func TestApplyFailsWhenExistingFileConflicts(t *testing.T) {
 }
 
 func TestApplyReportsAllExistingFileConflicts(t *testing.T) {
+	t.Parallel()
 	fsys := fstest.MapFS{
 		"templates/basic/main.go.tmpl":   {Data: []byte("package main\n")},
 		"templates/basic/README.md.tmpl": {Data: []byte("# demo\n")},
@@ -84,6 +87,7 @@ func TestApplyReportsAllExistingFileConflicts(t *testing.T) {
 }
 
 func TestApplySkipsExistingWithSkipPolicy(t *testing.T) {
+	t.Parallel()
 	fsys := fstest.MapFS{
 		"templates/basic/main.go.tmpl": {Data: []byte("package main\n")},
 	}
@@ -113,6 +117,7 @@ func TestApplySkipsExistingWithSkipPolicy(t *testing.T) {
 }
 
 func TestApplyOverwritesExistingWithForcePolicy(t *testing.T) {
+	t.Parallel()
 	fsys := fstest.MapFS{
 		"templates/basic/main.go.tmpl": {Data: []byte("package main\n")},
 	}
@@ -142,6 +147,7 @@ func TestApplyOverwritesExistingWithForcePolicy(t *testing.T) {
 }
 
 func TestApplyMarksUnchangedFiles(t *testing.T) {
+	t.Parallel()
 	fsys := fstest.MapFS{
 		"templates/basic/main.go.tmpl": {Data: []byte("package main\n")},
 	}

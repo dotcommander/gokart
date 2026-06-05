@@ -6,6 +6,7 @@ import (
 )
 
 func TestAddCreatesContextForFirstIntegration(t *testing.T) {
+	t.Parallel()
 	dir := setupAddTestProject(t, setupAddTestOpts{
 		Module:          "example.com/myapp",
 		ManifestVersion: scaffoldManifestV2,
@@ -40,6 +41,7 @@ func TestAddCreatesContextForFirstIntegration(t *testing.T) {
 }
 
 func TestAddUpdatesContextForNewIntegration(t *testing.T) {
+	t.Parallel()
 	// Start with sqlite, add AI
 	data := baseTemplateData("myapp", "example.com/myapp", true, false)
 	data.UseSQLite = true
@@ -65,6 +67,7 @@ func TestAddUpdatesContextForNewIntegration(t *testing.T) {
 }
 
 func TestAddUpdatesRootCommand(t *testing.T) {
+	t.Parallel()
 	data := baseTemplateData("myapp", "example.com/myapp", true, false)
 	data.UseSQLite = true
 
@@ -88,6 +91,7 @@ func TestAddUpdatesRootCommand(t *testing.T) {
 }
 
 func TestAddDryRunNoChanges(t *testing.T) {
+	t.Parallel()
 	// Verify that renderIntegrationFiles produces content for postgres
 	data := baseTemplateData("myapp", "example.com/myapp", true, false)
 	data.UsePostgres = true
@@ -106,5 +110,43 @@ func TestAddDryRunNoChanges(t *testing.T) {
 	}
 	if _, ok := files["internal/commands/root.go"]; !ok {
 		t.Fatal("expected root.go in rendered files")
+	}
+}
+
+func TestAddPostgresPoolUsesProductionConfig(t *testing.T) {
+	t.Parallel()
+	data := baseTemplateData("myapp", "example.com/myapp", true, false)
+	data.UsePostgres = true
+
+	files, err := renderIntegrationFiles(data)
+	if err != nil {
+		t.Fatalf("renderIntegrationFiles: %v", err)
+	}
+
+	contextContent, ok := files["internal/app/context.go"]
+	if !ok {
+		t.Fatal("expected context.go to be rendered")
+	}
+	content := string(contextContent)
+
+	for _, want := range []string{
+		"pgxpool.NewWithConfig",
+		"pgxpool.ParseConfig",
+		"cfg.MaxConns = 25",
+		"cfg.MinConns = 5",
+		"cfg.MaxConnLifetime = time.Hour",
+	} {
+		if !strings.Contains(content, want) {
+			t.Fatalf("expected postgres context.go to contain %q", want)
+		}
+	}
+
+	for _, bad := range []string{
+		"pgxpool.New(ctx,",
+		"context.Background",
+	} {
+		if strings.Contains(content, bad) {
+			t.Fatalf("postgres context.go must not contain %q", bad)
+		}
 	}
 }

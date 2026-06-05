@@ -7,6 +7,7 @@ import (
 )
 
 func TestParseNewInvocation(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name       string
 		args       []string
@@ -23,6 +24,7 @@ func TestParseNewInvocation(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			preset, arg, err := parseNewInvocation(tc.args)
 			if tc.wantErr {
 				if err == nil {
@@ -43,6 +45,7 @@ func TestParseNewInvocation(t *testing.T) {
 }
 
 func TestResolveUseGlobal(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name        string
 		flat        bool
@@ -66,6 +69,7 @@ func TestResolveUseGlobal(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			got, warnings, err := resolveUseGlobal(tc.flat, tc.local, tc.global, tc.scope)
 			if tc.wantErr {
 				if err == nil {
@@ -91,6 +95,7 @@ func TestResolveUseGlobal(t *testing.T) {
 }
 
 func TestResolveExistingFilePolicy(t *testing.T) {
+	t.Parallel()
 	policy, err := resolveExistingFilePolicy(false, false)
 	if err != nil {
 		t.Fatalf("resolveExistingFilePolicy() error = %v", err)
@@ -121,6 +126,7 @@ func TestResolveExistingFilePolicy(t *testing.T) {
 }
 
 func TestNormalizeProjectArg(t *testing.T) {
+	t.Parallel()
 	name, dir, err := normalizeProjectArg("myapp")
 	if err != nil {
 		t.Fatalf("normalizeProjectArg() error = %v", err)
@@ -142,6 +148,7 @@ func TestNormalizeProjectArg(t *testing.T) {
 }
 
 func TestValidateModulePath(t *testing.T) {
+	t.Parallel()
 	if err := validateModulePath("github.com/acme/myapp"); err != nil {
 		t.Fatalf("validateModulePath(valid) error = %v", err)
 	}
@@ -160,6 +167,7 @@ func TestValidateModulePath(t *testing.T) {
 }
 
 func TestValidateNewArgs(t *testing.T) {
+	t.Parallel()
 	cmd := newNewCommandForTest()
 
 	if err := validateNewArgs(cmd, []string{"myapp"}); err != nil {

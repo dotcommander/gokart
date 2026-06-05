@@ -75,8 +75,10 @@ func TestRunNewCommandDryRunVerifyRunsAgainstTempScaffold(t *testing.T) {
 }
 
 func TestRunNewCommandDryRunStructuredIncludesGitignore(t *testing.T) {
+	t.Parallel()
 	cmd := newNewCommandForTest()
 	mustSetFlagTrue(t, cmd, "dry-run")
+	mustSetFlagTrue(t, cmd, "no-verify")
 	mustSetFlagTrue(t, cmd, "json")
 
 	targetDir := filepath.Join(t.TempDir(), "structured-app")
@@ -210,6 +212,7 @@ func TestRunNewCommandVerifyOnlyRunsVerifyWithoutScaffolding(t *testing.T) {
 }
 
 func TestHandlePersistentPreRunErrorEmitsJSON(t *testing.T) {
+	t.Parallel()
 	cmd := newNewCommandForTest()
 	mustSetFlagTrue(t, cmd, "json")
 
@@ -242,6 +245,7 @@ func TestHandlePersistentPreRunErrorEmitsJSON(t *testing.T) {
 }
 
 func TestExitCodeForErrorUsesCommandError(t *testing.T) {
+	t.Parallel()
 	if got := exitCodeForError(nil); got != 0 {
 		t.Fatalf("exitCodeForError(nil) = %d, want 0", got)
 	}

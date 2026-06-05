@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"strings"
 	"testing"
 
 	"github.com/spf13/cobra"
@@ -19,6 +21,35 @@ func findRequiredCommand(t *testing.T, root *cobra.Command, path []string) *cobr
 		t.Fatalf("expected command for %v, got nil", path)
 	}
 	return cmd
+}
+
+func TestNewGokartAppHelpMatchesDatabaseFlagContract(t *testing.T) {
+	t.Parallel()
+	root := newGokartApp("test-version").Root()
+	var rootHelp bytes.Buffer
+	root.SetOut(&rootHelp)
+	if err := root.Help(); err != nil {
+		t.Fatalf("root help: %v", err)
+	}
+
+	newCmd := findRequiredCommand(t, root, []string{"new"})
+	var newHelp bytes.Buffer
+	newCmd.SetOut(&newHelp)
+	if err := newCmd.Help(); err != nil {
+		t.Fatalf("new help: %v", err)
+	}
+
+	for name, help := range map[string]string{
+		"root": rootHelp.String(),
+		"new":  newHelp.String(),
+	} {
+		if strings.Contains(help, "--sqlite") || strings.Contains(help, "--postgres") {
+			t.Fatalf("%s help still advertises removed database flags:\n%s", name, help)
+		}
+		if !strings.Contains(help, "--db") {
+			t.Fatalf("%s help does not advertise --db:\n%s", name, help)
+		}
+	}
 }
 
 func TestNewGokartAppStartupContractRootCommand(t *testing.T) {
