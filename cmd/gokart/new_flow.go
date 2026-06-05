@@ -98,7 +98,7 @@ func runNewVerifyOnlyFlow(req newRequest, jsonOutput bool, output *newCommandOut
 func runNewScaffoldFlow(req newRequest, jsonOutput bool, output *newCommandOutput) (*ApplyResult, error) {
 	if req.Mode == modeFlat && (req.UseSQLite || req.UsePostgres || req.UseAI || req.UseRedis) {
 		return nil, failNewCommand(
-			errors.New("integrations (--sqlite, --postgres, --ai, --redis) require structured mode — remove --flat or omit the integration flags"),
+			errors.New("integrations (--db sqlite/postgres, --ai, --redis) require structured mode — remove --flat or omit the integration flags"),
 			jsonOutput, output, commandFailureInfo{
 				Code:     errorCodeInvalidArguments,
 				Outcome:  commandOutcomeFailure,
@@ -194,6 +194,9 @@ func setNewNextStep(req newRequest, jsonOutput bool, output *newCommandOutput) {
 
 func resolveNewDependencies(ctx context.Context, req newRequest, verbose bool) error {
 	packages := []string{"github.com/dotcommander/gokart/cli@" + defaultGokartCLIVersion}
+	if req.UseGlobal {
+		packages = append(packages, "github.com/dotcommander/gokart/fs@"+defaultGokartFSVersion)
+	}
 	if req.UseSQLite {
 		packages = append(packages, "github.com/dotcommander/gokart/sqlite@"+defaultGokartSQLiteVersion)
 	}

@@ -29,9 +29,9 @@ func newConfigShowCommand() *cobra.Command {
 			if err != nil {
 				cfgDir = "(unavailable: " + err.Error() + ")"
 			}
-			fmt.Printf("Version:     %s\n", gokartVersion)
-			fmt.Printf("Config dir:  %s\n", cfgDir)
-			fmt.Printf("Binary:      %s\n", os.Args[0])
+			fmt.Fprintf(cmd.OutOrStdout(), "Version:     %s\n", gokartVersion)
+			fmt.Fprintf(cmd.OutOrStdout(), "Config dir:  %s\n", cfgDir)
+			fmt.Fprintf(cmd.OutOrStdout(), "Binary:      %s\n", os.Args[0])
 		},
 	}
 }

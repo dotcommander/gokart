@@ -46,8 +46,7 @@ const (
 
 	newFlagFlat          = "flat"
 	newFlagModule        = "module"
-	newFlagSQLite        = "sqlite"
-	newFlagPostgres      = "postgres"
+	newFlagDB            = "db"
 	newFlagAI            = "ai"
 	newFlagRedis         = "redis"
 	newFlagExample       = "example"
@@ -59,6 +58,7 @@ const (
 	newFlagSkipExisting  = "skip-existing"
 	newFlagNoManifest    = "no-manifest"
 	newFlagVerify        = "verify"
+	newFlagNoVerify      = "no-verify"
 	newFlagVerifyOnly    = "verify-only"
 	newFlagVerifyTimeout = "verify-timeout"
 	newFlagJSON          = "json"
@@ -70,8 +70,7 @@ var (
 	verifyOnlyIgnoredFlagNames = []string{
 		newFlagFlat,
 		newFlagModule,
-		newFlagSQLite,
-		newFlagPostgres,
+		newFlagDB,
 		newFlagAI,
 		newFlagRedis,
 		newFlagExample,
@@ -108,104 +107,6 @@ func (e *commandError) Unwrap() error {
 	}
 	return e.Err
 }
-
-const logo = `
-   ____       _  __          _
-  / ___| ___ | |/ /__ _ _ __| |_
- | |  _ / _ \| ' // _' | '__| __|
- | |_| | (_) | . \ (_| | |  | |_
-  \____|\___/|_|\_\__,_|_|   \__|
-`
-
-const rootLongDescription = logo + `
-	gokart new <name> [flags]
-	gokart new cli <name> [flags]
-	gokart add <integration>... [flags]
-
-  --sqlite         SQLite database (modernc.org/sqlite)
-  --postgres       PostgreSQL pool (pgx/v5)
-  --ai             OpenAI client (openai-go/v3)
-  --redis          Redis cache (go-redis/v9)
-  --example        Include example greet command/action scaffold
-  --flat           Single main.go (no internal/)
-  --local          No global config (structured: default is global)
-  --global         Global config (flat: default is local)
-  --config-scope   Config scope: auto|local|global
-  --module         Custom module path
-  --dry-run        Preview scaffold operations without writing files
-  --force          Overwrite ALL existing files (including user edits)
-  --skip-existing  Skip files that already exist; only write new/missing ones
-  --no-manifest    Skip writing .gokart-manifest.json
-  --verify         Run go mod tidy and go test ./... after generation
-  --verify-only    Run verification only against an existing project directory
-  --verify-timeout Max duration for --verify commands (default 5m, 0 disables)
-  --json           Print machine-readable JSON result`
-
-const newCommandLong = `Create a new Go project with sensible defaults and optional integrations.
-
-Structured mode (default) creates:
-  myapp/
-  ├── cmd/main.go                # Entry point
-  ├── internal/commands/         # Cobra command definitions
-  └── go.mod
-
-Use --example to include greet command/action examples.
-
-Flat mode creates a single main.go for quick scripts.`
-
-const newCommandExample = `  # Basic structured project
-  gokart new myapi
-
-  # Explicit preset (same output as command above)
-  gokart new cli myapi
-
-  # With PostgreSQL and OpenAI
-  gokart new myapi --postgres --ai
-
-  # With Redis cache
-  gokart new myapi --redis
-
-  # Include example command/action scaffold
-  gokart new myapi --example
-
-  # With SQLite for local-first CLI
-  gokart new mycli --sqlite
-
-  # Quick script (single main.go)
-  gokart new script --flat
-
-  # Preview without writing files
-  gokart new myapi --dry-run
-
-  # Overwrite existing generated files
-  gokart new myapi --force
-
-  # Generate and verify immediately
-  gokart new myapi --verify
-
-  # Verify an existing generated project without changing files
-  gokart new myapi --verify-only
-
-  # JSON output for CI tooling
-  gokart new myapi --dry-run --json
-
-  # Custom module path
-  gokart new myapi --module github.com/myorg/myapi`
-
-const rootHelpTemplate = `{{.Long}}
-
-  gokart new myapp
-  gokart new cli myapp
-  gokart init myapp              (alias for new)
-  gokart new myapp --postgres --ai
-  gokart new myapp --redis
-  gokart add sqlite ai
-
-  Defaults: structured = global config · flat = local config
-
-  gokart new --help    Full options
-  gokart add --help    Add integrations
-`
 
 func main() {
 	if err := run(); err != nil {
@@ -256,8 +157,7 @@ func configureNewCommandFlags(cmd *cobra.Command) {
 	flags := cmd.Flags()
 	flags.Bool(newFlagFlat, false, "Use flat structure (single main.go)")
 	flags.String(newFlagModule, "", "Go module path (defaults to project name)")
-	flags.Bool(newFlagSQLite, false, "Include SQLite database wiring (modernc.org/sqlite)")
-	flags.Bool(newFlagPostgres, false, "Include PostgreSQL connection pool (pgx/v5)")
+	flags.String(newFlagDB, "none", "Database backend: sqlite|postgres|none")
 	flags.Bool(newFlagAI, false, "Include OpenAI client (openai-go/v3)")
 	flags.Bool(newFlagRedis, false, "Include Redis cache (go-redis/v9)")
 	flags.Bool(newFlagExample, false, "Include example greet command and action")
@@ -268,7 +168,8 @@ func configureNewCommandFlags(cmd *cobra.Command) {
 	flags.Bool(newFlagForce, false, "Overwrite ALL existing files (including user edits)")
 	flags.Bool(newFlagSkipExisting, false, "Skip files that already exist; only write new/missing ones")
 	flags.Bool(newFlagNoManifest, false, "Skip writing .gokart-manifest.json")
-	flags.Bool(newFlagVerify, false, "Run go mod tidy and go test ./... after generation")
+	flags.Bool(newFlagVerify, false, "Force run go mod tidy and go test ./... after generation (default-on for normal scaffolds)")
+	flags.Bool(newFlagNoVerify, false, "Skip post-generation verification (overrides the default-on behavior)")
 	flags.Bool(newFlagVerifyOnly, false, "Run go mod tidy and go test ./... without scaffolding")
 	flags.Duration(newFlagVerifyTimeout, defaultVerifyTimeout, "Maximum time for --verify commands (e.g. 2m, 30s; 0 disables timeout)")
 	flags.Bool(newFlagJSON, false, "Print machine-readable JSON result")
