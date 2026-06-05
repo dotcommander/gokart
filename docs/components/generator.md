@@ -53,7 +53,7 @@ gokart new mycli --dry-run --json
 
 **Structured** (default) creates a multi-package project with a `cmd/` entry point and `internal/` packages.
 
-**Flat** (`--flat`) creates a single `main.go` file. Useful for quick scripts. Combining `--flat` with integration flags (`--sqlite`, `--postgres`, `--ai`, `--redis`) is an error — flat projects don't support integrations.
+**Flat** (`--flat`) creates a single `main.go` file. Useful for quick scripts. Combining `--flat` with integration flags (`--db sqlite`, `--db postgres`, `--ai`, `--redis`) is an error — flat projects don't support integrations.
 
 ```bash
 gokart new mycli            # structured
@@ -75,7 +75,7 @@ mycli/
 ├── internal/
 │   ├── app/
 │   │   ├── config.go                  # Global config helper (structured + global scope)
-│   │   └── context.go                 # App context (present when --sqlite, --postgres, --ai, or --redis)
+│   │   └── context.go                 # App context (present when --db sqlite, --db postgres, --ai, or --redis)
 │   └── commands/
 │       └── root.go                    # Cobra root command
 └── go.mod
@@ -107,18 +107,18 @@ These flags wire a data store or API client into the project at generation time.
 
 | Flag | Package added | What it wires |
 |------|---------------|---------------|
-| `--sqlite` | `github.com/dotcommander/gokart/sqlite` | `*sql.DB` via `sqlite.Open` |
-| `--postgres` | `github.com/dotcommander/gokart/postgres`, `github.com/jackc/pgx/v5` | `*pgxpool.Pool` via `postgres.Connect` |
+| `--db sqlite` | `github.com/dotcommander/gokart/sqlite` | `*sql.DB` via `sqlite.Open` |
+| `--db postgres` | `github.com/dotcommander/gokart/postgres`, `github.com/jackc/pgx/v5` | `*pgxpool.Pool` via `postgres.Connect` |
 | `--ai` | `github.com/dotcommander/gokart/ai`, `github.com/openai/openai-go/v3` | `*openai.Client` via `ai.NewClient` |
 | `--redis` | `github.com/dotcommander/gokart/cache`, `github.com/redis/go-redis/v9` | `*redis.Client` via `cache.Open` |
 
 Flags may be combined:
 
 ```bash
-gokart new mycli --postgres --ai
-gokart new mycli --sqlite --example
+gokart new mycli --db postgres --ai
+gokart new mycli --db sqlite --example
 gokart new mycli --redis
-gokart new mycli --redis --postgres
+gokart new mycli --redis --db postgres
 ```
 
 ### Config Scope
@@ -155,7 +155,7 @@ When the target directory already exists and contains files, `gokart new` checks
 | `--verify-only` | Skip scaffolding; run verification only against the existing target directory |
 | `--verify-timeout <duration>` | Maximum time allowed for verification commands (default `5m`; `0` disables the timeout) |
 
-`--verify-only` cannot be combined with `--dry-run`. Generation flags (`--flat`, `--sqlite`, `--postgres`, `--ai`, `--example`, `--config-scope`, `--force`, `--skip-existing`, `--no-manifest`) are ignored when `--verify-only` is set.
+`--verify-only` cannot be combined with `--dry-run`. Generation flags (`--flat`, `--db`, `--ai`, `--example`, `--config-scope`, `--force`, `--skip-existing`, `--no-manifest`) are ignored when `--verify-only` is set.
 
 When `--dry-run --verify` is used together, the scaffolder writes to a temporary directory, verifies, then removes it. No files are written to the target.
 
@@ -165,8 +165,7 @@ When `--dry-run --verify` is used together, the scaffolder writes to a temporary
 |------|------|---------|-------------|
 | `--flat` | bool | false | Single `main.go` instead of structured layout |
 | `--module` | string | project name | Go module path |
-| `--sqlite` | bool | false | Add SQLite wiring |
-| `--postgres` | bool | false | Add PostgreSQL wiring |
+| `--db` | string | `none` | Database backend: `sqlite`, `postgres`, or `none` |
 | `--ai` | bool | false | Add OpenAI client wiring |
 | `--redis` | bool | false | Add Redis cache wiring |
 | `--example` | bool | false | Include example `greet` command and action |
@@ -433,8 +432,7 @@ On failure the object includes `error_code` and `error`:
 |------|-------|---------|-------------|
 | `--flat` | | false | Single `main.go` layout |
 | `--module` | | project name | Go module path |
-| `--sqlite` | | false | SQLite wiring |
-| `--postgres` | | false | PostgreSQL wiring |
+| `--db` | | `none` | Database backend: `sqlite`, `postgres`, or `none` |
 | `--ai` | | false | OpenAI client wiring |
 | `--redis` | | false | Redis cache wiring |
 | `--example` | | false | Include greet command and action |
@@ -464,7 +462,7 @@ On failure the object includes `error_code` and `error`:
 
 ## See Also
 
-- [SQLite](/components/sqlite) — SQLite integration added by `--sqlite`
-- [PostgreSQL](/components/postgres) — PostgreSQL integration added by `--postgres`
+- [SQLite](/components/sqlite) — SQLite integration added by `--db sqlite`
+- [PostgreSQL](/components/postgres) — PostgreSQL integration added by `--db postgres`
 - [OpenAI](/components/openai) — OpenAI integration added by `--ai`
 - [Migrations](/components/migrate) — Database schema versioning

@@ -27,10 +27,10 @@ gokart --version
 
 ## Create Your First Project
 
-The `--sqlite` flag wires up a SQLite database. The `--example` flag adds a sample command so you have something to run immediately.
+The `--db sqlite` flag wires up a SQLite database. The `--example` flag adds a sample command so you have something to run immediately.
 
 ```bash
-gokart new myapp --sqlite --example
+gokart new myapp --db sqlite --example
 cd myapp
 ```
 
