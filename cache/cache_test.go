@@ -99,6 +99,16 @@ func TestCacheKey(t *testing.T) {
 	}
 }
 
+func TestOpenURLWithPrefix_ParseError(t *testing.T) {
+	t.Parallel()
+
+	// Invalid URL must return an error before any network call.
+	_, err := OpenURLWithPrefix(t.Context(), "not-a-valid-redis-url", "myapp:")
+	if err == nil {
+		t.Fatal("OpenURLWithPrefix with invalid URL: want error, got nil")
+	}
+}
+
 func TestIsNil(t *testing.T) {
 	t.Parallel()
 
