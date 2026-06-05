@@ -47,8 +47,12 @@ func buildNewRequest(cmd *cobra.Command, args []string) (newRequest, error) {
 
 	flat, _ := cmd.Flags().GetBool(newFlagFlat)
 	module, _ := cmd.Flags().GetString(newFlagModule)
-	req.UseSQLite, _ = cmd.Flags().GetBool(newFlagSQLite)
-	req.UsePostgres, _ = cmd.Flags().GetBool(newFlagPostgres)
+	dbFlag, _ := cmd.Flags().GetString(newFlagDB)
+	var dbErr error
+	req.UseSQLite, req.UsePostgres, dbErr = resolveDB(dbFlag)
+	if dbErr != nil {
+		return req, dbErr
+	}
 	req.UseAI, _ = cmd.Flags().GetBool(newFlagAI)
 	req.UseRedis, _ = cmd.Flags().GetBool(newFlagRedis)
 	req.IncludeExample, _ = cmd.Flags().GetBool(newFlagExample)
@@ -60,7 +64,12 @@ func buildNewRequest(cmd *cobra.Command, args []string) (newRequest, error) {
 	skipExisting, _ := cmd.Flags().GetBool(newFlagSkipExisting)
 	noManifest, _ := cmd.Flags().GetBool(newFlagNoManifest)
 	req.WriteManifest = !noManifest
-	req.Verify, _ = cmd.Flags().GetBool(newFlagVerify)
+	explicitVerify, _ := cmd.Flags().GetBool(newFlagVerify)
+	noVerify, _ := cmd.Flags().GetBool(newFlagNoVerify)
+	if explicitVerify && noVerify {
+		return req, errors.New("cannot use --verify and --no-verify together")
+	}
+	req.Verify = explicitVerify
 	req.VerifyOnly, _ = cmd.Flags().GetBool(newFlagVerifyOnly)
 	req.VerifyTimeout, _ = cmd.Flags().GetDuration(newFlagVerifyTimeout)
 
@@ -130,6 +139,8 @@ func buildNewRequest(cmd *cobra.Command, args []string) (newRequest, error) {
 	if err := validateTargetDir(targetDir, existingPolicy); err != nil {
 		return req, err
 	}
+
+	req.Verify = resolveAutoVerify(req, explicitVerify, noVerify, &req.Warnings)
 
 	return req, nil
 }
