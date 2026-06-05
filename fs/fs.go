@@ -23,6 +23,20 @@ func ConfigDir(appName string) (string, error) {
 	return dir, nil
 }
 
+// EnsureConfigDir creates the app's config directory (via ConfigDir) and writes
+// config.yaml with defaultContent if it does not already exist. It is a no-op for
+// the file's contents when config.yaml is already present.
+func EnsureConfigDir(appName string, defaultContent []byte) error {
+	dir, err := ConfigDir(appName)
+	if err != nil {
+		return err
+	}
+	if _, err := ReadOrCreate(filepath.Join(dir, "config.yaml"), defaultContent); err != nil {
+		return fmt.Errorf("ensure config: %w", err)
+	}
+	return nil
+}
+
 // WriteFile writes data atomically by writing to a temp file then renaming.
 // Prevents partial writes on crash.
 func WriteFile(path string, data []byte, perm os.FileMode) error {
