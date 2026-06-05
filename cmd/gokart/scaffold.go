@@ -15,6 +15,7 @@ const (
 	defaultGokartPostgresVersion = "latest"
 	defaultGokartAIVersion       = "latest"
 	defaultGokartCacheVersion    = "latest"
+	defaultGokartFSVersion       = "latest"
 
 	defaultCobraVersion  = "v1.10.2"
 	defaultViperVersion  = "v1.21.0"
