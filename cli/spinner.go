@@ -29,6 +29,9 @@ type Spinner struct {
 	cancel  context.CancelFunc
 	mu      sync.Mutex
 	running bool
+	// forceTTY, when true, runs the animation regardless of TTY detection.
+	// Used only by tests to drive the goroutine with an injectable writer.
+	forceTTY bool
 }
 
 var defaultFrames = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
@@ -89,7 +92,7 @@ func (s *Spinner) StartWithContext(ctx context.Context) {
 	s.ctx, s.cancel = context.WithCancel(ctx)
 
 	// Skip animation in non-TTY environments
-	if !isTerminal(s.writer) {
+	if !s.forceTTY && !isTerminal(s.writer) {
 		fmt.Fprintln(s.writer, s.message)
 		s.mu.Unlock()
 		return
@@ -97,6 +100,11 @@ func (s *Spinner) StartWithContext(ctx context.Context) {
 	s.mu.Unlock()
 
 	go func() {
+		// Exit conditions (honored immediately, no trailing sleep):
+		//   - close(s.done) from Stop()
+		//   - s.ctx cancellation
+		// The inter-frame delay is itself a select so a Stop() during the
+		// wait returns within one scheduler tick instead of after s.delay.
 		i := 0
 		for {
 			select {
@@ -111,7 +119,14 @@ func (s *Spinner) StartWithContext(ctx context.Context) {
 
 				fmt.Fprintf(s.writer, "\r%s %s", s.frames[i%len(s.frames)], msg)
 				i++
-				time.Sleep(s.delay)
+
+				select {
+				case <-time.After(s.delay):
+				case <-s.done:
+					return
+				case <-s.ctx.Done():
+					return
+				}
 			}
 		}
 	}()
