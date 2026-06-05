@@ -26,8 +26,8 @@ gokart new mycli                    # Structured, global (default)
 gokart new mycli --local            # Structured, no global config
 gokart new mycli --flat             # Single main.go, local
 gokart new mycli --flat --global    # Single main.go, global config
-gokart new mycli --sqlite           # With SQLite wiring
-gokart new mycli --postgres         # With PostgreSQL wiring
+gokart new mycli --db sqlite        # With SQLite wiring
+gokart new mycli --db postgres      # With PostgreSQL wiring
 gokart new mycli --ai               # With OpenAI client (v3)
 gokart new mycli --redis            # With Redis cache
 ```
