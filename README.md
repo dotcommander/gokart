@@ -17,7 +17,7 @@ go install github.com/dotcommander/gokart/cmd/gokart@latest
 ## 60 Seconds to a Working Project
 
 ```
-$ gokart new myapi --postgres
+$ gokart new myapi --db postgres
 
   Created myapi/
   ✓ go mod init
@@ -104,11 +104,11 @@ Import only what you need — each is a separate Go module.
 gokart new mycli                    # Structured, global config (~/.config/mycli/)
 gokart new mycli --local            # Structured, no global config
 gokart new mycli --flat             # Single main.go
-gokart new mycli --sqlite           # With SQLite wiring
-gokart new mycli --postgres         # With PostgreSQL wiring
+gokart new mycli --db sqlite        # With SQLite wiring
+gokart new mycli --db postgres      # With PostgreSQL wiring
 gokart new mycli --ai               # With OpenAI client
 gokart new mycli --redis            # With Redis cache
-gokart new mycli --postgres --ai    # Combined
+gokart new mycli --db postgres --ai # Combined
 ```
 
 `gokart add` surgically adds integrations to an existing project. It re-renders only the affected files (`internal/app/context.go`, `internal/commands/root.go`), runs `go get`, and updates the manifest.
