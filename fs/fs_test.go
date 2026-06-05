@@ -146,3 +146,43 @@ func TestConfigDir(t *testing.T) {
 
 	t.Cleanup(func() { os.RemoveAll(dir) })
 }
+
+func TestEnsureConfigDir(t *testing.T) {
+	t.Parallel()
+	appName := "gokart-fs-ensure-test-3q9z"
+
+	dir, err := fs.ConfigDir(appName)
+	if err != nil {
+		t.Fatalf("ConfigDir: %v", err)
+	}
+	t.Cleanup(func() { os.RemoveAll(dir) })
+
+	defaultContent := []byte("# default\n")
+	if err := fs.EnsureConfigDir(appName, defaultContent); err != nil {
+		t.Fatalf("EnsureConfigDir (create): %v", err)
+	}
+
+	configFile := filepath.Join(dir, "config.yaml")
+	got, err := os.ReadFile(configFile)
+	if err != nil {
+		t.Fatalf("ReadFile after create: %v", err)
+	}
+	if string(got) != "# default\n" {
+		t.Fatalf("content mismatch: got %q, want %q", got, defaultContent)
+	}
+
+	// Second call must NOT overwrite existing content.
+	if err := os.WriteFile(configFile, []byte("# user edited\n"), 0o644); err != nil {
+		t.Fatalf("setup overwrite: %v", err)
+	}
+	if err := fs.EnsureConfigDir(appName, defaultContent); err != nil {
+		t.Fatalf("EnsureConfigDir (existing): %v", err)
+	}
+	got, err = os.ReadFile(configFile)
+	if err != nil {
+		t.Fatalf("ReadFile after second call: %v", err)
+	}
+	if string(got) != "# user edited\n" {
+		t.Fatalf("EnsureConfigDir must not overwrite existing config, got %q", got)
+	}
+}
