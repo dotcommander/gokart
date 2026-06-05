@@ -23,6 +23,7 @@ import (
 	"github.com/dotcommander/gokart/sqlite"
 {{- end }}
 {{- if .UsePostgres }}
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 {{- end }}
@@ -33,6 +34,22 @@ import (
 {{- end }}
 
 	"github.com/spf13/viper"
+)
+
+// Config key constants — single source of truth between viper defaults and readers.
+const (
+{{- if .UseSQLite }}
+	AppConfigKeyDBPath       = "db_path"
+{{- end }}
+{{- if .UsePostgres }}
+	AppConfigKeyDatabaseURL  = "database_url"
+{{- end }}
+{{- if .UseAI }}
+	AppConfigKeyOpenAIAPIKey = "openai_api_key"
+{{- end }}
+{{- if .UseRedis }}
+	AppConfigKeyRedisAddr    = "redis_addr"
+{{- end }}
 )
 
 // Context holds shared application dependencies.
@@ -62,7 +79,7 @@ func New(ctx context.Context, appName string, v *viper.Viper) (*Context, error) 
 {{- if .UseSQLite }}
 
 	// Setup SQLite database
-	dbPath := v.GetString("db_path")
+	dbPath := v.GetString(AppConfigKeyDBPath)
 	if dbPath == "" {
 		cacheDir, err := os.UserCacheDir()
 		if err != nil {
@@ -84,14 +101,21 @@ func New(ctx context.Context, appName string, v *viper.Viper) (*Context, error) 
 {{- if .UsePostgres }}
 
 	// Setup PostgreSQL connection pool
-	dbURL := v.GetString("database_url")
+	dbURL := v.GetString(AppConfigKeyDatabaseURL)
 	if dbURL == "" {
 		dbURL = os.Getenv("DATABASE_URL")
 	}
 	if dbURL == "" {
 		logger.Warn("DATABASE_URL not set, PostgreSQL features will not work")
 	} else {
-		pool, err := pgxpool.New(ctx, dbURL)
+		cfg, err := pgxpool.ParseConfig(dbURL)
+		if err != nil {
+			return nil, fmt.Errorf("parse postgres config: %w", err)
+		}
+		cfg.MaxConns = 25
+		cfg.MinConns = 5
+		cfg.MaxConnLifetime = time.Hour
+		pool, err := pgxpool.NewWithConfig(ctx, cfg)
 		if err != nil {
 			return nil, fmt.Errorf("connect to postgres: %w", err)
 		}
@@ -101,7 +125,7 @@ func New(ctx context.Context, appName string, v *viper.Viper) (*Context, error) 
 {{- if .UseAI }}
 
 	// Setup OpenAI client
-	apiKey := v.GetString("openai_api_key")
+	apiKey := v.GetString(AppConfigKeyOpenAIAPIKey)
 	if apiKey == "" {
 		apiKey = os.Getenv("OPENAI_API_KEY")
 	}
@@ -113,7 +137,7 @@ func New(ctx context.Context, appName string, v *viper.Viper) (*Context, error) 
 {{- if .UseRedis }}
 
 	// Setup Redis cache
-	redisAddr := v.GetString("redis_addr")
+	redisAddr := v.GetString(AppConfigKeyRedisAddr)
 	if redisAddr == "" {
 		redisAddr = os.Getenv("REDIS_ADDR")
 	}

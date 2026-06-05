@@ -2,32 +2,31 @@
 package app
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
+
+	"github.com/dotcommander/gokart/fs"
 )
 
-// ConfigDir returns ~/.config/{{.Name}}/ on all platforms.
+// ConfigDir returns the {{.Name}} config directory (created if missing),
+// using the platform-aware location from the gokart/fs toolkit.
 func ConfigDir() (string, error) {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(home, ".config", "{{.Name}}"), nil
+	return fs.ConfigDir("{{.Name}}")
 }
 
-// EnsureConfigDir creates the config directory and default config.yaml if missing.
+// EnsureConfigDir creates the config directory and writes the default
+// config.yaml if it does not already exist.
 func EnsureConfigDir() error {
-	dir, err := ConfigDir()
+	dir, err := fs.ConfigDir("{{.Name}}")
 	if err != nil {
 		return err
 	}
-	if err := os.MkdirAll(dir, 0755); err != nil {
-		return err
-	}
-
-	configFile := filepath.Join(dir, "config.yaml")
-	if _, err := os.Stat(configFile); os.IsNotExist(err) {
-		return os.WriteFile(configFile, []byte(defaultConfig), 0644)
+	cfgPath := filepath.Join(dir, "config.yaml")
+	if _, statErr := os.Stat(cfgPath); os.IsNotExist(statErr) {
+		if err := os.WriteFile(cfgPath, []byte(defaultConfig), 0o644); err != nil {
+			return fmt.Errorf("ensure config: %w", err)
+		}
 	}
 	return nil
 }

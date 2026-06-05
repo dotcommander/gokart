@@ -3,7 +3,8 @@ package main
 import (
 	"os"
 {{- if .UseGlobal }}
-	"path/filepath"
+
+	"github.com/dotcommander/gokart/fs"
 {{- end }}
 
 	"github.com/dotcommander/gokart/cli"
@@ -12,32 +13,6 @@ import (
 	{{- end }}
 )
 {{- if .UseGlobal }}
-
-// configDir returns ~/.config/{{.Name}}/.
-func configDir() (string, error) {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(home, ".config", "{{.Name}}"), nil
-}
-
-// ensureConfigDir creates the config directory and default config.yaml if missing.
-func ensureConfigDir() error {
-	dir, err := configDir()
-	if err != nil {
-		return err
-	}
-	if err := os.MkdirAll(dir, 0755); err != nil {
-		return err
-	}
-
-	configFile := filepath.Join(dir, "config.yaml")
-	if _, err := os.Stat(configFile); os.IsNotExist(err) {
-		return os.WriteFile(configFile, []byte(defaultConfig), 0644)
-	}
-	return nil
-}
 
 const defaultConfig = `# {{.Name}} configuration
 # Run: {{.Name}} --help
@@ -60,7 +35,7 @@ func main() {
 				return err
 			}
 		}
-		return ensureConfigDir()
+		return fs.EnsureConfigDir("{{.Name}}", []byte(defaultConfig))
 	}
 {{- end }}
 
