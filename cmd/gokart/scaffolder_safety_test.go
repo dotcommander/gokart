@@ -12,6 +12,7 @@ import (
 )
 
 func TestApplyRejectsSymlinkDestination(t *testing.T) {
+	t.Parallel()
 	fsys := fstest.MapFS{
 		"templates/basic/main.go.tmpl": {Data: []byte("package main\n")},
 	}
@@ -38,6 +39,7 @@ func TestApplyRejectsSymlinkDestination(t *testing.T) {
 }
 
 func TestApplyRejectsSymlinkParentPath(t *testing.T) {
+	t.Parallel()
 	fsys := fstest.MapFS{
 		"templates/basic/nested/main.go.tmpl": {Data: []byte("package main\n")},
 	}
@@ -60,6 +62,7 @@ func TestApplyRejectsSymlinkParentPath(t *testing.T) {
 }
 
 func TestApplyFailsWhenLockFileExists(t *testing.T) {
+	t.Parallel()
 	fsys := fstest.MapFS{
 		"templates/basic/main.go.tmpl": {Data: []byte("package main\n")},
 	}
@@ -86,6 +89,7 @@ func TestApplyFailsWhenLockFileExists(t *testing.T) {
 }
 
 func TestApplyReclaimsStaleLockFile(t *testing.T) {
+	t.Parallel()
 	fsys := fstest.MapFS{
 		"templates/basic/main.go.tmpl": {Data: []byte("package main\n")},
 	}
@@ -107,6 +111,7 @@ func TestApplyReclaimsStaleLockFile(t *testing.T) {
 }
 
 func TestShouldReclaimStaleLockWhenPIDRunningButLockExpired(t *testing.T) {
+	t.Parallel()
 	lockPath := filepath.Join(t.TempDir(), ".gokart.lock")
 	metadata := applyLockMetadata{
 		PID:        os.Getpid(),

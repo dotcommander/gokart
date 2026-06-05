@@ -11,15 +11,16 @@ import (
 
 // setupAddTestOpts controls what setupAddTestProject creates.
 type setupAddTestOpts struct {
-	Module          string
-	ManifestVersion int
-	TemplateRoot    string
-	Mode            string
-	Integrations    *manifestIntegrations
-	UseGlobal       *bool
-	Files           []scaffoldManifestFile
-	GoModExtra      string
-	ExtraFiles      map[string]string
+	Module           string
+	ManifestVersion  int
+	TemplateRoot     string
+	Mode             string
+	Integrations     *manifestIntegrations
+	UseGlobal        *bool
+	Files            []scaffoldManifestFile
+	GoModExtra       string
+	ExtraFiles       map[string]string
+	GeneratorVersion string
 }
 
 // setupAddTestProject creates a minimal structured project dir for add tests.
@@ -37,10 +38,11 @@ func setupAddTestProject(t *testing.T, opts setupAddTestOpts) string {
 
 	// Write manifest
 	manifest := scaffoldManifest{
-		Version:      opts.ManifestVersion,
-		Generator:    "gokart",
-		TemplateRoot: opts.TemplateRoot,
-		Files:        opts.Files,
+		Version:          opts.ManifestVersion,
+		Generator:        "gokart",
+		GeneratorVersion: opts.GeneratorVersion,
+		TemplateRoot:     opts.TemplateRoot,
+		Files:            opts.Files,
 	}
 	if opts.Integrations != nil {
 		manifest.Integrations = opts.Integrations
@@ -81,6 +83,7 @@ func writeTestFile(t *testing.T, dir, relPath, content string) {
 }
 
 func TestAddRejectsNoManifest(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	_, err := readAddManifest(dir)
 	if err == nil {
@@ -92,6 +95,7 @@ func TestAddRejectsNoManifest(t *testing.T) {
 }
 
 func TestAddRejectsFlat(t *testing.T) {
+	t.Parallel()
 	dir := setupAddTestProject(t, setupAddTestOpts{
 		Module:          "example.com/myapp",
 		ManifestVersion: scaffoldManifestV1,
@@ -113,6 +117,7 @@ func TestAddRejectsFlat(t *testing.T) {
 }
 
 func TestAddRejectsUnknownIntegration(t *testing.T) {
+	t.Parallel()
 	if validIntegrations["mysql"] {
 		t.Fatal("mysql should not be a valid integration")
 	}
@@ -131,11 +136,42 @@ func TestAddRejectsUnknownIntegration(t *testing.T) {
 }
 
 func TestAddRejectsDuplicate(t *testing.T) {
+	t.Parallel()
 	current := &manifestIntegrations{SQLite: true}
 	if !integrationEnabled(current, "sqlite") {
 		t.Fatal("sqlite should be detected as already enabled")
 	}
 	if integrationEnabled(current, "ai") {
 		t.Fatal("ai should not be detected as already enabled")
+	}
+}
+
+func TestIntegrationRegistryIsSingleSource(t *testing.T) {
+	t.Parallel()
+	for name, entry := range integrationRegistry {
+		if !validIntegrations[name] {
+			t.Fatalf("%s missing from derived validIntegrations", name)
+		}
+		if len(integrationDeps[name].Packages) == 0 {
+			t.Fatalf("%s missing deps in derived integrationDeps", name)
+		}
+		m := &manifestIntegrations{}
+		entry.set(m, true)
+		if !integrationEnabled(m, name) {
+			t.Fatalf("set+integrationEnabled disagree for %s", name)
+		}
+		setIntegration(m, name, false)
+		if integrationEnabled(m, name) {
+			t.Fatalf("setIntegration(false) did not disable %s", name)
+		}
+	}
+	if len(validIntegrations) != len(integrationRegistry) {
+		t.Fatalf("validIntegrations (%d) and registry (%d) size mismatch", len(validIntegrations), len(integrationRegistry))
+	}
+	if validIntegrations["mysql"] {
+		t.Fatal("mysql must not be valid")
+	}
+	if integrationEnabled(&manifestIntegrations{}, "mysql") {
+		t.Fatal("integrationEnabled must reject unknown name")
 	}
 }

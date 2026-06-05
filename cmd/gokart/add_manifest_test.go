@@ -5,6 +5,7 @@ import (
 )
 
 func TestAddInfersStateFromGoMod(t *testing.T) {
+	t.Parallel()
 	dir := setupAddTestProject(t, setupAddTestOpts{
 		Module:          "example.com/myapp",
 		ManifestVersion: scaffoldManifestV1,
@@ -25,6 +26,7 @@ func TestAddInfersStateFromGoMod(t *testing.T) {
 }
 
 func TestAddDetectsIntegrationsFromV2Manifest(t *testing.T) {
+	t.Parallel()
 	dir := setupAddTestProject(t, setupAddTestOpts{
 		Module:          "example.com/myapp",
 		ManifestVersion: scaffoldManifestV2,
@@ -48,6 +50,7 @@ func TestAddDetectsIntegrationsFromV2Manifest(t *testing.T) {
 }
 
 func TestAddUpdatesManifest(t *testing.T) {
+	t.Parallel()
 	dir := setupAddTestProject(t, setupAddTestOpts{
 		Module:          "example.com/myapp",
 		ManifestVersion: scaffoldManifestV1,
@@ -123,6 +126,7 @@ func TestAddUpdatesManifest(t *testing.T) {
 }
 
 func TestAddMultipleIntegrations(t *testing.T) {
+	t.Parallel()
 	dir := setupAddTestProject(t, setupAddTestOpts{
 		Module:          "example.com/myapp",
 		ManifestVersion: scaffoldManifestV2,
@@ -152,6 +156,7 @@ func TestAddMultipleIntegrations(t *testing.T) {
 }
 
 func TestAddParseModuleFromGoMod(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	writeTestFile(t, dir, "go.mod", "module github.com/myorg/myapp\n\ngo 1.26\n")
 

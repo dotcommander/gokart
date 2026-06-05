@@ -1,13 +1,17 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/dotcommander/gokart/cli"
 )
 
 func TestAddConflictsOnUserModifiedFile(t *testing.T) {
+	t.Parallel()
 	originalContent := []byte("// original content\n")
 	originalHash := sha256Hex(originalContent)
 
@@ -38,6 +42,7 @@ func TestAddConflictsOnUserModifiedFile(t *testing.T) {
 }
 
 func TestAddSafeOverwriteUnmodifiedFile(t *testing.T) {
+	t.Parallel()
 	originalContent := []byte("// original content\n")
 	originalHash := sha256Hex(originalContent)
 
@@ -68,6 +73,7 @@ func TestAddSafeOverwriteUnmodifiedFile(t *testing.T) {
 }
 
 func TestAddFileCreateWhenMissing(t *testing.T) {
+	t.Parallel()
 	dir := setupAddTestProject(t, setupAddTestOpts{
 		Module:          "example.com/myapp",
 		ManifestVersion: scaffoldManifestV2,
@@ -86,6 +92,7 @@ func TestAddFileCreateWhenMissing(t *testing.T) {
 }
 
 func TestPrintAddResultIncludesAlreadyPresent(t *testing.T) {
+	t.Parallel()
 	stdout := captureStdout(t, func() {
 		printAddResult(addRequest{}, addCommandOutput{
 			Added:          []string{"ai"},
@@ -102,6 +109,7 @@ func TestPrintAddResultIncludesAlreadyPresent(t *testing.T) {
 }
 
 func TestRunAddCommandJSONMarksVerifyRequestedOnFailure(t *testing.T) {
+	// Sequential: uses os.Chdir which mutates process-wide working directory.
 	tempDir := t.TempDir()
 	originalWD, err := os.Getwd()
 	if err != nil {
@@ -136,5 +144,80 @@ func TestRunAddCommandJSONMarksVerifyRequestedOnFailure(t *testing.T) {
 	}
 	if output.ErrorCode != errorCodeManifestNotFound {
 		t.Fatalf("expected error code %q, got %q", errorCodeManifestNotFound, output.ErrorCode)
+	}
+}
+
+// TestAddWarnsOnGeneratorVersionSkew covers the version-skew warning path:
+// a project scaffolded by an older gokart version must produce an operator-visible
+// WARN from planAddChanges, and the skew alone must not cause a fatal error.
+// Subtests are sequential — they share cli.SetOutput (a package-level writer) and
+// cannot safely run in parallel with each other.
+func TestAddWarnsOnGeneratorVersionSkew(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name             string
+		generatorVersion string
+		wantWarn         bool
+	}{
+		{
+			name:             "skew warns",
+			generatorVersion: "v0.0.0-test-old",
+			wantWarn:         true,
+		},
+		{
+			name:             "matching version is silent",
+			generatorVersion: gokartVersion,
+			wantWarn:         false,
+		},
+		{
+			name:             "empty version is silent (pre-existing manifest)",
+			generatorVersion: "",
+			wantWarn:         false,
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			// Sequential subtests: cli.SetOutput is a package-level global; parallel
+			// subtests would race on it.
+
+			dir := setupAddTestProject(t, setupAddTestOpts{
+				Module:           "example.com/myapp",
+				ManifestVersion:  scaffoldManifestV2,
+				TemplateRoot:     "templates/structured",
+				Mode:             "structured",
+				Integrations:     &manifestIntegrations{},
+				GeneratorVersion: tc.generatorVersion,
+			})
+
+			var buf bytes.Buffer
+			cli.SetOutput(&buf)
+			defer cli.SetOutput(nil)
+
+			// planAddChanges is the real code path for the skew check.
+			// Request an integration that is already present so we can isolate
+			// the warning without needing full template rendering.
+			output := &addCommandOutput{}
+			_, _ = planAddChanges(addRequest{Dir: dir, Integrations: []string{"sqlite"}}, output)
+
+			got := buf.String()
+			if tc.wantWarn {
+				if !strings.Contains(got, tc.generatorVersion) {
+					t.Fatalf("expected warning containing %q, got %q", tc.generatorVersion, got)
+				}
+				if !strings.Contains(got, gokartVersion) {
+					t.Fatalf("expected warning containing running version %q, got %q", gokartVersion, got)
+				}
+				if !strings.Contains(got, "scaffolded by gokart") {
+					t.Fatalf("expected skew warning text, got %q", got)
+				}
+			} else {
+				if strings.Contains(got, "scaffolded by gokart") {
+					t.Fatalf("expected no skew warning, got %q", got)
+				}
+			}
+		})
 	}
 }

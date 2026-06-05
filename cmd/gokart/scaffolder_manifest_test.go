@@ -10,6 +10,7 @@ import (
 )
 
 func TestApplyWritesManifestWithFileProvenance(t *testing.T) {
+	t.Parallel()
 	fsys := fstest.MapFS{
 		"templates/basic/main.go.tmpl": {Data: []byte("package main\n")},
 	}
@@ -30,6 +31,9 @@ func TestApplyWritesManifestWithFileProvenance(t *testing.T) {
 	}
 	if manifest.Generator != "gokart" {
 		t.Fatalf("unexpected manifest generator: %q", manifest.Generator)
+	}
+	if manifest.GeneratorVersion != gokartVersion {
+		t.Fatalf("unexpected manifest generator version: got %q, want %q", manifest.GeneratorVersion, gokartVersion)
 	}
 	if manifest.TemplateRoot != "templates/basic" {
 		t.Fatalf("unexpected template root: %q", manifest.TemplateRoot)
@@ -63,6 +67,7 @@ func TestApplyWritesManifestWithFileProvenance(t *testing.T) {
 }
 
 func TestApplyManifestTracksSkippedContent(t *testing.T) {
+	t.Parallel()
 	fsys := fstest.MapFS{
 		"templates/basic/main.go.tmpl": {Data: []byte("package main\n")},
 	}
@@ -107,6 +112,7 @@ func TestApplyManifestTracksSkippedContent(t *testing.T) {
 }
 
 func TestApplyDryRunDoesNotWriteManifest(t *testing.T) {
+	t.Parallel()
 	fsys := fstest.MapFS{
 		"templates/basic/main.go.tmpl": {Data: []byte("package main\n")},
 	}
@@ -124,6 +130,7 @@ func TestApplyDryRunDoesNotWriteManifest(t *testing.T) {
 }
 
 func TestApplySkipManifestOptionDoesNotWriteManifest(t *testing.T) {
+	t.Parallel()
 	fsys := fstest.MapFS{
 		"templates/basic/main.go.tmpl": {Data: []byte("package main\n")},
 	}
@@ -145,6 +152,7 @@ func TestApplySkipManifestOptionDoesNotWriteManifest(t *testing.T) {
 }
 
 func TestManifestIsDeterministicWithoutGeneratedAtTimestamp(t *testing.T) {
+	t.Parallel()
 	fsys := fstest.MapFS{
 		"templates/basic/main.go.tmpl": {Data: []byte("package main\n")},
 	}

@@ -9,6 +9,7 @@ import (
 )
 
 func TestApplyFinalizesJournalAfterInProcessRollback(t *testing.T) {
+	t.Parallel()
 	failingFS := fstest.MapFS{
 		"templates/basic/a.tmpl":       {Data: []byte("file-a\n")},
 		"templates/basic/a/b.txt.tmpl": {Data: []byte("file-b\n")},
@@ -46,6 +47,7 @@ func TestApplyFinalizesJournalAfterInProcessRollback(t *testing.T) {
 }
 
 func TestRecoverPendingJournalsRestoresIncompleteTransaction(t *testing.T) {
+	t.Parallel()
 	targetDir := t.TempDir()
 	targetRoot, err := filepath.Abs(targetDir)
 	if err != nil {
@@ -130,6 +132,7 @@ func TestRecoverPendingJournalsRestoresIncompleteTransaction(t *testing.T) {
 }
 
 func TestRecoverPendingJournalsBlocksWhenGeneratedFileChanged(t *testing.T) {
+	t.Parallel()
 	targetDir := t.TempDir()
 	targetRoot, err := filepath.Abs(targetDir)
 	if err != nil {
@@ -184,6 +187,7 @@ func TestRecoverPendingJournalsBlocksWhenGeneratedFileChanged(t *testing.T) {
 }
 
 func TestApplyRecoversPendingJournalBeforeScaffolding(t *testing.T) {
+	t.Parallel()
 	fsys := fstest.MapFS{
 		"templates/basic/main.go.tmpl": {Data: []byte("package main\n")},
 	}
