@@ -35,22 +35,55 @@ const (
 	integrationRedis    = "redis"
 )
 
-var validIntegrations = map[string]bool{
-	integrationSQLite:   true,
-	integrationPostgres: true,
-	integrationAI:       true,
-	integrationRedis:    true,
-}
-
 type integrationDep struct {
 	Packages []string
 }
 
-var integrationDeps = map[string]integrationDep{
-	integrationSQLite:   {Packages: []string{"github.com/dotcommander/gokart/sqlite@" + defaultGokartSQLiteVersion}},
-	integrationPostgres: {Packages: []string{"github.com/dotcommander/gokart/postgres@" + defaultGokartPostgresVersion, "github.com/jackc/pgx/v5@latest"}},
-	integrationAI:       {Packages: []string{"github.com/dotcommander/gokart/ai@" + defaultGokartAIVersion, "github.com/openai/openai-go/v3@latest"}},
-	integrationRedis:    {Packages: []string{"github.com/dotcommander/gokart/cache@" + defaultGokartCacheVersion, "github.com/redis/go-redis/v9@" + defaultRedisVersion}},
+// integrationEntry is the single source of truth for one integration: its
+// go.mod packages plus how to read/write its bit on a manifestIntegrations.
+// Adding a new integration means adding one entry here — nothing else.
+type integrationEntry struct {
+	deps []string
+	get  func(*manifestIntegrations) bool
+	set  func(*manifestIntegrations, bool)
+}
+
+// integrationRegistry is the ONLY place that enumerates integration names.
+var integrationRegistry = map[string]integrationEntry{
+	integrationSQLite: {
+		deps: []string{"github.com/dotcommander/gokart/sqlite@" + defaultGokartSQLiteVersion},
+		get:  func(m *manifestIntegrations) bool { return m.SQLite },
+		set:  func(m *manifestIntegrations, v bool) { m.SQLite = v },
+	},
+	integrationPostgres: {
+		deps: []string{"github.com/dotcommander/gokart/postgres@" + defaultGokartPostgresVersion, "github.com/jackc/pgx/v5@latest"},
+		get:  func(m *manifestIntegrations) bool { return m.Postgres },
+		set:  func(m *manifestIntegrations, v bool) { m.Postgres = v },
+	},
+	integrationAI: {
+		deps: []string{"github.com/dotcommander/gokart/ai@" + defaultGokartAIVersion, "github.com/openai/openai-go/v3@latest"},
+		get:  func(m *manifestIntegrations) bool { return m.AI },
+		set:  func(m *manifestIntegrations, v bool) { m.AI = v },
+	},
+	integrationRedis: {
+		deps: []string{"github.com/dotcommander/gokart/cache@" + defaultGokartCacheVersion, "github.com/redis/go-redis/v9@" + defaultRedisVersion},
+		get:  func(m *manifestIntegrations) bool { return m.Redis },
+		set:  func(m *manifestIntegrations, v bool) { m.Redis = v },
+	},
+}
+
+// validIntegrations and integrationDeps are derived views of the registry,
+// kept for the existing map-indexing call sites. Do not edit by hand.
+var (
+	validIntegrations = make(map[string]bool, len(integrationRegistry))
+	integrationDeps   = make(map[string]integrationDep, len(integrationRegistry))
+)
+
+func init() {
+	for name, entry := range integrationRegistry {
+		validIntegrations[name] = true
+		integrationDeps[name] = integrationDep{Packages: entry.deps}
+	}
 }
 
 type addCommandOutput struct {
@@ -261,33 +294,19 @@ func integrationEnabled(current *manifestIntegrations, name string) bool {
 	if current == nil {
 		return false
 	}
-	switch name {
-	case integrationSQLite:
-		return current.SQLite
-	case integrationPostgres:
-		return current.Postgres
-	case integrationAI:
-		return current.AI
-	case integrationRedis:
-		return current.Redis
-	default:
+	entry, ok := integrationRegistry[name]
+	if !ok {
 		return false
 	}
+	return entry.get(current)
 }
 
 func setIntegration(m *manifestIntegrations, name string, enable bool) {
 	if m == nil {
 		return
 	}
-	switch name {
-	case integrationSQLite:
-		m.SQLite = enable
-	case integrationPostgres:
-		m.Postgres = enable
-	case integrationAI:
-		m.AI = enable
-	case integrationRedis:
-		m.Redis = enable
+	if entry, ok := integrationRegistry[name]; ok {
+		entry.set(m, enable)
 	}
 }
 

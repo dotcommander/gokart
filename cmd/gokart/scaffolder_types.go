@@ -168,6 +168,7 @@ type applyJournalEntry struct {
 type scaffoldManifest struct {
 	Version            int                    `json:"version"`
 	Generator          string                 `json:"generator"`
+	GeneratorVersion   string                 `json:"generator_version,omitempty"`
 	TemplateRoot       string                 `json:"template_root"`
 	ExistingFilePolicy ExistingFilePolicy     `json:"existing_file_policy"`
 	GeneratedAt        *time.Time             `json:"generated_at,omitempty"`

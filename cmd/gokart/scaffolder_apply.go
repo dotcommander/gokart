@@ -338,6 +338,7 @@ func buildScaffoldManifest(templateRoot string, plan []plannedFile, opts ApplyOp
 	m := scaffoldManifest{
 		Version:            version,
 		Generator:          "gokart",
+		GeneratorVersion:   gokartVersion,
 		TemplateRoot:       templateRoot,
 		ExistingFilePolicy: opts.ExistingFilePolicy,
 		Files:              files,

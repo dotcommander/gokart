@@ -86,6 +86,12 @@ func planAddChanges(req addRequest, output *addCommandOutput) (*addPlan, error) 
 		return nil, wrapAddFlowError(err, errorCodeManifestNotFound, exitCodeManifestNotFound)
 	}
 
+	// Warn (non-fatal) on template-version skew: a project scaffolded by an
+	// older gokart may not match templates rendered by the running version.
+	if manifest.GeneratorVersion != "" && manifest.GeneratorVersion != gokartVersion {
+		cli.Warning("project was scaffolded by gokart %s but you are running %s; templates may not match the original project layout", manifest.GeneratorVersion, gokartVersion)
+	}
+
 	if isFlatProject(manifest) {
 		return nil, wrapAddFlowError(errors.New("gokart add requires a structured project (flat projects don't support integrations)"), errorCodeFlatModeUnsupported, exitCodeFlatUnsupported)
 	}
@@ -174,22 +180,42 @@ func printAddResult(req addRequest, output addCommandOutput) {
 }
 
 func applyAddChanges(ctx context.Context, req addRequest, plan *addPlan, output *addCommandOutput) error {
-	for _, relPath := range plan.RenderedPaths {
-		destPath := filepath.Join(req.Dir, relPath)
-		if err := os.MkdirAll(filepath.Dir(destPath), 0755); err != nil {
-			return wrapAddFlowError(fmt.Errorf("create directory for %s: %w", relPath, err), errorCodeScaffoldFailed, exitCodeScaffoldFailed)
-		}
-		if err := writeFileAtomic(destPath, plan.RenderedFiles[relPath], 0644); err != nil {
-			return wrapAddFlowError(fmt.Errorf("write %s: %w", relPath, err), errorCodeScaffoldFailed, exitCodeScaffoldFailed)
-		}
+	journal, applied, err := applyAddFileWrites(req, plan)
+	if err != nil {
+		return err
 	}
 
-	if err := addGoDependencies(ctx, req.Dir, plan.ToAdd, !req.JSONOutput); err != nil {
-		return wrapAddFlowError(fmt.Errorf("add dependencies: %w", err), errorCodeScaffoldFailed, exitCodeScaffoldFailed)
+	depActions, err := journalDependencyFiles(req.Dir, journal)
+	if err != nil {
+		err := rollbackWithError(fmt.Errorf("prepare dependency rollback: %w", err), applied, journal)
+		return wrapAddFlowError(err, errorCodeScaffoldFailed, exitCodeScaffoldFailed)
 	}
 
-	if err := updateAddManifest(req.Dir, plan.Manifest, plan.Data, plan.RenderedFiles); err != nil {
-		return wrapAddFlowError(fmt.Errorf("update manifest: %w", err), errorCodeScaffoldFailed, exitCodeScaffoldFailed)
+	// From here on, any failure must revert every file written above.
+	depErr := addGoDependenciesFunc(ctx, req.Dir, plan.ToAdd, !req.JSONOutput)
+	applied, err = markDependencyFilesApplied(depActions, journal, applied)
+	if depErr != nil {
+		if err != nil {
+			depErr = fmt.Errorf("%w; record dependency rollback state: %v", depErr, err)
+		}
+		err := rollbackWithError(fmt.Errorf("add dependencies: %w", depErr), applied, journal)
+		return wrapAddFlowError(err, errorCodeScaffoldFailed, exitCodeScaffoldFailed)
+	}
+	if err != nil {
+		err := rollbackWithError(fmt.Errorf("record dependency rollback state: %w", err), applied, journal)
+		return wrapAddFlowError(err, errorCodeScaffoldFailed, exitCodeScaffoldFailed)
+	}
+
+	if mfErr := updateAddManifestFunc(req.Dir, plan.Manifest, plan.Data, plan.RenderedFiles); mfErr != nil {
+		err := rollbackWithError(fmt.Errorf("update manifest: %w", mfErr), applied, journal)
+		return wrapAddFlowError(err, errorCodeScaffoldFailed, exitCodeScaffoldFailed)
+	}
+
+	if err := journal.markCompleted(); err != nil {
+		return wrapAddFlowError(fmt.Errorf("finalize add journal: %w", err), errorCodeScaffoldFailed, exitCodeScaffoldFailed)
+	}
+	if err := journal.cleanup(); err != nil {
+		return wrapAddFlowError(fmt.Errorf("cleanup add journal: %w", err), errorCodeScaffoldFailed, exitCodeScaffoldFailed)
 	}
 
 	if !req.JSONOutput {
@@ -213,4 +239,129 @@ func applyAddChanges(ctx context.Context, req addRequest, plan *addPlan, output 
 	}
 
 	return nil
+}
+
+// applyAddFileWrites writes every rendered integration file under a recovery
+// journal so a later failure (dependency install, manifest update) can revert
+// the whole set. It mirrors applyPlanWrites in scaffolder_apply.go: each file is
+// journaled BEFORE it is written, and a write failure rolls back what landed so
+// far. rollbackActionForPath distinguishes create (file absent -> remove on
+// rollback) from overwrite (file present -> restore original content+mode).
+func applyAddFileWrites(req addRequest, plan *addPlan) (*applyJournal, []rollbackAction, error) {
+	journal, err := beginApplyJournal(req.Dir)
+	if err != nil {
+		return nil, nil, wrapAddFlowError(fmt.Errorf("begin add journal: %w", err), errorCodeScaffoldFailed, exitCodeScaffoldFailed)
+	}
+
+	applied := make([]rollbackAction, 0, len(plan.RenderedPaths))
+	for _, relPath := range plan.RenderedPaths {
+		destPath := filepath.Join(req.Dir, relPath)
+		if err := os.MkdirAll(filepath.Dir(destPath), 0755); err != nil {
+			rbErr := rollbackWithError(fmt.Errorf("create directory for %s: %w", relPath, err), applied, journal)
+			return nil, nil, wrapAddFlowError(rbErr, errorCodeScaffoldFailed, exitCodeScaffoldFailed)
+		}
+
+		rendered := plan.RenderedFiles[relPath]
+		action, err := rollbackActionForPath(req.Dir, destPath)
+		if err != nil {
+			rbErr := rollbackWithError(fmt.Errorf("prepare rollback for %s: %w", relPath, err), applied, journal)
+			return nil, nil, wrapAddFlowError(rbErr, errorCodeScaffoldFailed, exitCodeScaffoldFailed)
+		}
+		action.ExpectedExists = true
+		action.ExpectedHash = sha256Hex(rendered)
+		action.ExpectedSize = int64(len(rendered))
+		action.ExpectedMode = 0644
+
+		idx, err := journal.appendAction(action)
+		if err != nil {
+			rbErr := rollbackWithError(fmt.Errorf("record rollback intent for %s: %w", relPath, err), applied, journal)
+			return nil, nil, wrapAddFlowError(rbErr, errorCodeScaffoldFailed, exitCodeScaffoldFailed)
+		}
+
+		if err := writeFileAtomic(destPath, rendered, 0644); err != nil {
+			rbErr := rollbackWithError(fmt.Errorf("write %s: %w", relPath, err), applied, journal)
+			return nil, nil, wrapAddFlowError(rbErr, errorCodeScaffoldFailed, exitCodeScaffoldFailed)
+		}
+
+		if err := journal.markActionApplied(idx); err != nil {
+			rbErr := rollbackWithError(fmt.Errorf("mark rollback intent applied for %s: %w", relPath, err), append(applied, action), journal)
+			return nil, nil, wrapAddFlowError(rbErr, errorCodeScaffoldFailed, exitCodeScaffoldFailed)
+		}
+		action.Mode = 0644
+		applied = append(applied, action)
+	}
+
+	return journal, applied, nil
+}
+
+type dependencyRollbackAction struct {
+	index  int
+	action rollbackAction
+}
+
+var (
+	addGoDependenciesFunc = addGoDependencies
+	updateAddManifestFunc = updateAddManifest
+)
+
+func journalDependencyFiles(dir string, journal *applyJournal) ([]dependencyRollbackAction, error) {
+	actions := make([]dependencyRollbackAction, 0, 2)
+	for _, relPath := range []string{"go.mod", "go.sum"} {
+		path := filepath.Join(dir, relPath)
+		action, err := rollbackActionForPath(dir, path)
+		if err != nil {
+			return nil, fmt.Errorf("prepare rollback for %s: %w", relPath, err)
+		}
+		index, err := journal.appendAction(action)
+		if err != nil {
+			return nil, fmt.Errorf("record rollback intent for %s: %w", relPath, err)
+		}
+		actions = append(actions, dependencyRollbackAction{index: index, action: action})
+	}
+	return actions, nil
+}
+
+func markDependencyFilesApplied(actions []dependencyRollbackAction, journal *applyJournal, applied []rollbackAction) ([]rollbackAction, error) {
+	for _, dep := range actions {
+		if err := updateJournalExpectedState(journal, dep.index); err != nil {
+			return applied, err
+		}
+		if err := journal.markActionApplied(dep.index); err != nil {
+			return append(applied, dep.action), err
+		}
+		applied = append(applied, dep.action)
+	}
+	return applied, nil
+}
+
+func updateJournalExpectedState(journal *applyJournal, index int) error {
+	if journal == nil {
+		return nil
+	}
+	if index < 0 || index >= len(journal.State.Actions) {
+		return fmt.Errorf("journal action index %d out of range", index)
+	}
+
+	entry := &journal.State.Actions[index]
+	path := filepath.Join(journal.State.TargetRoot, filepath.FromSlash(entry.RelPath))
+	info, err := assertRegularFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			entry.ExpectedExists = false
+			entry.ExpectedSHA256 = ""
+			entry.ExpectedSize = 0
+			entry.ExpectedMode = 0
+			return journal.save()
+		}
+		return fmt.Errorf("inspect dependency file %s: %w", entry.RelPath, err)
+	}
+	content, err := os.ReadFile(path)
+	if err != nil {
+		return fmt.Errorf("read dependency file %s: %w", entry.RelPath, err)
+	}
+	entry.ExpectedExists = true
+	entry.ExpectedSHA256 = sha256Hex(content)
+	entry.ExpectedSize = int64(len(content))
+	entry.ExpectedMode = uint32(info.Mode().Perm())
+	return journal.save()
 }
