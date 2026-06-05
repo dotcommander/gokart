@@ -88,6 +88,9 @@ func Open(ctx context.Context, addr string) (*Cache, error) {
 
 // OpenURL opens a Redis connection using a URL.
 //
+// The returned cache has no key prefix. To apply a key prefix, use
+// [OpenURLWithPrefix] or [OpenWithConfig] with Config.KeyPrefix set.
+//
 // Example:
 //
 //	c, err := cache.OpenURL(ctx, "redis://:password@localhost:6379/0")
@@ -105,6 +108,17 @@ func OpenURL(ctx context.Context, url string) (*Cache, error) {
 	}
 
 	return &Cache{client: client}, nil
+}
+
+// OpenURLWithPrefix opens a Redis connection using a URL and applies a key prefix.
+// All cache operations will prepend prefix to every key.
+func OpenURLWithPrefix(ctx context.Context, url, prefix string) (*Cache, error) {
+	c, err := OpenURL(ctx, url)
+	if err != nil {
+		return nil, err
+	}
+	c.prefix = prefix
+	return c, nil
 }
 
 // OpenWithConfig opens a Redis connection with custom settings.
