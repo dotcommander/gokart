@@ -58,7 +58,7 @@ func emitJSON(v any) error {
 		return err
 	}
 
-	_, err = fmt.Fprintln(os.Stdout, string(data))
+	_, err = fmt.Fprintln(cli.Output(), string(data))
 	return err
 }
 

@@ -40,14 +40,12 @@ Generated file tree:
 myapp/
 ├── .gitignore
 ├── .gokart-manifest.json          # Tracks generated files (do not edit)
-├── CLAUDE.md                      # AI assistant guidance
 ├── README.md                      # Build and install commands
 ├── go.mod
 ├── cmd/
 │   └── main.go                    # Entry point, wires version via ldflags
 └── internal/
     ├── app/
-    │   ├── config.go              # Config directory bootstrap (~/.config/myapp/)
     │   └── context.go             # Shared deps: logger, DB connection
     ├── actions/
     │   ├── greet.go               # Business logic (testable, no CLI deps)
@@ -61,7 +59,6 @@ myapp/
 
 - `cmd/main.go` — calls `commands.Execute(version)` and exits. No business logic here.
 - `internal/app/context.go` — opens the SQLite database, creates the logger. Commands receive a `*app.Context` and call it.
-- `internal/app/config.go` — creates `~/.config/myapp/` and a default `config.yaml` on first run. Called in `PersistentPreRunE` so it runs before any command.
 - `internal/commands/root.go` — builds the `cli.App`, chains the `PersistentPreRunE` hook, registers commands.
 - `internal/commands/greet.go` — parses flags, calls `actions.Greet`, prints the result.
 - `internal/actions/greet.go` — pure function: takes `GreetInput`, returns `(string, error)`. No cobra, no globals.
@@ -88,7 +85,7 @@ Run with no arguments to see available commands:
 Expected output:
 
 ```
-myapp - a GoKart CLI application
+myapp CLI
 
 Usage:
   myapp [command]
@@ -257,7 +254,7 @@ Run again:
 ✓ counter "hits" = 2
 ```
 
-The count persists in `~/Library/Application Support/myapp/data.db` (macOS) or `~/.config/myapp/data.db` (Linux) — the exact path is returned by `os.UserConfigDir()` and varies by platform. No configuration needed — the path is set automatically in `internal/app/context.go`.
+The count persists in the user cache directory under `myapp/data.db` — the exact base path comes from `os.UserCacheDir()` and varies by platform. No configuration is needed; `internal/app/context.go` creates the directory automatically.
 
 ---
 

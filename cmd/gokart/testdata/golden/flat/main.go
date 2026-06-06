@@ -12,7 +12,7 @@ var version = "dev"
 
 func main() {
 	app := cli.NewApp("demo", version).
-		WithDescription("demo - a GoKart CLI application")
+		WithDescription("demo CLI")
 	greetCmd := cli.Command("greet", "Greet someone", func(cmd *cobra.Command, args []string) error {
 		name, _ := cmd.Flags().GetString("name")
 		loud, _ := cmd.Flags().GetBool("loud")

@@ -18,14 +18,14 @@ const rootLongDescription = logo + `
   --redis          Redis cache (go-redis/v9)
   --example        Include example greet command/action scaffold
   --flat           Single main.go (no internal/)
-  --local          No global config (structured: default is global)
-  --global         Global config (flat: default is local)
+  --local          Local-only config (default)
+  --global         Global config
   --config-scope   Config scope: auto|local|global
   --module         Custom module path
   --dry-run        Preview scaffold operations without writing files
   --force          Overwrite ALL existing files (including user edits)
   --skip-existing  Skip files that already exist; only write new/missing ones
-  --no-manifest    Skip writing .gokart-manifest.json
+  --no-manifest    Skip managed .gokart-manifest.json
   --verify         Run go mod tidy and go test ./... after generation
   --verify-only    Run verification only against an existing project directory
   --verify-timeout Max duration for --verify commands (default 5m, 0 disables)
@@ -91,7 +91,7 @@ const rootHelpTemplate = `{{.Long}}
   gokart new myapp --redis
   gokart add sqlite ai
 
-  Defaults: structured = global config · flat = local config
+  Defaults: local config · manifest only for global config/integrations
 
   gokart new --help    Full options
   gokart add --help    Add integrations

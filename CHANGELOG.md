@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.10.1 (2026-06-05)
+
+### Changed
+- Make plain CLI scaffolds local-only and unmanaged by default; write manifests only for global config or integration scaffolds.
+- Restore the README logo as a tracked asset and update generator docs for the lighter default scaffold.
+
+### Fixed
+- Align scaffold onboarding docs with the live generated file trees and cache-path behavior.
+- Route JSON test output through the CLI output writer so `go test -race ./cmd/gokart` passes without global stdout races.
+
 ## v0.10.0 (2026-05-29)
 
 ### Added

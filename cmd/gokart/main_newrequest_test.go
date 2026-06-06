@@ -69,7 +69,7 @@ func TestBuildNewRequestRejectsNegativeVerifyTimeout(t *testing.T) {
 	}
 }
 
-func TestBuildNewRequestManifestDefaultsEnabled(t *testing.T) {
+func TestBuildNewRequestPlainCLIDefaultsUnmanaged(t *testing.T) {
 	t.Parallel()
 	cmd := newNewCommandForTest()
 	req, err := buildNewRequest(cmd, []string{"myapp"})
@@ -77,12 +77,52 @@ func TestBuildNewRequestManifestDefaultsEnabled(t *testing.T) {
 		t.Fatalf("buildNewRequest() error = %v", err)
 	}
 
-	if !req.WriteManifest {
-		t.Fatal("expected write manifest to default to true")
+	if req.WriteManifest {
+		t.Fatal("expected plain CLI scaffold to skip manifest by default")
+	}
+
+	if req.UseGlobal {
+		t.Fatal("expected plain CLI scaffold to use local config by default")
 	}
 
 	if req.IncludeExample {
 		t.Fatal("expected include example to default to false")
+	}
+}
+
+func TestBuildNewRequestManagedScaffoldsWriteManifest(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		flags map[string]string
+	}{
+		{name: "global", flags: map[string]string{newFlagGlobal: "true"}},
+		{name: "sqlite", flags: map[string]string{newFlagDB: "sqlite"}},
+		{name: "postgres", flags: map[string]string{newFlagDB: "postgres"}},
+		{name: "ai", flags: map[string]string{newFlagAI: "true"}},
+		{name: "redis", flags: map[string]string{newFlagRedis: "true"}},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			cmd := newNewCommandForTest()
+			for flag, value := range tc.flags {
+				if err := cmd.Flags().Set(flag, value); err != nil {
+					t.Fatalf("set %s: %v", flag, err)
+				}
+			}
+
+			req, err := buildNewRequest(cmd, []string{"myapp"})
+			if err != nil {
+				t.Fatalf("buildNewRequest() error = %v", err)
+			}
+
+			if !req.WriteManifest {
+				t.Fatal("expected managed scaffold to write manifest")
+			}
+		})
 	}
 }
 
@@ -104,6 +144,7 @@ func TestBuildNewRequestExampleFlagEnablesExampleScaffold(t *testing.T) {
 func TestBuildNewRequestNoManifestDisablesManifest(t *testing.T) {
 	t.Parallel()
 	cmd := newNewCommandForTest()
+	mustSetFlagTrue(t, cmd, newFlagGlobal)
 	if err := cmd.Flags().Set("no-manifest", "true"); err != nil {
 		t.Fatalf("set no-manifest flag: %v", err)
 	}

@@ -35,6 +35,7 @@ repomix-output.md
 
 # Source assets
 original_logo.png
+!logo.png
 
 # Internal tooling state
 looper-state.json
