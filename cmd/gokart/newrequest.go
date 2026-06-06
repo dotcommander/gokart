@@ -63,7 +63,6 @@ func buildNewRequest(cmd *cobra.Command, args []string) (newRequest, error) {
 	force, _ := cmd.Flags().GetBool(newFlagForce)
 	skipExisting, _ := cmd.Flags().GetBool(newFlagSkipExisting)
 	noManifest, _ := cmd.Flags().GetBool(newFlagNoManifest)
-	req.WriteManifest = !noManifest
 	explicitVerify, _ := cmd.Flags().GetBool(newFlagVerify)
 	noVerify, _ := cmd.Flags().GetBool(newFlagNoVerify)
 	if explicitVerify && noVerify {
@@ -102,7 +101,7 @@ func buildNewRequest(cmd *cobra.Command, args []string) (newRequest, error) {
 
 		req.Verify = true
 		req.ExistingFilePolicy = ExistingFilePolicyFail
-		useGlobal, _, resolveErr := resolveUseGlobal(flat, false, false, configScopeAuto)
+		useGlobal, _, resolveErr := resolveUseGlobal(false, false, configScopeAuto)
 		if resolveErr != nil {
 			return req, resolveErr
 		}
@@ -119,12 +118,13 @@ func buildNewRequest(cmd *cobra.Command, args []string) (newRequest, error) {
 		return req, nil
 	}
 
-	useGlobal, warnings, err := resolveUseGlobal(flat, local, global, req.ConfigScope)
+	useGlobal, warnings, err := resolveUseGlobal(local, global, req.ConfigScope)
 	if err != nil {
 		return req, err
 	}
 	req.UseGlobal = useGlobal
 	req.Warnings = append(req.Warnings, warnings...)
+	req.WriteManifest = resolveWriteManifest(req, noManifest)
 
 	existingPolicy, err := resolveExistingFilePolicy(force, skipExisting)
 	if err != nil {
@@ -143,6 +143,14 @@ func buildNewRequest(cmd *cobra.Command, args []string) (newRequest, error) {
 	req.Verify = resolveAutoVerify(req, explicitVerify, noVerify, &req.Warnings)
 
 	return req, nil
+}
+
+func resolveWriteManifest(req newRequest, noManifest bool) bool {
+	if noManifest {
+		return false
+	}
+
+	return req.UseGlobal || req.UseSQLite || req.UsePostgres || req.UseAI || req.UseRedis
 }
 
 func verifyOnlyIgnoredFlags(cmd *cobra.Command) []string {
@@ -198,7 +206,7 @@ func parseNewInvocation(args []string) (preset string, projectArg string, err er
 	}
 }
 
-func resolveUseGlobal(flat, local, global bool, configScope string) (bool, []string, error) {
+func resolveUseGlobal(local, global bool, configScope string) (bool, []string, error) {
 	if local && global {
 		return false, nil, errors.New("cannot use --local and --global together")
 	}
@@ -215,17 +223,10 @@ func resolveUseGlobal(flat, local, global bool, configScope string) (bool, []str
 	switch scope {
 	case configScopeAuto:
 		warnings := make([]string, 0, 1)
-		if flat {
-			if local {
-				warnings = append(warnings, "--local has no effect in flat mode")
-			}
-			return global, warnings, nil
+		if local {
+			warnings = append(warnings, "--local is already the default")
 		}
-
-		if global {
-			warnings = append(warnings, "--global is already the default in structured mode")
-		}
-		return !local, warnings, nil
+		return global, warnings, nil
 	case configScopeLocal:
 		return false, nil, nil
 	case configScopeGlobal:

@@ -24,7 +24,7 @@ var version = "dev"
 
 func main() {
 	app := cli.NewApp("{{.Name}}", version).
-		WithDescription("{{.Name}} - a GoKart CLI application")
+		WithDescription("{{.Name}} CLI")
 {{- if .UseGlobal }}
 
 	// Chain with existing PersistentPreRunE (config init)

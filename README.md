@@ -1,8 +1,8 @@
+# GoKart
+
 <p align="center">
   <img src="logo.png" alt="GoKart Logo" width="200">
 </p>
-
-# GoKart
 
 Opinionated Go service toolkit. Thin wrappers around battle-tested packages that hand you the real types back — no lock-in, no hidden runtime.
 
@@ -17,12 +17,12 @@ go install github.com/dotcommander/gokart/cmd/gokart@latest
 ## 60 Seconds to a Working Project
 
 ```
-$ gokart new myapi --db postgres
+$ gokart new myapi --db postgres --example
 
   Created myapi/
   ✓ go mod init
   ✓ go get dependencies
-  ✓ CLAUDE.md written
+  ✓ manifest written
 
 $ tree myapi/
 myapi/
@@ -36,7 +36,6 @@ myapi/
 │       └── greet.go
 ├── go.mod
 ├── .gokart-manifest.json
-├── CLAUDE.md
 └── README.md
 
 $ cd myapi && go run ./cmd
@@ -101,8 +100,8 @@ Import only what you need — each is a separate Go module.
 `gokart new` generates a structured CLI project wired to your chosen integrations:
 
 ```bash
-gokart new mycli                    # Structured, global config (~/.config/mycli/)
-gokart new mycli --local            # Structured, no global config
+gokart new mycli                    # Structured, local-only, no manifest
+gokart new mycli --global           # Structured, global config (~/.config/mycli/)
 gokart new mycli --flat             # Single main.go
 gokart new mycli --db sqlite        # With SQLite wiring
 gokart new mycli --db postgres      # With PostgreSQL wiring

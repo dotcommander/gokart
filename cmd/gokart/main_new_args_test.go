@@ -48,7 +48,6 @@ func TestResolveUseGlobal(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name        string
-		flat        bool
 		local       bool
 		global      bool
 		scope       string
@@ -56,21 +55,20 @@ func TestResolveUseGlobal(t *testing.T) {
 		wantWarning bool
 		wantErr     bool
 	}{
-		{name: "structured defaults global", scope: configScopeAuto, want: true},
-		{name: "structured local legacy", local: true, scope: configScopeAuto, want: false},
-		{name: "flat defaults local", flat: true, scope: configScopeAuto, want: false},
-		{name: "flat legacy global", flat: true, global: true, scope: configScopeAuto, want: true},
+		{name: "structured defaults local", scope: configScopeAuto, want: false},
+		{name: "structured local legacy", local: true, scope: configScopeAuto, want: false, wantWarning: true},
+		{name: "legacy global", global: true, scope: configScopeAuto, want: true},
 		{name: "explicit local", scope: configScopeLocal, want: false},
 		{name: "explicit global", scope: configScopeGlobal, want: true},
 		{name: "conflicting legacy flags", local: true, global: true, scope: configScopeAuto, wantErr: true},
 		{name: "scope with legacy flags", local: true, scope: configScopeGlobal, wantErr: true},
-		{name: "flat local warning", flat: true, local: true, scope: configScopeAuto, wantWarning: true},
+		{name: "local warning", local: true, scope: configScopeAuto, wantWarning: true},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			got, warnings, err := resolveUseGlobal(tc.flat, tc.local, tc.global, tc.scope)
+			got, warnings, err := resolveUseGlobal(tc.local, tc.global, tc.scope)
 			if tc.wantErr {
 				if err == nil {
 					t.Fatalf("expected error, got nil")

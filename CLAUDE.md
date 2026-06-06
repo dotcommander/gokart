@@ -22,8 +22,8 @@ GoKart is an opinionated Go service toolkit providing thin wrappers around battl
 
 Scaffolds new CLI projects:
 ```bash
-gokart new mycli                    # Structured, global (default)
-gokart new mycli --local            # Structured, no global config
+gokart new mycli                    # Structured, local-only, no manifest
+gokart new mycli --global           # Structured, global config
 gokart new mycli --flat             # Single main.go, local
 gokart new mycli --flat --global    # Single main.go, global config
 gokart new mycli --db sqlite        # With SQLite wiring
@@ -45,7 +45,7 @@ gokart add ai --force          # Overwrite modified files
 
 Only re-renders integration-affected files (`internal/app/context.go`, `internal/commands/root.go`), runs `go get` for dependencies, and updates the manifest. Does not touch `go.mod` directly — uses `go get` + `go mod tidy`.
 
-**Global mode** (default for structured, opt-in for flat):
+**Global mode** (opt-in):
 - Creates `~/.config/<app>/config.yaml` on first run
 - Generates CLAUDE.md documenting paths for AI assistants
 - Generates README.md with build commands
