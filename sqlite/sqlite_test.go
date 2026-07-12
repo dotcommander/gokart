@@ -2,6 +2,7 @@ package sqlite
 
 import (
 	"context"
+	"database/sql"
 	"strings"
 	"testing"
 	"time"
@@ -91,7 +92,7 @@ func TestBuildDSN(t *testing.T) {
 }
 
 func TestPerConnectionPragmas(t *testing.T) {
-	cfg := DefaultConfig(":memory:")
+	cfg := DefaultConfig("file:pragma-test?mode=memory&cache=shared")
 	cfg.WALMode = false
 	cfg.ForeignKeys = true
 	// Use 2 connections so the pool can issue separate physical connections.
@@ -132,5 +133,77 @@ func TestPerConnectionPragmas(t *testing.T) {
 	}
 	if fk2 != 1 {
 		t.Errorf("conn2: expected foreign_keys=1, got %d", fk2)
+	}
+}
+
+func TestResolveConfigProfilesAndValidation(t *testing.T) {
+	t.Run("read heavy", func(t *testing.T) {
+		cfg := ReadHeavyConfig("app.db")
+		effective, err := ResolveConfig(cfg)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if effective.CacheSizeKB != ReadHeavyCacheSizeKB || effective.MmapSizeBytes != ReadHeavyMmapSizeBytes {
+			t.Fatalf("unexpected read-heavy settings: %+v", effective)
+		}
+	})
+
+	t.Run("reject invalid pool", func(t *testing.T) {
+		cfg := DefaultConfig("app.db")
+		cfg.MaxOpenConns = 1
+		cfg.MaxIdleConns = 2
+		if _, err := ResolveConfig(cfg); err == nil {
+			t.Fatal("expected MaxIdleConns validation error")
+		}
+	})
+
+	t.Run("reject wal in memory", func(t *testing.T) {
+		cfg := DefaultConfig(":memory:")
+		cfg.WALMode = true
+		if _, err := ResolveConfig(cfg); err == nil {
+			t.Fatal("expected memory WAL validation error")
+		}
+	})
+}
+
+func TestReadOnlyAndImmutableDSN(t *testing.T) {
+	readOnlyConfig := ReadOnlyConfig()
+	readOnlyConfig.Path = "snapshot.db"
+	readOnly := buildDSN(readOnlyConfig)
+	for _, want := range []string{"mode=ro", "_pragma=cache_size(-2000)"} {
+		if !strings.Contains(readOnly, want) {
+			t.Errorf("read-only DSN %q missing %q", readOnly, want)
+		}
+	}
+	if strings.Contains(readOnly, "_txlock=immediate") || strings.Contains(readOnly, "journal_mode") {
+		t.Errorf("read-only DSN contains write settings: %q", readOnly)
+	}
+
+	immutableConfig := ImmutableConfig()
+	immutableConfig.Path = "snapshot.db"
+	immutable := buildDSN(immutableConfig)
+	if !strings.Contains(immutable, "mode=ro") || !strings.Contains(immutable, "immutable=1") {
+		t.Errorf("immutable DSN missing flags: %q", immutable)
+	}
+}
+
+func TestDSNEscapesPathWithoutEscapingSeparators(t *testing.T) {
+	dsn := buildDSN(DefaultConfig("dir with space/data%set.db"))
+	if !strings.HasPrefix(dsn, "file:dir%20with%20space/data%25set.db?") {
+		t.Fatalf("unexpected escaped DSN: %q", dsn)
+	}
+}
+
+func TestTransactionWithOptionsRejectsNilInputs(t *testing.T) {
+	if err := TransactionWithOptions(context.Background(), nil, nil, func(*sql.Tx) error { return nil }); err == nil {
+		t.Fatal("expected nil db error")
+	}
+	db, err := InMemory()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	if err := TransactionWithOptions(context.Background(), db, nil, nil); err == nil {
+		t.Fatal("expected nil callback error")
 	}
 }
