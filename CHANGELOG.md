@@ -1,5 +1,31 @@
 # Changelog
 
+## v0.11.0 (2026-07-12)
+
+### Breaking
+- Remove the `ai` and `fs` modules, root map getters, Redis command mirrors,
+  CLI fatal/writer overrides, and policy-heavy web helpers.
+- Move config-directory setup to the root module and require direct upstream
+  APIs for OpenAI, ordinary Redis commands, templ, retries, and rate limiting.
+
+### Changed
+- Pin generated GoKart and upstream dependencies for deterministic scaffolds.
+- Generate PostgreSQL through `postgres.Open` and OpenAI through the official SDK.
+- Establish `PHILOSOPHY.md` as the admission and deletion contract.
+- Add a runnable newcomer flow covering migrations, greeting, and persisted
+  counter behavior.
+- Harden workspace, documentation, release-layout, and generated-scaffold
+  verification across every surviving module.
+
+## v0.10.3 (2026-07-12)
+
+### Added
+- Add scalar configuration parsing and identifier helpers.
+
+### Fixed
+- Include the workspace module manifest so fresh-clone verification covers every
+  published module consistently.
+
 ## v0.10.2 (2026-07-12)
 
 ### Added
