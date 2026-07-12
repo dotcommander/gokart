@@ -14,8 +14,11 @@ Build a working CLI app with a database in under 10 minutes.
 ## Install GoKart
 
 ```bash
-go install github.com/dotcommander/gokart/cmd/gokart@latest
+go install github.com/dotcommander/gokart/cmd/gokart@v0.10.2
 ```
+
+Use `@latest` instead only if you intentionally want the newest published
+version rather than a reproducible install.
 
 Verify it works:
 
@@ -260,7 +263,10 @@ The count persists in the user cache directory under `myapp/data.db` — the exa
 
 ## Add an Integration
 
-After a project is scaffolded, use `gokart add` to wire in new integrations without re-scaffolding.
+Use `gokart add` to wire new integrations into a managed, structured project
+without re-scaffolding. Plain local scaffolds are unmanaged and cannot use
+`gokart add`; choose `--global` or an integration when running `gokart new` if
+you will need future additions.
 
 Add the OpenAI client:
 
@@ -276,7 +282,15 @@ Output:
   overwrite  internal/commands/root.go
 ```
 
-`gokart add` re-renders only the two integration-affected files (`context.go` and `root.go`), runs `go get` for the new dependencies, and updates the manifest. Your `cmd/main.go`, action files, and command files are untouched.
+`gokart add` re-renders `internal/app/context.go` and
+`internal/commands/root.go`. It runs `go get` and `go mod tidy`, which can
+change `go.mod` and `go.sum`, then refreshes `.gokart-manifest.json`. Your
+`cmd/main.go`, action files, and other command files are untouched.
+
+Before writing, it compares generated wiring with the hashes in the manifest.
+Modified wiring and existing wiring that the manifest does not track are
+refused by default. The advanced `--force` flag overwrites those conflicts and
+can discard local edits.
 
 After adding, `internal/app/context.go` will include an `AI openai.Client` field wired from `OPENAI_API_KEY`:
 

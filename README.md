@@ -6,11 +6,14 @@ GoKart is a modular toolkit for building Go CLIs and services with practical
 defaults.
 
 ```bash
-go install github.com/dotcommander/gokart/cmd/gokart@latest
+go install github.com/dotcommander/gokart/cmd/gokart@v0.10.2
 gokart new myapp --db sqlite --example
 cd myapp
 go run ./cmd greet --name World
 ```
+
+Use `@latest` instead only if you intentionally want the newest published
+version rather than a reproducible install.
 
 The generated project is regular Go code built on Cobra and the integrations
 you select. Keep using GoKart's helpers, customize the generated code, or use
@@ -23,7 +26,8 @@ the underlying libraries directly.
   migrations, Redis, logging, files, and OpenAI.
 - Safe integration updates with dry runs, generated-file manifests, and
   conflict detection.
-- Separate Go modules, so applications only pull in the components they use.
+- Independently importable Go modules for each component. Ordinary Go module
+  transitive dependencies still apply.
 
 ## Packages
 
@@ -67,9 +71,10 @@ gokart new mycli --dry-run --json        # machine-readable preview
 ```
 
 Plain local scaffolds stay lightweight and do not write a management manifest.
-Selecting global configuration or an integration writes
-`.gokart-manifest.json`, which lets `gokart add` detect edits before updating
-generated wiring.
+They are unmanaged and cannot use `gokart add`. If you expect to add
+integrations later, select `--global` or an integration during creation. Those
+options write `.gokart-manifest.json`, which lets `gokart add` detect edits
+before updating generated wiring.
 
 ## Add integrations
 
@@ -79,12 +84,16 @@ Run `gokart add` from a managed, structured project:
 gokart add sqlite
 gokart add ai redis
 gokart add postgres --dry-run
-gokart add ai --force
 ```
 
-The command updates only the integration-owned files, installs the required
-modules, and refreshes the manifest. Use `--dry-run` to inspect the plan first.
-Use `--force` only when you intend to overwrite modified generated files.
+The command re-renders `internal/app/context.go` and
+`internal/commands/root.go`, runs `go get` and `go mod tidy` (which can change
+`go.mod` and `go.sum`), and refreshes `.gokart-manifest.json`. It refuses to
+overwrite modified generated wiring or existing wiring that the manifest does
+not track. Use `--dry-run` to inspect the plan first.
+
+Destructive override (advanced): `gokart add ai --force` overwrites conflicting
+generated wiring. Use it only when you intend to discard those local edits.
 
 See the [generator reference](docs/components/generator.md) for every flag,
 manifest behavior, JSON output, and exit code.
@@ -94,33 +103,50 @@ manifest behavior, JSON output, and exit code.
 Each component is independently importable:
 
 ```go
-pool, err := postgres.Open(ctx, os.Getenv("DATABASE_URL"))
-if err != nil {
-    return err
-}
-defer pool.Close()
+package main
 
-router := web.NewRouter(web.RouterConfig{
-    Middleware: web.StandardMiddleware,
-})
-router.Get("/health", func(w http.ResponseWriter, _ *http.Request) {
-    w.WriteHeader(http.StatusOK)
-})
+import (
+    "log"
+    "net/http"
+
+    "github.com/dotcommander/gokart/web"
+)
+
+func main() {
+    router := web.NewRouter(web.RouterConfig{
+        Middleware: web.StandardMiddleware,
+    })
+    router.Get("/health", func(w http.ResponseWriter, _ *http.Request) {
+        web.JSON(w, map[string]string{"status": "ok"})
+    })
+
+    if err := web.ListenAndServe(":8080", router); err != nil {
+        log.Fatal(err)
+    }
+}
 ```
 
 Component guides and runnable examples are indexed in
 [`docs/`](docs/index.md). Complete applications live in
-[`examples/`](examples/).
+[`examples/`](examples/). For database usage, see the maintained
+[PostgreSQL example](docs/examples/postgres/main.go).
 
 ## Requirements and verification
 
 - Go 1.26 or later.
+- `just` for the short contributor verification command.
 - External services are required only for the integrations that use them.
 
 Run the repository checks across all modules and examples:
 
 ```bash
 just verify
+```
+
+Without `just`, run the same checks directly:
+
+```bash
+scripts/verify-workspace.sh all
 ```
 
 ## License

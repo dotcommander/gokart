@@ -5,8 +5,11 @@ Scaffold new Go CLI projects and add integrations without re-scaffolding.
 ## Install
 
 ```bash
-go install github.com/dotcommander/gokart/cmd/gokart@latest
+go install github.com/dotcommander/gokart/cmd/gokart@v0.10.2
 ```
+
+Use `@latest` instead only if you intentionally want the newest published
+version rather than a reproducible install.
 
 ---
 
@@ -203,19 +206,23 @@ gokart add ai
 gokart add redis
 gokart add sqlite ai           # add both at once
 gokart add postgres --dry-run  # preview changes
-gokart add ai --force          # overwrite user-modified files
 gokart add ai --verify         # verify after adding
 gokart add sqlite --json       # machine-readable output
 ```
 
+Destructive override (advanced): `gokart add ai --force` overwrites modified or
+untracked generated wiring. Use it only when you intend to discard those local
+changes.
+
 ### How It Works
 
-`gokart add` only touches the two files that integration wiring affects:
+`gokart add` re-renders the two files that integration wiring affects:
 
 - `internal/app/context.go`
 - `internal/commands/root.go`
 
-It does not re-scaffold the whole project. Specifically:
+It does not re-scaffold the whole project, but dependency and manifest updates
+can mutate other files. Specifically:
 
 1. Reads `.gokart-manifest.json` to learn the current project state (module path, existing integrations, config scope).
 2. Rejects flat-mode projects — flat projects do not support integrations.
@@ -230,13 +237,17 @@ Integrations already enabled are skipped with a warning. If all requested integr
 
 ### Conflict Detection and `--force`
 
-Before writing, `gokart add` computes the SHA-256 of each existing file and compares it against the hash stored in the manifest. If the hashes differ, the file has been modified since it was generated.
+Before writing, `gokart add` computes the SHA-256 of each existing wiring file
+and compares it against the hash stored in the manifest. If the hashes differ,
+the file has been modified since it was generated. An existing wiring file
+without a matching manifest entry is also a conflict.
 
 | State | Default behavior | With `--force` |
 |-------|-----------------|----------------|
 | File does not exist | Create | Create |
 | File exists, hash matches manifest | Overwrite (safe) | Overwrite |
 | File exists, hash differs | Fail with error | Overwrite with warning |
+| File exists, not tracked by manifest | Fail with error | Overwrite with warning |
 
 Use `--dry-run` to preview which files would be created or overwritten before committing.
 

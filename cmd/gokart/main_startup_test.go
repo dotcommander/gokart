@@ -70,6 +70,31 @@ func TestNewGokartAppStartupContractRootCommand(t *testing.T) {
 	}
 }
 
+func TestSelectGokartVersion(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name          string
+		version       string
+		moduleVersion string
+		want          string
+	}{
+		{name: "linker version wins", version: "v0.10.2-local", moduleVersion: "v0.10.2", want: "v0.10.2-local"},
+		{name: "installed module version", version: "dev", moduleVersion: "v0.10.2", want: "v0.10.2"},
+		{name: "local development build", version: "dev", moduleVersion: "(devel)", want: "dev"},
+		{name: "missing build info version", version: "dev", want: "dev"},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			if got := selectGokartVersion(tc.version, tc.moduleVersion); got != tc.want {
+				t.Fatalf("selectGokartVersion(%q, %q) = %q, want %q", tc.version, tc.moduleVersion, got, tc.want)
+			}
+		})
+	}
+}
+
 func TestNewGokartAppStartupContractNewCommand(t *testing.T) {
 	t.Parallel()
 	root := newGokartApp("test-version").Root()

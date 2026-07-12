@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"runtime/debug"
 	"time"
 
 	"github.com/dotcommander/gokart/cli"
@@ -115,8 +116,23 @@ func main() {
 }
 
 func run() error {
-	app := newGokartApp(gokartVersion)
+	app := newGokartApp(effectiveGokartVersion(gokartVersion))
 	return app.Run()
+}
+
+func effectiveGokartVersion(version string) string {
+	info, ok := debug.ReadBuildInfo()
+	if !ok {
+		return selectGokartVersion(version, "")
+	}
+	return selectGokartVersion(version, info.Main.Version)
+}
+
+func selectGokartVersion(version, moduleVersion string) string {
+	if version != "dev" || moduleVersion == "" || moduleVersion == "(devel)" {
+		return version
+	}
+	return moduleVersion
 }
 
 func newGokartApp(version string) *cli.App {

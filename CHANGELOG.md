@@ -1,6 +1,13 @@
 # Changelog
 
-## Unreleased
+## v0.10.2 (2026-07-12)
+
+### Added
+- Add typed configuration parsing helpers and explicit PostgreSQL configuration.
+- Add SQLite profiles, transactions, checkpoints, health checks, retries,
+  savepoints, inspection, maintenance, and backup operations.
+- Add provider-scoped migrations and typed migration status results.
+- Publish the `cmd/gokart` module as an independently installable component.
 
 ### Security
 - Require API keys in the `X-API-Key` header; query-string credentials are no longer accepted.
@@ -10,6 +17,13 @@
 ### Changed
 - Stop generating provider-specific coding-agent guidance in new projects.
 - Align public package and config-path documentation with the current APIs.
+- Correct installation, scaffold management, generator mutation, safety,
+  modularity, contributor verification, and direct-library README guidance.
+
+### Fixed
+- Report the tagged module version from binaries installed with `go install`
+  when no linker-supplied version is present.
+- Make workspace verification bootstrap an isolated `go.work` in fresh clones.
 
 ## v0.10.1 (2026-06-05)
 
