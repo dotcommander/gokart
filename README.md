@@ -16,10 +16,6 @@ The generated project is regular Go code built on Cobra and the integrations
 you select. Keep using GoKart's helpers, customize the generated code, or use
 the underlying libraries directly.
 
-> Not affiliated with
-> [Praetorian's GoKart](https://github.com/praetorian-inc/gokart), the Go
-> security scanner.
-
 ## What GoKart provides
 
 - A project generator for structured CLI applications and single-file tools.
