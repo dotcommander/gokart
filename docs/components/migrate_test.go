@@ -132,7 +132,7 @@ func TestMigrateDocumentation_Commands(t *testing.T) {
 		"Rolls back the most recently applied migration",
 		"Rolls back to a specific version",
 		"Rolls back all migrations",
-		"Prints the status of all migrations",
+		"Validates that migration status can be loaded",
 		"Returns the current migration version",
 	}
 
@@ -142,10 +142,9 @@ func TestMigrateDocumentation_Commands(t *testing.T) {
 		}
 	}
 
-	// Test for MigrateStatus output example
-	statusOutput := "Applied At"
-	if !strings.Contains(text, statusOutput) {
-		t.Error("Missing Status output example")
+	// New code consumes typed status records instead of package-owned stdout.
+	if !strings.Contains(text, "migrate.MigrationStatuses(ctx, db,") {
+		t.Error("Missing MigrationStatuses example")
 	}
 }
 

@@ -77,7 +77,9 @@ err := migrate.Reset(ctx, db, migrate.Config{
 
 #### Status
 
-Prints the status of all migrations to stdout.
+Validates that migration status can be loaded. New code should use
+`MigrationStatuses`, which returns typed status records without writing to
+stdout.
 
 ```go
 err := migrate.Status(ctx, db, migrate.Config{
@@ -86,13 +88,11 @@ err := migrate.Status(ctx, db, migrate.Config{
 })
 ```
 
-Output format:
-```
-    Applied At                  Migration
-    =======================================
-    Sun Jan 1 10:00:00 2024    20230101000000_init.sql
-    Sun Jan 2 11:30:00 2024    20230102113000_users.sql
-    Pending                    20230103120000_posts.sql
+```go
+statuses, err := migrate.MigrationStatuses(ctx, db, migrate.Config{
+    Dir:     "migrations",
+    Dialect: "postgres",
+})
 ```
 
 #### Version

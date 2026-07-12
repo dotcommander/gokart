@@ -5,19 +5,11 @@ import (
 	"database/sql"
 	"fmt"
 	"io/fs"
-	"sync"
+	"os"
+	"time"
 
 	"github.com/pressly/goose/v3"
 )
-
-// migrateMu protects goose global state during concurrent migrations.
-// Goose uses package-level variables for configuration (dialect, table name, base FS),
-// which means concurrent calls to SetDialect, SetTableName, or SetBaseFS from
-// different goroutines could race. While the database itself handles locking for
-// the actual migration execution, this mutex ensures our setup phase is atomic.
-// This is a defensive measure for applications that might run migrations from
-// multiple goroutines (e.g., in test parallelization scenarios).
-var migrateMu sync.Mutex
 
 // Config configures database migrations.
 type Config struct {
@@ -29,8 +21,7 @@ type Config struct {
 	// Default: "goose_db_version"
 	Table string
 
-	// Dialect is the database dialect (postgres, sqlite3, mysql).
-	// Auto-detected if not specified.
+	// Dialect is the required database dialect (postgres, sqlite3, mysql).
 	Dialect string
 
 	// FS is an optional filesystem for embedded migrations.
@@ -43,6 +34,43 @@ type Config struct {
 	// NoVersioning disables version tracking (for one-off scripts).
 	// Default: false
 	NoVersioning bool
+}
+
+func newGooseProvider(cfg Config, db *sql.DB) (*goose.Provider, error) {
+	if cfg.Dir == "" {
+		cfg.Dir = "migrations"
+	}
+	if cfg.Dialect == "" {
+		return nil, fmt.Errorf("migration dialect is required")
+	}
+
+	var fsys fs.FS
+	if cfg.FS != nil {
+		var err error
+		fsys, err = fs.Sub(cfg.FS, cfg.Dir)
+		if err != nil {
+			return nil, fmt.Errorf("open migration directory %q: %w", cfg.Dir, err)
+		}
+	} else {
+		fsys = os.DirFS(cfg.Dir)
+	}
+
+	opts := make([]goose.ProviderOption, 0, 3)
+	if cfg.Table != "" {
+		opts = append(opts, goose.WithTableName(cfg.Table))
+	}
+	if cfg.AllowMissing {
+		opts = append(opts, goose.WithAllowOutofOrder(true))
+	}
+	if cfg.NoVersioning {
+		opts = append(opts, goose.WithDisableVersioning(true))
+	}
+
+	provider, err := goose.NewProvider(goose.Dialect(cfg.Dialect), db, fsys, opts...)
+	if err != nil {
+		return nil, fmt.Errorf("configure migration provider: %w", err)
+	}
+	return provider, nil
 }
 
 // DefaultConfig returns sensible defaults.
@@ -74,34 +102,37 @@ func DefaultConfig() Config {
 //	    Dialect: "postgres",
 //	})
 func Up(ctx context.Context, db *sql.DB, cfg Config) error {
-	if err := withConfiguredGoose(ctx, db, &cfg, func() error {
-		return goose.UpContext(ctx, db, cfg.Dir)
-	}); err != nil {
+	provider, err := newGooseProvider(cfg, db)
+	if err != nil {
 		return fmt.Errorf("migration failed: %w", err)
 	}
-
+	if _, err := provider.Up(ctx); err != nil {
+		return fmt.Errorf("migration failed: %w", err)
+	}
 	return nil
 }
 
 // Down rolls back the last migration.
 func Down(ctx context.Context, db *sql.DB, cfg Config) error {
-	if err := withConfiguredGoose(ctx, db, &cfg, func() error {
-		return goose.DownContext(ctx, db, cfg.Dir)
-	}); err != nil {
+	provider, err := newGooseProvider(cfg, db)
+	if err != nil {
 		return fmt.Errorf("rollback failed: %w", err)
 	}
-
+	if _, err := provider.Down(ctx); err != nil {
+		return fmt.Errorf("rollback failed: %w", err)
+	}
 	return nil
 }
 
 // DownTo rolls back to a specific version.
 func DownTo(ctx context.Context, db *sql.DB, cfg Config, version int64) error {
-	if err := withConfiguredGoose(ctx, db, &cfg, func() error {
-		return goose.DownToContext(ctx, db, cfg.Dir, version)
-	}); err != nil {
+	provider, err := newGooseProvider(cfg, db)
+	if err != nil {
 		return fmt.Errorf("rollback to version %d failed: %w", version, err)
 	}
-
+	if _, err := provider.DownTo(ctx, version); err != nil {
+		return fmt.Errorf("rollback to version %d failed: %w", version, err)
+	}
 	return nil
 }
 
@@ -110,28 +141,54 @@ func Reset(ctx context.Context, db *sql.DB, cfg Config) error {
 	return DownTo(ctx, db, cfg, 0)
 }
 
-// Status prints the status of all migrations.
+// MigrationStatus reports whether one discovered migration has been applied.
+type MigrationStatus struct {
+	Version   int64
+	Applied   bool
+	AppliedAt time.Time
+}
+
+// Status verifies that migration status can be loaded. It is retained for
+// compatibility; use MigrationStatuses when the caller needs the results.
 func Status(ctx context.Context, db *sql.DB, cfg Config) error {
-	if err := withConfiguredGoose(ctx, db, &cfg, func() error {
-		return goose.StatusContext(ctx, db, cfg.Dir)
-	}); err != nil {
-		return fmt.Errorf("status failed: %w", err)
+	_, err := MigrationStatuses(ctx, db, cfg)
+	return err
+}
+
+// MigrationStatuses returns the status of every discovered migration in
+// provider order.
+func MigrationStatuses(ctx context.Context, db *sql.DB, cfg Config) ([]MigrationStatus, error) {
+	provider, err := newGooseProvider(cfg, db)
+	if err != nil {
+		return nil, fmt.Errorf("status failed: %w", err)
+	}
+	providerStatuses, err := provider.Status(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("status failed: %w", err)
 	}
 
-	return nil
+	statuses := make([]MigrationStatus, 0, len(providerStatuses))
+	for _, status := range providerStatuses {
+		statuses = append(statuses, MigrationStatus{
+			Version:   status.Source.Version,
+			Applied:   status.State == goose.StateApplied,
+			AppliedAt: status.AppliedAt,
+		})
+	}
+
+	return statuses, nil
 }
 
 // Version returns the current migration version.
 func Version(ctx context.Context, db *sql.DB, cfg Config) (int64, error) {
-	var version int64
-	if err := withConfiguredGoose(ctx, db, &cfg, func() error {
-		var err error
-		version, err = goose.GetDBVersionContext(ctx, db)
-		return err
-	}); err != nil {
+	provider, err := newGooseProvider(cfg, db)
+	if err != nil {
 		return 0, fmt.Errorf("failed to get version: %w", err)
 	}
-
+	version, err := provider.GetDBVersion(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get version: %w", err)
+	}
 	return version, nil
 }
 
@@ -181,38 +238,4 @@ func SQLite(ctx context.Context, db *sql.DB, dir string) error {
 		Dir:     dir,
 		Dialect: "sqlite3",
 	})
-}
-
-// setupMigration applies common configuration for migration operations.
-func setupMigration(cfg *Config) error {
-	if cfg.Dir == "" {
-		cfg.Dir = "migrations"
-	}
-	if cfg.Table != "" {
-		goose.SetTableName(cfg.Table)
-	}
-	if cfg.Dialect != "" {
-		if err := goose.SetDialect(cfg.Dialect); err != nil {
-			return fmt.Errorf("invalid dialect: %w", err)
-		}
-	}
-	if cfg.FS != nil {
-		goose.SetBaseFS(cfg.FS)
-	}
-	return nil
-}
-
-func withConfiguredGoose(_ context.Context, _ *sql.DB, cfg *Config, fn func() error) error {
-	migrateMu.Lock()
-	defer migrateMu.Unlock()
-
-	if err := setupMigration(cfg); err != nil {
-		return err
-	}
-
-	if err := fn(); err != nil {
-		return err
-	}
-
-	return nil
 }
