@@ -152,6 +152,32 @@ See [Response Helpers](response.md) for the full API reference and examples.
 
 ---
 
+## Authentication
+
+`APIKeyAuth` and `BearerAuth` validate credentials before invoking a handler.
+Validators may return an enriched context for downstream authorization checks.
+
+```go
+router.With(web.APIKeyAuth(validateAPIKey)).Get("/api/private", handler)
+router.With(web.BearerAuth(validateToken)).Get("/api/account", handler)
+```
+
+API keys are accepted only through the `X-API-Key` header. Bearer tokens use
+`Authorization: Bearer <token>`. Credentials in URLs are intentionally ignored
+because URLs are commonly retained in browser history, access logs, and proxy
+telemetry.
+
+| Condition | Status | Response |
+|-----------|--------|----------|
+| Missing API key | `401` | `missing api key` |
+| Missing or malformed bearer header | `401` | `invalid authorization header` |
+| Validator rejects a credential | `403` | `invalid credentials` |
+
+Validator error details are not returned to clients. Log operational details at
+the validation boundary when needed, without logging credential values.
+
+---
+
 ## HTML rendering (templ)
 
 Thin wrappers around the templ rendering API: `Render`, `RenderWithStatus`, `RenderCtx`, and handler adapters (`TemplHandler`, `TemplHandlerFunc`, `TemplHandlerFuncE`) for wiring components directly to chi routes.

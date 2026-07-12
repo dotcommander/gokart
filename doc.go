@@ -8,7 +8,6 @@
 // Root module (github.com/dotcommander/gokart):
 //   - Config: viper wrapper for config files + env vars
 //   - State: JSON state persistence for CLI tools
-//   - Server: HTTP server with graceful shutdown
 //
 // Submodules:
 //   - gokart/logger: slog wrapper with JSON/text formatting
@@ -67,5 +66,6 @@
 //   - String manipulation: use strings
 //   - Environment variables: viper.AutomaticEnv() handles this
 //
-// Domain-specific packages (AI/ML, document processing) belong in separate modules.
+// Domain-specific features belong in separate modules so applications only
+// import the dependencies they use.
 package gokart

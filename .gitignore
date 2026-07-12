@@ -26,21 +26,21 @@ go.work.sum
 .DS_Store
 Thumbs.db
 
-# Local
-.env
-.env.local
-
-# Generated
-repomix-output.md
+# Local secrets and credentials
+.env*
+!.env.example
+!.env.*.example
+.envrc
+*.pem
+*.key
+*.p12
+*.pfx
 
 # Source assets
 original_logo.png
 !logo.png
 
-# Internal tooling state
-looper-state.json
-looper-spec.md
-AUDIT.md
+# Local build state
 /gokart
 cmd/gokart/gokart
 cmd/gokart/go.mod
@@ -49,6 +49,6 @@ cmd/gokart/go.sum
 # Override global gitignore for project directories
 !cache/
 
-# Scratch / audits / specs (not for commit)
+# Local workspace
 .work/
 *_REPORT.md

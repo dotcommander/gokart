@@ -26,6 +26,12 @@ go.work.sum
 .DS_Store
 Thumbs.db
 
-# Local config (if using .env)
-.env
-.env.local
+# Local secrets and credentials
+.env*
+!.env.example
+!.env.*.example
+.envrc
+*.pem
+*.key
+*.p12
+*.pfx

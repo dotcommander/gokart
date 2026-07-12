@@ -6,7 +6,7 @@ Build a working CLI app with a database in under 10 minutes.
 
 ## Prerequisites
 
-- Go 1.22 or later (1.26+ recommended)
+- Go 1.26 or later
 - `$GOPATH/bin` on your `PATH` (required to run the installed binary)
 
 ---

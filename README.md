@@ -1,145 +1,132 @@
 # GoKart
 
-<p align="center">
-  <img src="logo.png" alt="GoKart Logo" width="200">
-</p>
+![GoKart logo](logo.png)
 
-Opinionated Go service toolkit. Thin wrappers around battle-tested packages that hand you the real types back — no lock-in, no hidden runtime.
-
-> **Note:** Not affiliated with [Praetorian's GoKart](https://github.com/praetorian-inc/gokart) (static security scanner). This GoKart is a service/CLI toolkit.
-
-## Install
+GoKart is a modular toolkit for building Go CLIs and services with practical
+defaults.
 
 ```bash
 go install github.com/dotcommander/gokart/cmd/gokart@latest
+gokart new myapp --db sqlite --example
+cd myapp
+go run ./cmd greet --name World
 ```
 
-## 60 Seconds to a Working Project
+The generated project is regular Go code built on Cobra and the integrations
+you select. Keep using GoKart's helpers, customize the generated code, or use
+the underlying libraries directly.
 
-```
-$ gokart new myapi --db postgres --example
+> Not affiliated with
+> [Praetorian's GoKart](https://github.com/praetorian-inc/gokart), the Go
+> security scanner.
 
-  Created myapi/
-  ✓ go mod init
-  ✓ go get dependencies
-  ✓ manifest written
+## What GoKart provides
 
-$ tree myapi/
-myapi/
-├── cmd/
-│   └── main.go
-├── internal/
-│   ├── app/
-│   │   └── context.go
-│   └── commands/
-│       ├── root.go
-│       └── greet.go
-├── go.mod
-├── .gokart-manifest.json
-└── README.md
-
-$ cd myapi && go run ./cmd
-myapi 0.0.0
-```
-
-Add integrations later without re-scaffolding:
-
-```bash
-gokart add sqlite
-gokart add ai
-gokart add postgres --dry-run   # preview before applying
-```
-
-## What You Get Back
-
-GoKart's factory functions return the underlying types directly. You call pgx, chi, and database/sql as if you wrote the setup yourself — because you effectively did.
-
-```go
-// postgres — returns *pgxpool.Pool, use pgx directly
-pool, err := postgres.Open(ctx, os.Getenv("DATABASE_URL"))
-rows, _ := pool.Query(ctx, "SELECT id, name FROM users WHERE active = $1", true)
-
-// sqlite — returns *sql.DB, use database/sql directly
-db, err := sqlite.Open("app.db")
-db.QueryContext(ctx, "SELECT id FROM sessions WHERE expires_at > ?", time.Now())
-
-// web — returns chi.Router, use chi directly
-router := web.NewRouter(web.RouterConfig{Middleware: web.StandardMiddleware})
-router.Get("/health", func(w http.ResponseWriter, r *http.Request) { ... })
-router.Use(middleware.RealIP)
-
-// cache — returns *redis.Client, use go-redis directly
-client, err := cache.Open(ctx, "localhost:6379")
-client.Set(ctx, "key", value, 5*time.Minute)
-
-// config — typed, generics, auto env binding (DB_HOST → db.host)
-cfg, err := gokart.LoadConfig[AppConfig]("config.yaml")
-```
-
-No wrapper types. No `.Unwrap()`. If GoKart's defaults don't fit, reach past them.
+- A project generator for structured CLI applications and single-file tools.
+- Focused packages for configuration, CLI output, HTTP services, databases,
+  migrations, Redis, logging, files, and OpenAI.
+- Safe integration updates with dry runs, generated-file manifests, and
+  conflict detection.
+- Separate Go modules, so applications only pull in the components they use.
 
 ## Packages
 
-| Package | You get | Wraps |
-|---------|---------|-------|
-| `gokart` | typed config, state persistence, logger aliases | viper, slog |
-| `gokart/cli` | `*cli.App`, styled output, tables, spinners, editor bridge | cobra, lipgloss |
-| `gokart/web` | `chi.Router`, graceful server, response helpers, templ, CSRF, pagination, health checks, rate limiting, auth middleware | chi/v5, a-h/templ, validator/v10 |
-| `gokart/postgres` | `*pgxpool.Pool`, transaction helper | pgx/v5 |
-| `gokart/sqlite` | `*sql.DB`, WAL mode, transaction helper | modernc.org/sqlite |
-| `gokart/migrate` | schema migrations, embedded FS support | goose/v3 |
-| `gokart/cache` | `*redis.Client`, Remember pattern, distributed locks, data structures (hash, sorted set, set, list) | go-redis/v9 |
-| `gokart/fs` | atomic writes, config dir, read-or-create | stdlib only |
-| `gokart/ai` | `*openai.Client` factory | openai-go v3 |
-| `gokart/logger` | JSON/text slog, file logger for TUI tools | log/slog |
+- `gokart` — typed configuration and JSON state persistence with Viper and the
+  standard library.
+- `gokart/cli` — app building, styled output, tables, spinners, and editor
+  integration with Cobra and Lip Gloss.
+- `gokart/web` — router setup, graceful serving, responses, validation, CSRF,
+  pagination, health checks, and rate limiting with chi, templ, and validator.
+- `gokart/postgres` — PostgreSQL pool setup and transaction helpers with
+  pgx/v5.
+- `gokart/sqlite` — zero-CGO SQLite setup, WAL defaults, and transaction helpers
+  with `database/sql` and modernc SQLite.
+- `gokart/migrate` — SQL migrations with embedded filesystem support using
+  goose/v3.
+- `gokart/cache` — Redis access, key prefixes, JSON helpers, caching, and data
+  structures with go-redis/v9.
+- `gokart/fs` — atomic writes, configuration paths, and read-or-create helpers
+  from the standard library.
+- `gokart/ai` — OpenAI client construction with openai-go/v3.
+- `gokart/logger` — structured JSON, text, and file logging with `log/slog`.
 
-Import only what you need — each is a separate Go module.
+Many setup functions return standard or upstream types directly, including
+`*pgxpool.Pool`, `*sql.DB`, `chi.Router`, `openai.Client`, and `*slog.Logger`.
+Convenience types such as `cli.App` and `cache.Cache` expose their underlying
+Cobra or Redis client when lower-level control is needed.
 
-## The Scaffolder
+## Generate a project
 
-`gokart new` generates a structured CLI project wired to your chosen integrations:
+`gokart new` creates a structured CLI project by default:
 
 ```bash
-gokart new mycli                    # Structured, local-only, no manifest
-gokart new mycli --global           # Structured, global config (~/.config/mycli/)
-gokart new mycli --flat             # Single main.go
-gokart new mycli --db sqlite        # With SQLite wiring
-gokart new mycli --db postgres      # With PostgreSQL wiring
-gokart new mycli --ai               # With OpenAI client
-gokart new mycli --redis            # With Redis cache
-gokart new mycli --db postgres --ai # Combined
+gokart new mycli                         # local-only CLI
+gokart new mycli --example               # include a greet command and tests
+gokart new mycli --flat                  # single main.go
+gokart new mycli --global                # platform user config directory
+gokart new mycli --db sqlite             # SQLite integration
+gokart new mycli --db postgres --ai      # PostgreSQL and OpenAI
+gokart new mycli --redis                 # Redis integration
+gokart new mycli --dry-run --json        # machine-readable preview
 ```
 
-`gokart add` surgically adds integrations to an existing project. It re-renders only the affected files (`internal/app/context.go`, `internal/commands/root.go`), runs `go get`, and updates the manifest.
+Plain local scaffolds stay lightweight and do not write a management manifest.
+Selecting global configuration or an integration writes
+`.gokart-manifest.json`, which lets `gokart add` detect edits before updating
+generated wiring.
+
+## Add integrations
+
+Run `gokart add` from a managed, structured project:
 
 ```bash
 gokart add sqlite
-gokart add ai --force       # overwrite modified files
-gokart add redis
+gokart add ai redis
 gokart add postgres --dry-run
+gokart add ai --force
 ```
 
-## Philosophy
+The command updates only the integration-owned files, installs the required
+modules, and refreshes the manifest. Use `--dry-run` to inspect the plan first.
+Use `--force` only when you intend to overwrite modified generated files.
 
-- **Modular** — import only what you need, no forced dependencies.
-- **Thin wrappers** — factory functions, sensible defaults, real types returned.
-- **Fight for inclusion** — if stdlib or the underlying package already solves it, GoKart stays out of the way.
-- **Web looks big, isn't** — `gokart/web` lists many features but it's 17 small files (~1300 lines total), each ≤144 lines, each returning standard types. It's a toolkit of HTTP helpers sharing an import path, not a framework.
+See the [generator reference](docs/components/generator.md) for every flag,
+manifest behavior, JSON output, and exit code.
 
-## Examples
+## Use the libraries directly
 
-See [`examples/`](examples/) for complete working projects:
-- [`http-service/`](examples/http-service/) — Minimal HTTP API with chi router
-- [`cli-app/`](examples/cli-app/) — CLI with commands, tables, and spinners
+Each component is independently importable:
 
-Run `just verify` to build, test, and vet every workspace module and compile the ignored example files.
+```go
+pool, err := postgres.Open(ctx, os.Getenv("DATABASE_URL"))
+if err != nil {
+    return err
+}
+defer pool.Close()
 
-## Compatibility
+router := web.NewRouter(web.RouterConfig{
+    Middleware: web.StandardMiddleware,
+})
+router.Get("/health", func(w http.ResponseWriter, _ *http.Request) {
+    w.WriteHeader(http.StatusOK)
+})
+```
 
-Minimum Go version: 1.22+ (1.26+ recommended)
+Component guides and runnable examples are indexed in
+[`docs/`](docs/index.md). Complete applications live in
+[`examples/`](examples/).
 
-**API stability:** Library packages (`gokart`, `gokart/cli`, etc.) follow semver. Generator templates may evolve between minor versions — generated code is yours to modify.
+## Requirements and verification
+
+- Go 1.26 or later.
+- External services are required only for the integrations that use them.
+
+Run the repository checks across all modules and examples:
+
+```bash
+just verify
+```
 
 ## License
 
-MIT
+[MIT](LICENSE)

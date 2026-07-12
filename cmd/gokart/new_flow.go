@@ -10,8 +10,8 @@ import (
 )
 
 // cmdContext returns the cobra command's context, falling back to context.Background
-// when callers (notably tests) invoke RunE without ExecuteContext. This is the cobra
-// RunE entry boundary, where context.Background() is permitted per workspace rules.
+// when callers (notably tests) invoke RunE without ExecuteContext. RunE is the
+// process entry boundary, so it owns the fallback context.
 func cmdContext(cmd *cobra.Command) context.Context {
 	if cmd != nil {
 		if ctx := cmd.Context(); ctx != nil {

@@ -6,6 +6,8 @@ import (
 	"strings"
 )
 
+const invalidCredentialsMessage = "invalid credentials"
+
 // authMiddleware returns middleware that extracts a credential from the
 // request, validates it, and optionally enriches the context.
 // Missing credential → 401, validation error → 403.
@@ -20,7 +22,7 @@ func authMiddleware(extract func(r *http.Request) (cred string, ok bool), valida
 
 			ctx, err := validate(r.Context(), cred)
 			if err != nil {
-				Error(w, http.StatusForbidden, err.Error())
+				Error(w, http.StatusForbidden, invalidCredentialsMessage)
 				return
 			}
 
@@ -33,15 +35,12 @@ func authMiddleware(extract func(r *http.Request) (cred string, ok bool), valida
 }
 
 // APIKeyAuth returns middleware that validates API keys from the X-API-Key
-// header or api_key query parameter. keyFn validates the key and optionally
-// enriches the request context. Missing key → 401, keyFn error → 403.
+// header. keyFn validates the key and optionally enriches the request context.
+// Missing key → 401, keyFn error → 403.
 func APIKeyAuth(keyFn func(ctx context.Context, key string) (context.Context, error)) func(http.Handler) http.Handler {
 	return authMiddleware(
 		func(r *http.Request) (string, bool) {
 			key := r.Header.Get("X-API-Key")
-			if key == "" {
-				key = r.URL.Query().Get("api_key")
-			}
 			return key, key != ""
 		},
 		keyFn,

@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### Security
+- Require API keys in the `X-API-Key` header; query-string credentials are no longer accepted.
+- Return a generic forbidden response when credential validation fails instead of exposing callback errors.
+- Expand generated `.gitignore` files to cover common environment and private-key variants.
+
+### Changed
+- Stop generating provider-specific coding-agent guidance in new projects.
+- Align public package and config-path documentation with the current APIs.
+
 ## v0.10.1 (2026-06-05)
 
 ### Changed

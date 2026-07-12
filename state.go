@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 )
 
-// SaveState saves typed state to ~/.config/{appName}/{filename}.
+// SaveState saves typed state under the platform user config directory.
 //
 // The file is written as indented JSON for human readability.
 // Directory is created with 0755, files with 0600 permissions.
@@ -46,7 +46,7 @@ func SaveState[T any](appName, filename string, data T) error {
 	return nil
 }
 
-// LoadState loads typed state from ~/.config/{appName}/{filename}.
+// LoadState loads typed state from the platform user config directory.
 //
 // Returns zero value and os.ErrNotExist if the file doesn't exist.
 // This allows callers to distinguish between missing file and parse errors.
@@ -87,7 +87,8 @@ func LoadState[T any](appName, filename string) (T, error) {
 // Example:
 //
 //	path := gokart.StatePath("myapp", "state.json")
-//	// Returns: /Users/username/.config/myapp/state.json (on macOS)
+//	// macOS: ~/Library/Application Support/myapp/state.json
+//	// Linux: ~/.config/myapp/state.json
 func StatePath(appName, filename string) string {
 	dir, err := stateDir(appName)
 	if err != nil {

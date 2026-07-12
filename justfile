@@ -23,6 +23,10 @@ vet:
 verify:
     scripts/verify-workspace.sh all
 
+# Scan reachable history for committed credentials
+leaks:
+    scripts/check-public-leaks.sh
+
 # Tag all submodules + root with the given version, then push.
 # Usage: just tag v0.8.0
 tag version:

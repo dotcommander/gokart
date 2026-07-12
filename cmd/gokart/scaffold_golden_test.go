@@ -170,3 +170,45 @@ func TestScaffoldFlatGolden(t *testing.T) {
 	}
 	assertGolden(t, "flat", dir)
 }
+
+func TestGlobalScaffoldsOnlyEmitProductDocumentation(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		scaffold func(string) error
+	}{
+		{
+			name: "flat",
+			scaffold: func(dir string) error {
+				_, err := ScaffoldFlat(dir, goldenName, goldenModule, true, true,
+					ApplyOptions{ExistingFilePolicy: ExistingFilePolicyOverwrite})
+				return err
+			},
+		},
+		{
+			name: "structured",
+			scaffold: func(dir string) error {
+				_, err := ScaffoldStructured(dir, goldenName, goldenModule,
+					false, false, false, false, true, true,
+					ApplyOptions{ExistingFilePolicy: ExistingFilePolicyOverwrite})
+				return err
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			dir := t.TempDir()
+			if err := tc.scaffold(dir); err != nil {
+				t.Fatalf("scaffold: %v", err)
+			}
+			for rel := range collectTree(t, dir) {
+				if strings.HasSuffix(strings.ToLower(rel), ".md") && rel != "README.md" {
+					t.Errorf("unexpected generated documentation: %s", rel)
+				}
+			}
+		})
+	}
+}

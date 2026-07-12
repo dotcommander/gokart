@@ -13,7 +13,7 @@ Opinionated Go service toolkit. Thin wrappers around best-in-class packages with
 
 ## Core
 
-- [Root Package (Config, State, Logger)](api/gokart.md) — `LoadConfig`, `LoadConfigWithDefaults`, `SaveState`, `LoadState`, and deprecated logger aliases.
+- [Root Package (Config and State)](api/gokart.md) — `LoadConfig`, `LoadConfigWithDefaults`, `SaveState`, and `LoadState`.
 - [Logger](components/logger.md) — `log/slog` wrapper with JSON/text formats, zero-config defaults, and a file logger for TUI tools.
 - [State Persistence](components/state.md) — Save and load typed structs as JSON in the platform config directory across CLI invocations.
 
@@ -29,7 +29,7 @@ Opinionated Go service toolkit. Thin wrappers around best-in-class packages with
 - [PostgreSQL](components/postgres.md) — pgx/v5 connection pool with `Open`, `FromEnv`, configurable pool settings, and a transaction helper with auto-rollback.
 - [SQLite](components/sqlite.md) — Zero-CGO SQLite via `modernc.org/sqlite` with WAL mode, sensible pragmas, in-memory support, and a transaction helper.
 - [Migrations](components/migrate.md) — Schema versioning with goose/v3: `Up`, `Down`, `DownTo`, `Reset`, `Status`, embedded migrations, and database-specific helpers.
-- [Cache](components/cache.md) — Redis client (go-redis/v9) with `Get`/`Set`, JSON helpers, Remember pattern, counters, distributed locks, and key prefixing.
+- [Cache](components/cache.md) — Redis client (go-redis/v9) with `Get`/`Set`, JSON helpers, the Remember pattern, counters, data structures, and key prefixing.
 - [OpenAI](components/openai.md) — openai-go v3 client factory reading `OPENAI_API_KEY`, with examples for chat completions, streaming, and conversation history.
 
 ## Examples

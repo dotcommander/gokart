@@ -3,9 +3,10 @@ package web_test
 import (
 	"context"
 	"encoding/json"
-	"fmt"
+	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/dotcommander/gokart/web"
@@ -23,20 +24,22 @@ const validAPIKey = "test-key"
 // validBearerToken is the only token accepted by the test tokenFn.
 const validBearerToken = "test-token"
 
+const validationDetail = "credential rejected by backend: account-4721 disabled"
+
 type contextKey string
 
 const userKey contextKey = "user"
 
 func testKeyFn(_ context.Context, key string) (context.Context, error) {
 	if key != validAPIKey {
-		return nil, fmt.Errorf("invalid")
+		return nil, errors.New(validationDetail)
 	}
 	return context.WithValue(context.Background(), userKey, "api-user"), nil
 }
 
 func testTokenFn(_ context.Context, token string) (context.Context, error) {
 	if token != validBearerToken {
-		return nil, fmt.Errorf("invalid")
+		return nil, errors.New(validationDetail)
 	}
 	return context.WithValue(context.Background(), userKey, "bearer-user"), nil
 }
@@ -45,33 +48,33 @@ func TestAPIKeyAuth(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name           string
-		header         string
-		query          string
-		wantStatus     int
-		wantBody       string
-		wantContextVal any // non-nil means handler should see this in context
+		name       string
+		header     string
+		query      string
+		wantStatus int
+		wantError  string
 	}{
 		{
 			name:       "ValidHeader",
 			header:     validAPIKey,
 			wantStatus: http.StatusOK,
-			wantBody:   "ok",
 		},
 		{
-			name:       "ValidQuery",
+			name:       "QueryOnlyRejected",
 			query:      validAPIKey,
-			wantStatus: http.StatusOK,
-			wantBody:   "ok",
+			wantStatus: http.StatusUnauthorized,
+			wantError:  "missing api key",
 		},
 		{
 			name:       "MissingKey",
 			wantStatus: http.StatusUnauthorized,
+			wantError:  "missing api key",
 		},
 		{
 			name:       "InvalidKey",
 			header:     "wrong-key",
 			wantStatus: http.StatusForbidden,
+			wantError:  "invalid credentials",
 		},
 	}
 
@@ -96,6 +99,9 @@ func TestAPIKeyAuth(t *testing.T) {
 
 			if rec.Code != tt.wantStatus {
 				t.Errorf("expected status %d, got %d", tt.wantStatus, rec.Code)
+			}
+			if tt.wantError != "" {
+				assertAuthError(t, rec, tt.wantError)
 			}
 		})
 	}
@@ -142,8 +148,9 @@ func TestBearerAuth(t *testing.T) {
 			wantStatus: http.StatusOK,
 		},
 		{
-			name:       "MissingToken",
-			wantStatus: http.StatusUnauthorized,
+			name:          "MissingToken",
+			wantStatus:    http.StatusUnauthorized,
+			wantErrorBody: "invalid authorization header",
 		},
 		{
 			name:          "MalformedHeader",
@@ -152,9 +159,10 @@ func TestBearerAuth(t *testing.T) {
 			wantErrorBody: "invalid authorization header",
 		},
 		{
-			name:       "InvalidToken",
-			authHeader: "Bearer wrong-token",
-			wantStatus: http.StatusForbidden,
+			name:          "InvalidToken",
+			authHeader:    "Bearer wrong-token",
+			wantStatus:    http.StatusForbidden,
+			wantErrorBody: "invalid credentials",
 		},
 	}
 
@@ -177,15 +185,24 @@ func TestBearerAuth(t *testing.T) {
 			}
 
 			if tt.wantErrorBody != "" {
-				var body map[string]string
-				if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
-					t.Fatalf("failed to decode JSON body: %v", err)
-				}
-				if body["error"] != tt.wantErrorBody {
-					t.Errorf("expected error %q, got %q", tt.wantErrorBody, body["error"])
-				}
+				assertAuthError(t, rec, tt.wantErrorBody)
 			}
 		})
+	}
+}
+
+func assertAuthError(t *testing.T, rec *httptest.ResponseRecorder, want string) {
+	t.Helper()
+
+	var body map[string]string
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatalf("decode JSON body: %v", err)
+	}
+	if got := body["error"]; got != want {
+		t.Errorf("error = %q, want %q", got, want)
+	}
+	if strings.Contains(rec.Body.String(), validationDetail) {
+		t.Error("response exposed validator details")
 	}
 }
 

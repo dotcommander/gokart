@@ -76,7 +76,7 @@ mycli/
 └── go.mod
 ```
 
-With `--global` or an integration flag, `gokart new` writes `.gokart-manifest.json` so `gokart add` can safely patch generated wiring later. `--global` also adds `CLAUDE.md` and `internal/app/config.go`. Integration flags add `internal/app/context.go`.
+With `--global` or an integration flag, `gokart new` writes `.gokart-manifest.json` so `gokart add` can safely patch generated wiring later. `--global` also adds `internal/app/config.go`. Integration flags add `internal/app/context.go`.
 
 With `--example`:
 
@@ -104,9 +104,9 @@ These flags wire a data store or API client into the project at generation time.
 | Flag | Package added | What it wires |
 |------|---------------|---------------|
 | `--db sqlite` | `github.com/dotcommander/gokart/sqlite` | `*sql.DB` via `sqlite.Open` |
-| `--db postgres` | `github.com/dotcommander/gokart/postgres`, `github.com/jackc/pgx/v5` | `*pgxpool.Pool` via `postgres.Connect` |
-| `--ai` | `github.com/dotcommander/gokart/ai`, `github.com/openai/openai-go/v3` | `*openai.Client` via `ai.NewClient` |
-| `--redis` | `github.com/dotcommander/gokart/cache`, `github.com/redis/go-redis/v9` | `*redis.Client` via `cache.Open` |
+| `--db postgres` | `github.com/dotcommander/gokart/postgres`, `github.com/jackc/pgx/v5` | `*pgxpool.Pool` via `postgres.Open` |
+| `--ai` | `github.com/dotcommander/gokart/ai`, `github.com/openai/openai-go/v3` | `openai.Client` via `ai.NewOpenAIClientWithKey` |
+| `--redis` | `github.com/dotcommander/gokart/cache`, `github.com/redis/go-redis/v9` | `*cache.Cache` via `cache.Open` |
 
 Flags may be combined:
 
@@ -119,7 +119,7 @@ gokart new mycli --redis --db postgres
 
 ### Config Scope
 
-Controls whether the generated project bootstraps a global config file at `~/.config/<app>/config.yaml` on first run.
+Controls whether the generated project bootstraps `config.yaml` under the platform user config directory returned by `os.UserConfigDir()`.
 
 ```bash
 --config-scope auto     # default: local-only
