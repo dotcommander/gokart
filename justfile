@@ -1,7 +1,7 @@
 # gokart — Go toolkit multi-module repo
 
-# All published submodules (cmd/gokart excluded — build tool, not a library)
-modules := "ai cache cli fs logger migrate postgres sqlite web"
+# All published submodules, including the independently installable CLI.
+modules := "ai cache cli cmd/gokart fs logger migrate postgres sqlite web"
 
 # Build all modules
 build:
@@ -27,8 +27,8 @@ verify:
 leaks:
     scripts/check-public-leaks.sh
 
-# Tag all submodules + root with the given version, then push.
-# Usage: just tag v0.8.0
+# Create local tags for all submodules and the root. Pushing is a separate gate.
+# Usage: just tag v0.10.2
 tag version:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -42,19 +42,19 @@ tag version:
         echo "error: working tree is dirty — commit first" >&2
         exit 1
     fi
-    # Update version refs in go.mod files that cross-reference submodules
-    echo "Updating go.mod cross-references to $v..."
-    sed -i '' "s|gokart/logger v[^ ]*|gokart/logger $v|" go.mod
-    # Verify build
-    echo "Building..."
-    go build ./...
-    go vet ./...
-    # Commit version bump
-    git add go.mod
-    if ! git diff --cached --quiet; then
-        git commit -m "chore: bump cross-module refs to $v"
+    # Preflight the complete tag set before any mutation.
+    for mod in {{modules}}; do
+        tag="$mod/$v"
+        if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
+            echo "error: tag already exists: $tag" >&2
+            exit 1
+        fi
+    done
+    if git rev-parse -q --verify "refs/tags/$v" >/dev/null; then
+        echo "error: tag already exists: $v" >&2
+        exit 1
     fi
-    # Tag all submodules
+    # Tag all submodules.
     for mod in {{modules}}; do
         tag="$mod/$v"
         echo "  tagging $tag"
@@ -63,8 +63,4 @@ tag version:
     # Tag root
     echo "  tagging $v"
     git tag "$v"
-    # Push
-    echo "Pushing commit + tags..."
-    git push
-    git push --tags
-    echo "Done. All modules tagged at $v."
+    echo "Done. Local tags created at $v; nothing was pushed."

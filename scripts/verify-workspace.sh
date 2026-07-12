@@ -19,24 +19,24 @@ cd "$repo_root"
 
 verify_home="$(mktemp -d "${TMPDIR:-/tmp}/gokart-verify-home.XXXXXX")"
 verify_gocache="$(mktemp -d "${TMPDIR:-/tmp}/gokart-verify-gocache.XXXXXX")"
-trap 'rm -rf "$verify_home" "$verify_gocache"' EXIT
+verify_gomodcache="$(go env GOMODCACHE)"
 
-mapfile -t workspace_modules < <(
-    awk '
-        /^use[[:space:]]+\(/ { in_use = 1; next }
-        in_use && /^\)/ { in_use = 0; next }
-        in_use {
-            path = $1
-            gsub(/"/, "", path)
-            if (path != "") print path
-        }
-        /^use[[:space:]]+[^[:space:](]/ {
-            path = $2
-            gsub(/"/, "", path)
-            if (path != "") print path
-        }
-    ' go.work
-)
+cleanup() {
+    rm -rf "$verify_home" "$verify_gocache"
+}
+trap cleanup EXIT
+
+verify_workspace="$verify_home/go.work"
+workspace_modules=(. ai cache cli cmd/gokart fs logger migrate postgres sqlite web)
+GOWORK="$verify_workspace" go work init
+for module in "${workspace_modules[@]}"; do
+    GOWORK="$verify_workspace" go work use "$repo_root/$module"
+done
+GOWORK="$verify_workspace" go work edit -replace=github.com/dotcommander/gokart@v0.10.2="$repo_root"
+GOWORK="$verify_workspace" go work edit -replace=github.com/dotcommander/gokart/cli@v0.10.2="$repo_root/cli"
+GOWORK="$verify_workspace" go work edit -replace=github.com/dotcommander/gokart/web@v0.10.2="$repo_root/web"
+export GOWORK="$verify_workspace"
+export GOMODCACHE="$verify_gomodcache"
 
 run_workspace() {
     local action="$1"
