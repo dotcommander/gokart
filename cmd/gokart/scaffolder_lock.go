@@ -9,6 +9,27 @@ import (
 	"time"
 )
 
+func withTargetMutationLock(targetDir string, mutate func() error) (retErr error) {
+	release, err := acquireApplyLock(targetDir)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if releaseErr := release(); releaseErr != nil {
+			if retErr == nil {
+				retErr = fmt.Errorf("release scaffolding lock: %w", releaseErr)
+			} else {
+				retErr = fmt.Errorf("%w; release scaffolding lock: %v", retErr, releaseErr) //nolint:errorlint // preserve the primary mutation error
+			}
+		}
+	}()
+
+	if err := recoverPendingJournals(targetDir); err != nil {
+		return err
+	}
+	return mutate()
+}
+
 //nolint:gocognit,gocyclo // lock acquisition with stale reclaim, complexity is inherent
 func acquireApplyLock(targetDir string) (release func() error, retErr error) {
 	targetRoot, err := filepath.Abs(targetDir)
@@ -191,10 +212,6 @@ func shouldReclaimStaleLock(lockPath string) (bool, string, error) {
 		}
 		if !running {
 			return true, fmt.Sprintf("pid %d is not running", metadata.PID), nil
-		}
-
-		if lockAge > maxAge {
-			return true, fmt.Sprintf("pid %d is running but lock is older than %s", metadata.PID, maxAge), nil
 		}
 
 		return false, "", nil

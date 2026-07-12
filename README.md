@@ -2,151 +2,78 @@
 
 ![GoKart logo](logo.png)
 
-GoKart is a modular toolkit for building Go CLIs and services with practical
-defaults.
+GoKart is a modular Go toolkit for recurring infrastructure setup, safe defaults, and user-owned generated code. Its enforceable boundary is defined in [PHILOSOPHY.md](PHILOSOPHY.md).
 
 ```bash
-go install github.com/dotcommander/gokart/cmd/gokart@v0.10.2
+go install github.com/dotcommander/gokart/cmd/gokart@v0.11.0
 gokart new myapp --db sqlite --example
 cd myapp
 go run ./cmd greet --name World
 ```
 
-Use `@latest` instead only if you intentionally want the newest published
-version rather than a reproducible install.
-
-The generated project is regular Go code built on Cobra and the integrations
-you select. Keep using GoKart's helpers, customize the generated code, or use
-the underlying libraries directly.
-
-## What GoKart provides
-
-- A project generator for structured CLI applications and single-file tools.
-- Focused packages for configuration, CLI output, HTTP services, databases,
-  migrations, Redis, logging, files, and OpenAI.
-- Safe integration updates with dry runs, generated-file manifests, and
-  conflict detection.
-- Independently importable Go modules for each component. Ordinary Go module
-  transitive dependencies still apply.
-
 ## Packages
 
-- `gokart` — typed configuration and JSON state persistence with Viper and the
-  standard library.
-- `gokart/cli` — app building, styled output, tables, spinners, and editor
-  integration with Cobra and Lip Gloss.
-- `gokart/web` — router setup, graceful serving, responses, validation, CSRF,
-  pagination, health checks, and rate limiting with chi, templ, and validator.
-- `gokart/postgres` — PostgreSQL pool setup and transaction helpers with
-  pgx/v5.
-- `gokart/sqlite` — zero-CGO SQLite setup, WAL defaults, and transaction helpers
-  with `database/sql` and modernc SQLite.
-- `gokart/migrate` — SQL migrations with embedded filesystem support using
-  goose/v3.
-- `gokart/cache` — Redis access, key prefixes, JSON helpers, caching, and data
-  structures with go-redis/v9.
-- `gokart/fs` — atomic writes, configuration paths, and read-or-create helpers
-  from the standard library.
-- `gokart/ai` — OpenAI client construction with openai-go/v3.
-- `gokart/logger` — structured JSON, text, and file logging with `log/slog`.
+- `gokart`: typed configuration, platform config directories, and JSON state persistence.
+- `gokart/cli`: Cobra application construction and process-stream presentation helpers.
+- `gokart/web`: chi router/server construction, JSON responses, bounded binding, and validation.
+- `gokart/postgres`: pgx pool setup and transaction helpers.
+- `gokart/sqlite`: zero-CGO SQLite setup and operations.
+- `gokart/migrate`: goose migrations.
+- `gokart/cache`: Redis construction, prefixes, JSON operations, and `Remember`.
+- `gokart/logger`: `log/slog` setup.
 
-Many setup functions return standard or upstream types directly, including
-`*pgxpool.Pool`, `*sql.DB`, `chi.Router`, `openai.Client`, and `*slog.Logger`.
-Convenience types such as `cli.App` and `cache.Cache` expose their underlying
-Cobra or Redis client when lower-level control is needed.
+All modules isolate their dependencies. Constructors expose real upstream types or an explicit `Client` escape hatch.
 
-## Generate a project
+## Generator
 
-`gokart new` creates a structured CLI project by default:
+`gokart new` creates ordinary Go code. Plain scaffolds are local and unmanaged; selecting `--global` or an integration adds a manifest so `gokart add` can safely update generated wiring.
 
 ```bash
-gokart new mycli                         # local-only CLI
-gokart new mycli --example               # include a greet command and tests
-gokart new mycli --flat                  # single main.go
-gokart new mycli --global                # platform user config directory
-gokart new mycli --db sqlite             # SQLite integration
-gokart new mycli --db postgres --ai      # PostgreSQL and OpenAI
-gokart new mycli --redis                 # Redis integration
-gokart new mycli --dry-run --json        # machine-readable preview
+gokart new mycli --global
+gokart new service --db postgres --ai --redis
+gokart add sqlite --dry-run
 ```
 
-Plain local scaffolds stay lightweight and do not write a management manifest.
-They are unmanaged and cannot use `gokart add`. If you expect to add
-integrations later, select `--global` or an integration during creation. Those
-options write `.gokart-manifest.json`, which lets `gokart add` detect edits
-before updating generated wiring.
+Dependencies are pinned for deterministic generation. PostgreSQL uses `postgres.Open`, SQLite uses `sqlite.Open`, Redis uses `cache.Open`, and AI uses the official OpenAI SDK directly.
 
-## Add integrations
+See the [generator reference](docs/components/generator.md) and [documentation index](docs/index.md).
 
-Run `gokart add` from a managed, structured project:
+## v0.11 migration
 
-```bash
-gokart add sqlite
-gokart add ai redis
-gokart add postgres --dry-run
-```
+| Removed surface | Replacement |
+|---|---|
+| `ai.NewOpenAIClient(opts...)` | `openai.NewClient(opts...)` |
+| `ai.NewOpenAIClientWithKey(key)` | `openai.NewClient(option.WithAPIKey(key))` |
+| `fs.ConfigDir` / `fs.EnsureConfigDir` | `gokart.ConfigDir` / `gokart.EnsureConfigDir` |
+| `fs.WriteFile` / `fs.ReadOrCreate` | Standard library; no GoKart replacement |
+| `GetString`, `GetInt`, `GetFloat`, `GetBool` | Typed configuration parsing or caller-owned assertions |
+| Cache command mirrors | `c.Client().Command(ctx, c.Key(key), ...)` |
+| `cli.Fatal`, `cli.FatalErr`, `cli.Must` | Return errors; `main` owns `os.Exit` |
+| CLI writer overrides | Cobra `SetOut` / `SetErr` and command writers |
+| Removed web helpers | Standard library or the named upstream package directly; see `web/README.md` |
 
-The command re-renders `internal/app/context.go` and
-`internal/commands/root.go`, runs `go get` and `go mod tidy` (which can change
-`go.mod` and `go.sum`), and refreshes `.gokart-manifest.json`. It refuses to
-overwrite modified generated wiring or existing wiring that the manifest does
-not track. Use `--dry-run` to inspect the plan first.
+No deprecated aliases or forwarding modules are retained. Historical `v0.10.3` tags are the compatibility path.
 
-Destructive override (advanced): `gokart add ai --force` overwrites conflicting
-generated wiring. Use it only when you intend to discard those local edits.
+### Removed identifiers
 
-See the [generator reference](docs/components/generator.md) for every flag,
-manifest behavior, JSON output, and exit code.
+Use this searchable inventory when migrating:
 
-## Use the libraries directly
+- Root getters: `GetString`, `GetInt`, `GetFloat`, `GetBool`.
+- Cache commands: `Get`, `Set`, `Delete`, `Exists`, `Expire`, `TTL`, `Incr`, `IncrBy`, `SetNX`, `HGet`, `HSet`, `HGetAll`, `HDel`, `HIncrBy`, `ZAdd`, `ZRange`, `ZRangeByScore`, `ZScore`, `ZRem`, `ZCard`, `SAdd`, `SRem`, `SMembers`, `SIsMember`, `LPush`, `RPush`, `LRange`, `LPop`, `RPop`, `Decr`, and `DecrBy`. Call the corresponding go-redis method through `Client`, applying `Key` to every logical key.
+- CLI process control and writers: `Fatal`, `FatalErr`, `Must`, `SetOutput`, `SetErrOutput`, `Output`, and `ErrOutput`.
+- Web assets and auth: `NewAssets`, `AssetConfig`, `Assets`, `Assets.Path`, `Assets.Handler`, `APIKeyAuth`, and `BearerAuth`.
+- Web CSRF and flash: `CSRFProtect`, `CSRFProtectWithOrigins`, `SetFlash`, `GetFlash`, `FlashFromContext`, `FlashMiddleware`, `FlashLevel`, `FlashMessage`, `FlashSuccess`, `FlashError`, `FlashWarning`, and `FlashInfo`.
+- Web health and clients: `HealthHandler`, `ReadyHandler`, `HealthCheck`, `HealthFunc`, `NewHTTPClient`, `NewStandardClient`, and `HTTPConfig`.
+- Web negotiation and pagination: `WantsJSON`, `IsHTMX`, `Negotiate`, `NegotiateStatus`, `ParsePage`, `ParsePageWithConfig`, `NewPagedResponse`, `Page`, `PageConfig`, and `PagedResponse`.
+- Web rate limiting: `RateLimit`, `RateLimitWithKey`, `RateLimitWithEviction`, `WithTTL`, `WithSweepInterval`, `RateLimiter`, `RateLimiter.Middleware`, `RateLimiter.LimiterCount`, `RateLimiter.Stop`, and `RateLimitOption`.
+- Web templ adapters: `Render`, `RenderCtx`, `RenderWithStatus`, `TemplHandler`, `TemplHandlerFunc`, and `TemplHandlerFuncE`.
 
-Each component is independently importable:
+## Verification
 
-```go
-package main
-
-import (
-    "log"
-    "net/http"
-
-    "github.com/dotcommander/gokart/web"
-)
-
-func main() {
-    router := web.NewRouter(web.RouterConfig{
-        Middleware: web.StandardMiddleware,
-    })
-    router.Get("/health", func(w http.ResponseWriter, _ *http.Request) {
-        web.JSON(w, map[string]string{"status": "ok"})
-    })
-
-    if err := web.ListenAndServe(":8080", router); err != nil {
-        log.Fatal(err)
-    }
-}
-```
-
-Component guides and runnable examples are indexed in
-[`docs/`](docs/index.md). Complete applications live in
-[`examples/`](examples/). For database usage, see the maintained
-[PostgreSQL example](docs/examples/postgres/main.go).
-
-## Requirements and verification
-
-- Go 1.26 or later.
-- `just` for the short contributor verification command.
-- External services are required only for the integrations that use them.
-
-Run the repository checks across all modules and examples:
+Go 1.26 or later is required.
 
 ```bash
 just verify
-```
-
-Without `just`, run the same checks directly:
-
-```bash
-scripts/verify-workspace.sh all
 ```
 
 ## License

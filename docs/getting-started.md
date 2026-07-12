@@ -1,150 +1,76 @@
-# Getting Started
-
-Build a working CLI app with a database in under 10 minutes.
-
----
-
-## Prerequisites
-
-- Go 1.26 or later
-- `$GOPATH/bin` on your `PATH` (required to run the installed binary)
-
----
-
-## Install GoKart
+# Build an offline SQLite CLI
 
 ```bash
-go install github.com/dotcommander/gokart/cmd/gokart@v0.10.2
+go install github.com/dotcommander/gokart/cmd/gokart@v0.11.0
+gokart new counter --module example.com/counter --db sqlite --example
+cd counter
+go run ./cmd greet --name Ada
 ```
 
-Use `@latest` instead only if you intentionally want the newest published
-version rather than a reproducible install.
+You now have a verified, file-backed CLI with no external service. This tutorial adds a persistent `counter` command while preserving the generated ownership boundaries.
 
-Verify it works:
+## 1. Understand the lifecycle
+
+```text
+cmd/main.go                         sole process-exit boundary
+internal/commands/root.go           Cobra tree and persistent initialization
+internal/commands/greet.go          flags and presentation
+internal/actions/greet.go           testable application behavior
+internal/app/context.go             shared dependencies and cleanup
+.gokart-manifest.json               generated hashes and integrations
+```
+
+`main` calls `commands.Execute` and alone converts an error into `os.Exit(1)`. `Execute` builds `cli.App`, then chains its `PersistentPreRunE` after GoKart configuration initialization. That hook creates `app.Context`; a deferred `Context.Close` releases SQLite. Commands receive the context through a function because initialization happens after the command tree is built.
+
+Keep flags and output in `internal/commands`. Put business operations in `internal/actions` or a service package.
+
+## 2. Add typed configuration
+
+The scaffold defines `app.AppConfigKeyDBPath` and reads `db_path`. In `internal/commands/root.go`, before `app.New` runs, set an explicit default:
+
+```go
+cliApp.Viper().SetDefault(app.AppConfigKeyDBPath, "counter.db")
+```
+
+`WithEnvPrefix("COUNTER")` maps `COUNTER_DB_PATH` to `db_path`. `WithStandardFlags` adds `--config`, `--verbose`, and `--quiet`. Without this default, the generated context places the database under the platform cache directory.
+
+## 3. Create and run a migration
 
 ```bash
-gokart --version
+go get github.com/dotcommander/gokart/migrate@v0.11.0
+mkdir -p migrations
 ```
 
----
+Create `migrations/00001_create_counter.sql`:
 
-## Create Your First Project
+```sql
+-- +goose Up
+CREATE TABLE counters (
+    name TEXT PRIMARY KEY,
+    value INTEGER NOT NULL DEFAULT 0
+);
 
-The `--db sqlite` flag wires up a SQLite database. The `--example` flag adds a sample command so you have something to run immediately.
-
-```bash
-gokart new myapp --db sqlite --example
-cd myapp
+-- +goose Down
+DROP TABLE counters;
 ```
 
-Generated file tree:
+In `internal/app/context.go`, after `sqlite.Open` succeeds, run it before assigning `appCtx.DB`:
 
-```
-myapp/
-├── .gitignore
-├── .gokart-manifest.json          # Tracks generated files (do not edit)
-├── README.md                      # Build and install commands
-├── go.mod
-├── cmd/
-│   └── main.go                    # Entry point, wires version via ldflags
-└── internal/
-    ├── app/
-    │   └── context.go             # Shared deps: logger, DB connection
-    ├── actions/
-    │   ├── greet.go               # Business logic (testable, no CLI deps)
-    │   └── greet_test.go          # Table-driven tests
-    └── commands/
-        ├── root.go                # CLI setup, PersistentPreRunE wiring
-        └── greet.go               # greet command: flags → actions.Greet
+```go
+if err := migrate.Up(ctx, db, migrate.Config{
+	Dir: "migrations", Dialect: "sqlite3",
+}); err != nil {
+	_ = db.Close()
+	return nil, fmt.Errorf("migrate database: %w", err)
+}
+appCtx.DB = db
 ```
 
-**What each piece does:**
+Import `fmt` and `github.com/dotcommander/gokart/migrate`. File migrations resolve from the working directory. For a binary that runs anywhere, embed the directory and set `Config.FS`; see [migrations](components/migrate.md).
 
-- `cmd/main.go` — calls `commands.Execute(version)` and exits. No business logic here.
-- `internal/app/context.go` — opens the SQLite database, creates the logger. Commands receive a `*app.Context` and call it.
-- `internal/commands/root.go` — builds the `cli.App`, chains the `PersistentPreRunE` hook, registers commands.
-- `internal/commands/greet.go` — parses flags, calls `actions.Greet`, prints the result.
-- `internal/actions/greet.go` — pure function: takes `GreetInput`, returns `(string, error)`. No cobra, no globals.
-- `internal/actions/greet_test.go` — tests `actions.Greet` directly without starting a CLI.
+## 4. Add a transactional action
 
----
-
-## Build and Run
-
-```bash
-go mod tidy
-go build -o myapp ./cmd
-
-# Release build with version from git tag
-go build -ldflags "-X main.version=$(git describe --tags)" -o myapp ./cmd
-```
-
-Run with no arguments to see available commands:
-
-```bash
-./myapp
-```
-
-Expected output:
-
-```
-myapp CLI
-
-Usage:
-  myapp [command]
-
-Available Commands:
-  completion  Generate the autocompletion script for the specified shell
-  greet       Greet someone
-  help        Help about any command
-
-Flags:
-  -h, --help     help for myapp
-  -v, --verbose  Enable verbose output
-      --version  version for myapp
-
-Use "myapp [command] --help" for more information about a command.
-```
-
-Run the example command:
-
-```bash
-./myapp greet --name World
-```
-
-Output:
-
-```
-✓ Hello, World
-```
-
-With the `--loud` flag:
-
-```bash
-./myapp greet --name World --loud
-```
-
-Output:
-
-```
-✓ HELLO, WORLD!
-```
-
-Run the tests:
-
-```bash
-go test ./...
-```
-
----
-
-## Add a Command
-
-Here is how to add a `count` command that stores a run count in the database.
-
-### 1. Create the action
-
-`internal/actions/count.go`:
+Create `internal/actions/counter.go`:
 
 ```go
 package actions
@@ -153,177 +79,120 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+
+	"github.com/dotcommander/gokart/sqlite"
 )
 
-// CountResult holds the result of a Count action.
-type CountResult struct {
-	Count int
-}
-
-// Count increments a named counter in the database and returns the new value.
-func Count(ctx context.Context, db *sql.DB, name string) (CountResult, error) {
-	_, err := db.ExecContext(ctx,
-		`CREATE TABLE IF NOT EXISTS counters (name TEXT PRIMARY KEY, value INTEGER NOT NULL DEFAULT 0)`,
-	)
-	if err != nil {
-		return CountResult{}, fmt.Errorf("ensure table: %w", err)
-	}
-
-	_, err = db.ExecContext(ctx,
-		`INSERT INTO counters (name, value) VALUES (?, 1)
-		 ON CONFLICT(name) DO UPDATE SET value = value + 1`,
-		name,
-	)
-	if err != nil {
-		return CountResult{}, fmt.Errorf("increment counter: %w", err)
-	}
-
-	var n int
-	err = db.QueryRowContext(ctx, `SELECT value FROM counters WHERE name = ?`, name).Scan(&n)
-	if err != nil {
-		return CountResult{}, fmt.Errorf("read counter: %w", err)
-	}
-
-	return CountResult{Count: n}, nil
+func Increment(ctx context.Context, db *sql.DB, name string, by int64) (int64, error) {
+	var value int64
+	err := sqlite.Transaction(ctx, db, func(tx *sql.Tx) error {
+		_, err := tx.ExecContext(ctx, `
+			INSERT INTO counters(name, value) VALUES (?, ?)
+			ON CONFLICT(name) DO UPDATE SET value = value + excluded.value`, name, by)
+		if err != nil { return fmt.Errorf("increment counter: %w", err) }
+		return tx.QueryRowContext(ctx,
+			`SELECT value FROM counters WHERE name = ?`, name).Scan(&value)
+	})
+	return value, err
 }
 ```
 
-### 2. Create the command
+The action owns the transactional write and query. It accepts the narrow `*sql.DB` dependency rather than the entire application context.
 
-`internal/commands/count.go`:
+## 5. Add the `counter` command
+
+Create `internal/commands/counter.go`:
 
 ```go
 package commands
 
 import (
-	"context"
 	"fmt"
 
-	"github.com/dotcommander/gokart/cli"
+	"example.com/counter/internal/actions"
+	"example.com/counter/internal/app"
 	"github.com/spf13/cobra"
-
-	"myapp/internal/actions"
-	"myapp/internal/app"
 )
 
-func NewCountCmd(getAppContext func() *app.Context) *cobra.Command {
-	return cli.Command("count", "Increment and display a named counter", func(cmd *cobra.Command, args []string) error {
-		name, _ := cmd.Flags().GetString("name")
-		appCtx := getAppContext()
-
-		result, err := actions.Count(context.Background(), appCtx.DB, name)
-		if err != nil {
-			cli.Error("count failed: %v", err)
+func NewCounterCmd(getContext func() *app.Context) *cobra.Command {
+	var by int64
+	cmd := &cobra.Command{
+		Use: "counter [name]", Short: "Increment a persistent counter",
+		Args: cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			name := "default"
+			if len(args) == 1 { name = args[0] }
+			appCtx := getContext()
+			value, err := actions.Increment(cmd.Context(), appCtx.DB, name, by)
+			if err != nil { return err }
+			appCtx.Log.Info("counter incremented", "name", name, "value", value)
+			_, err = fmt.Fprintln(cmd.OutOrStdout(), value)
 			return err
-		}
-
-		cli.Success("counter %q = %d", name, result.Count)
-		return nil
-	})
+		},
+	}
+	cmd.Flags().Int64Var(&by, "by", 1, "amount to add")
+	return cmd
 }
 ```
 
-> Replace `myapp/internal/...` with your actual module path from `go.mod` if it differs.
-
-### 3. Register the command in root.go
-
-Open `internal/commands/root.go` and add `NewCountCmd` alongside `NewGreetCmd`:
+Register it beside the generated greet command in `root.go`:
 
 ```go
-cliApp.AddCommand(NewGreetCmd(func() *app.Context {
-    return appCtx
-}))
-cliApp.AddCommand(NewCountCmd(func() *app.Context {  // add this
-    return appCtx
-}))
+getAppContext := func() *app.Context { return appCtx }
+cliApp.AddCommand(NewGreetCmd(getAppContext))
+cliApp.AddCommand(NewCounterCmd(getAppContext))
 ```
 
-### 4. Try it
+Run the complete path:
 
 ```bash
-go build -o myapp ./cmd
-./myapp count --name hits
+go run ./cmd counter
+go run ./cmd counter build --by 3
+go run ./cmd counter build
 ```
 
-Output:
+Command results use `cmd.OutOrStdout()` so Cobra tests can capture them. Operational details go to `appCtx.Log`.
 
-```
-✓ counter "hits" = 1
-```
+## 6. Add state and tests
 
-Run again:
-
-```
-✓ counter "hits" = 2
-```
-
-The count persists in the user cache directory under `myapp/data.db` — the exact base path comes from `os.UserCacheDir()` and varies by platform. No configuration is needed; `internal/app/context.go` creates the directory automatically.
-
----
-
-## Add an Integration
-
-Use `gokart add` to wire new integrations into a managed, structured project
-without re-scaffolding. Plain local scaffolds are unmanaged and cannot use
-`gokart add`; choose `--global` or an integration when running `gokart new` if
-you will need future additions.
-
-Add the OpenAI client:
-
-```bash
-gokart add ai
-```
-
-Output:
-
-```
-✓ Added ai
-  overwrite  internal/app/context.go
-  overwrite  internal/commands/root.go
-```
-
-`gokart add` re-renders `internal/app/context.go` and
-`internal/commands/root.go`. It runs `go get` and `go mod tidy`, which can
-change `go.mod` and `go.sum`, then refreshes `.gokart-manifest.json`. Your
-`cmd/main.go`, action files, and other command files are untouched.
-
-Before writing, it compares generated wiring with the hashes in the manifest.
-Modified wiring and existing wiring that the manifest does not track are
-refused by default. The advanced `--force` flag overwrites those conflicts and
-can discard local edits.
-
-After adding, `internal/app/context.go` will include an `AI openai.Client` field wired from `OPENAI_API_KEY`:
+Use SQLite for the counters. For a small preference such as the last selected name, use typed state:
 
 ```go
-type Context struct {
-    Log *slog.Logger
-    DB  *sql.DB
-    AI  openai.Client
-}
+type UIState struct { LastCounter string `json:"last_counter"` }
+err := gokart.SaveState("counter", "state.json", UIState{LastCounter: name})
 ```
 
-Use it from any command:
+`SaveState` publishes atomically under the platform user configuration directory; it is not a replacement for transactional domain data.
 
-```go
-resp, err := appCtx.AI.Chat.Completions.New(ctx, openai.ChatCompletionNewParams{
-    Model:    openai.ChatModelGPT4o,
-    Messages: []openai.ChatCompletionMessageParamUnion{
-        openai.UserMessage("Hello!"),
-    },
-})
-```
+Test the action with `sqlite.OpenContext(t.Context(), filepath.Join(t.TempDir(), "test.db"))`, apply the same migration, call `Increment`, and assert the returned values. Test the command with `SetOut`, `SetErr`, `SetArgs`, and `Execute`. See [testing](testing.md) for complete patterns.
 
-To preview what `gokart add` would change before committing:
+## 7. Build and run
 
 ```bash
-gokart add postgres --dry-run
+go mod tidy
+go test ./...
+go build -o counter ./cmd
+./counter greet --name Ada
+./counter counter release --by 2
 ```
 
----
+The new command and action files are application-owned. `gokart add` may rewrite `internal/app/context.go` and `internal/commands/root.go`; read [generated-code ownership](generated-code.md) before further customization.
 
-## What's Next
+## Expand into a service
 
-- [CLI package](/api/cli) — styled output, tables, spinners, editor input
-- [SQLite](/components/sqlite) — configuration, transactions, querying patterns
-- [Web](/components/web) — chi router, graceful server, response helpers
-- [Generator reference](/components/generator) — all `gokart new` and `gokart add` flags
+- PostgreSQL: `gokart add postgres`, configure `DATABASE_URL`, and adapt repositories to `*pgxpool.Pool`.
+- HTTP: add the `web` module, bounded validated handlers, and graceful shutdown.
+- Redis: `gokart add redis`, configure `REDIS_ADDR`, then use `Cache.Client()` and `Cache.Key()`.
+- OpenAI: `gokart add ai`, configure `OPENAI_API_KEY`, and call the official SDK client in `app.Context`.
+
+Use the [recipes](recipes.md) and [full-service example](examples/README.md#service-composition) rather than creating a second application architecture.
+
+## Other verified generator flows
+
+```bash
+gokart new mycli --db sqlite --example
+gokart new service --global
+gokart new "$PWD" --verify-only
+```
+
+The first is the short form of this tutorial scaffold. The second enables platform-global configuration. The third runs `go mod tidy` and `go test ./...` against an existing target without scaffolding.

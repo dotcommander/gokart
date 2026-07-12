@@ -5,7 +5,7 @@ Structured logging for Go applications built on [log/slog](https://pkg.go.dev/lo
 ## Installation
 
 ```bash
-go get github.com/dotcommander/gokart/logger
+go get github.com/dotcommander/gokart/logger@v0.11.0
 ```
 
 ## Quick Start
@@ -224,7 +224,7 @@ log := logger.New(logger.Config{Level: cfg.LogLevel})
 
 ## See Also
 
-- [Config](/api/gokart) - Loading application configuration
-- [State](/api/gokart) - Persisting application state between runs
-- [CLI](/api/cli) - Building styled CLI applications
+- [Config](../api/gokart.md) - Loading application configuration
+- [State](state.md) - Persisting application state between runs
+- [CLI](../api/cli.md) - Building styled CLI applications
 - [log/slog package](https://pkg.go.dev/log/slog) - Standard library structured logging

@@ -110,7 +110,7 @@ func TestApplyReclaimsStaleLockFile(t *testing.T) {
 	}
 }
 
-func TestShouldReclaimStaleLockWhenPIDRunningButLockExpired(t *testing.T) {
+func TestShouldRetainOldLockWhenPIDIsRunning(t *testing.T) {
 	t.Parallel()
 	lockPath := filepath.Join(t.TempDir(), ".gokart.lock")
 	metadata := applyLockMetadata{
@@ -132,10 +132,27 @@ func TestShouldReclaimStaleLockWhenPIDRunningButLockExpired(t *testing.T) {
 	if err != nil {
 		t.Fatalf("shouldReclaimStaleLock() error = %v", err)
 	}
-	if !isStale {
-		t.Fatalf("expected stale lock reclaim, got isStale=%v reason=%q", isStale, reason)
+	if isStale {
+		t.Fatalf("expected live owner lock to be retained, got isStale=%v reason=%q", isStale, reason)
 	}
-	if !strings.Contains(reason, "older than") {
-		t.Fatalf("unexpected stale reason: %q", reason)
+}
+
+func TestProcessIsRunningRecognizesCurrentAndMissingPID(t *testing.T) {
+	t.Parallel()
+
+	running, err := processIsRunning(os.Getpid())
+	if err != nil {
+		t.Fatalf("check current pid: %v", err)
+	}
+	if !running {
+		t.Fatal("current process reported as not running")
+	}
+
+	running, err = processIsRunning(999999)
+	if err != nil {
+		t.Fatalf("check missing pid: %v", err)
+	}
+	if running {
+		t.Fatal("missing process reported as running")
 	}
 }

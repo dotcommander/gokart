@@ -5,7 +5,7 @@ go 1.26.0
 toolchain go1.26.3
 
 require (
-	github.com/dotcommander/gokart v0.10.2
+	github.com/dotcommander/gokart v0.11.0
 	modernc.org/sqlite v1.53.0
 )
 

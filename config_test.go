@@ -91,3 +91,38 @@ func TestLoadConfigWithDefaults(t *testing.T) {
 		})
 	}
 }
+
+func TestLoadConfigWithDefaults_MissingCandidateFallsThrough(t *testing.T) {
+	t.Parallel()
+
+	valid := writeTempYAML(t, "host: fallback.example.com\n")
+	missing := filepath.Join(t.TempDir(), "missing.yaml")
+
+	got, err := gokart.LoadConfigWithDefaults(testConfig{Port: 5432}, missing, valid)
+	require.NoError(t, err)
+	assert.Equal(t, testConfig{Host: "fallback.example.com", Port: 5432}, got)
+}
+
+func TestLoadConfigWithDefaults_InvalidCandidateDoesNotFallThrough(t *testing.T) {
+	t.Parallel()
+
+	invalid := writeTempYAML(t, "host: [unterminated\n")
+	valid := writeTempYAML(t, "host: fallback.example.com\n")
+
+	got, err := gokart.LoadConfigWithDefaults(testConfig{Host: "default"}, invalid, valid)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), invalid)
+	assert.Equal(t, testConfig{Host: "default"}, got)
+}
+
+func TestLoadConfigWithDefaults_UnreadableCandidateDoesNotFallThrough(t *testing.T) {
+	t.Parallel()
+
+	unreadable := t.TempDir()
+	valid := writeTempYAML(t, "host: fallback.example.com\n")
+
+	got, err := gokart.LoadConfigWithDefaults(testConfig{Host: "default"}, unreadable, valid)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), unreadable)
+	assert.Equal(t, testConfig{Host: "default"}, got)
+}

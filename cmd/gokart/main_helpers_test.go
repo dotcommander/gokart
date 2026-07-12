@@ -2,10 +2,11 @@ package main
 
 import (
 	"bytes"
+	"io"
+	"os"
 	"sync"
 	"testing"
 
-	"github.com/dotcommander/gokart/cli"
 	"github.com/spf13/cobra"
 )
 
@@ -30,11 +31,18 @@ func captureStdout(t *testing.T, fn func()) string {
 	captureOutputMu.Lock()
 	defer captureOutputMu.Unlock()
 
-	var buf bytes.Buffer
-	cli.SetOutput(&buf)
-	defer cli.SetOutput(nil)
+	read, write, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	original := os.Stdout
+	os.Stdout = write
 	fn()
-
+	_ = write.Close()
+	os.Stdout = original
+	var buf bytes.Buffer
+	_, _ = io.Copy(&buf, read)
+	_ = read.Close()
 	return buf.String()
 }
 

@@ -29,18 +29,14 @@ func SaveState[T any](appName, filename string, data T) error {
 		return fmt.Errorf("get config dir: %w", err)
 	}
 
-	if err := os.MkdirAll(dir, 0755); err != nil {
-		return fmt.Errorf("create config dir: %w", err)
-	}
-
 	content, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
 		return fmt.Errorf("marshal state: %w", err)
 	}
 
 	path := filepath.Join(dir, filename)
-	if err := os.WriteFile(path, content, 0600); err != nil {
-		return fmt.Errorf("write state file: %w", err)
+	if err := atomicWriteFile(path, content, 0o600); err != nil {
+		return fmt.Errorf("publish state file: %w", err)
 	}
 
 	return nil

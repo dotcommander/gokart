@@ -6,9 +6,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"slices"
+	"sort"
 	"strings"
 	"time"
 
@@ -35,58 +37,112 @@ const (
 	integrationRedis    = "redis"
 )
 
-type integrationDep struct {
-	Packages []string
-}
-
 // integrationEntry is the single source of truth for one integration: its
 // go.mod packages plus how to read/write its bit on a manifestIntegrations.
 // Adding a new integration means adding one entry here — nothing else.
 type integrationEntry struct {
-	deps []string
-	get  func(*manifestIntegrations) bool
-	set  func(*manifestIntegrations, bool)
+	deps        []string
+	template    func(TemplateData) bool
+	setTemplate func(*TemplateData)
+	get         func(*manifestIntegrations) bool
+	set         func(*manifestIntegrations, bool)
+	description string
+	flag        string
+	golden      string
+	environment string
+	upstream    string
+	recipe      string
 }
 
 // integrationRegistry is the ONLY place that enumerates integration names.
 var integrationRegistry = map[string]integrationEntry{
 	integrationSQLite: {
-		deps: []string{"github.com/dotcommander/gokart/sqlite@" + defaultGokartSQLiteVersion},
-		get:  func(m *manifestIntegrations) bool { return m.SQLite },
-		set:  func(m *manifestIntegrations, v bool) { m.SQLite = v },
+		deps:        []string{"github.com/dotcommander/gokart/sqlite@" + defaultGokartSQLiteVersion},
+		template:    func(data TemplateData) bool { return data.UseSQLite },
+		setTemplate: func(data *TemplateData) { data.UseSQLite = true },
+		get:         func(m *manifestIntegrations) bool { return m.SQLite },
+		set:         func(m *manifestIntegrations, v bool) { m.SQLite = v },
+		description: "SQLite through sqlite.Open",
+		flag:        "--db sqlite", golden: "structured-sqlite",
+		environment: "{{APP}}_DB_PATH (optional; defaults to the user cache directory)",
+		upstream:    "modernc.org/sqlite",
+		recipe:      "SQLite transaction",
 	},
 	integrationPostgres: {
-		deps: []string{"github.com/dotcommander/gokart/postgres@" + defaultGokartPostgresVersion, "github.com/jackc/pgx/v5@latest"},
-		get:  func(m *manifestIntegrations) bool { return m.Postgres },
-		set:  func(m *manifestIntegrations, v bool) { m.Postgres = v },
+		deps:        []string{"github.com/dotcommander/gokart/postgres@" + defaultGokartPostgresVersion, "github.com/jackc/pgx/v5@" + defaultPGXVersion},
+		template:    func(data TemplateData) bool { return data.UsePostgres },
+		setTemplate: func(data *TemplateData) { data.UsePostgres = true },
+		get:         func(m *manifestIntegrations) bool { return m.Postgres },
+		set:         func(m *manifestIntegrations, v bool) { m.Postgres = v },
+		description: "PostgreSQL through postgres.Open",
+		flag:        "--db postgres", golden: "structured-postgres",
+		environment: "DATABASE_URL (required by PostgreSQL commands)",
+		upstream:    "pgxpool.NewWithConfig",
+		recipe:      "PostgreSQL transaction",
 	},
 	integrationAI: {
-		deps: []string{"github.com/dotcommander/gokart/ai@" + defaultGokartAIVersion, "github.com/openai/openai-go/v3@latest"},
-		get:  func(m *manifestIntegrations) bool { return m.AI },
-		set:  func(m *manifestIntegrations, v bool) { m.AI = v },
+		deps:        []string{"github.com/openai/openai-go/v3@" + defaultOpenAIVersion},
+		template:    func(data TemplateData) bool { return data.UseAI },
+		setTemplate: func(data *TemplateData) { data.UseAI = true },
+		get:         func(m *manifestIntegrations) bool { return m.AI },
+		set:         func(m *manifestIntegrations, v bool) { m.AI = v },
+		description: "OpenAI through the official SDK",
+		flag:        "--ai", golden: "structured-ai",
+		environment: "OPENAI_API_KEY (required by AI commands)",
+		upstream:    "openai.NewClient",
+		recipe:      "Add integrations",
 	},
 	integrationRedis: {
-		deps: []string{"github.com/dotcommander/gokart/cache@" + defaultGokartCacheVersion, "github.com/redis/go-redis/v9@" + defaultRedisVersion},
-		get:  func(m *manifestIntegrations) bool { return m.Redis },
-		set:  func(m *manifestIntegrations, v bool) { m.Redis = v },
+		deps:        []string{"github.com/dotcommander/gokart/cache@" + defaultGokartCacheVersion, "github.com/redis/go-redis/v9@" + defaultRedisVersion},
+		template:    func(data TemplateData) bool { return data.UseRedis },
+		setTemplate: func(data *TemplateData) { data.UseRedis = true },
+		get:         func(m *manifestIntegrations) bool { return m.Redis },
+		set:         func(m *manifestIntegrations, v bool) { m.Redis = v },
+		description: "Redis through cache.Open",
+		flag:        "--redis", golden: "structured-redis",
+		environment: "REDIS_ADDR (optional; defaults to localhost:6379)",
+		upstream:    "redis.NewClient",
+		recipe:      "Redis with direct client access",
 	},
 }
 
-// validIntegrations and integrationDeps are derived views of the registry,
-// kept for the existing map-indexing call sites. Do not edit by hand.
-var (
-	validIntegrations = make(map[string]bool, len(integrationRegistry))
-	integrationDeps   = make(map[string]integrationDep, len(integrationRegistry))
-)
+type integrationReadmeData struct {
+	Name        string
+	Description string
+	Environment string
+}
 
-func init() {
+func selectedIntegrationReadmeData(data TemplateData) []integrationReadmeData {
+	names := make([]string, 0, len(integrationRegistry))
 	for name, entry := range integrationRegistry {
-		validIntegrations[name] = true
-		integrationDeps[name] = integrationDep{Packages: entry.deps}
+		if entry.template(data) {
+			names = append(names, name)
+		}
 	}
+	sort.Strings(names)
+
+	selected := make([]integrationReadmeData, 0, len(names))
+	for _, name := range names {
+		entry := integrationRegistry[name]
+		environment := strings.ReplaceAll(entry.environment, "{{APP}}", strings.ToUpper(data.Name))
+		selected = append(selected, integrationReadmeData{Name: name, Description: entry.description, Environment: environment})
+	}
+	return selected
+}
+
+func integrationDependencies(data TemplateData) []string {
+	var packages []string
+	for _, entry := range integrationRegistry {
+		if entry.template(data) {
+			packages = append(packages, entry.deps...)
+		}
+	}
+	sort.Strings(packages)
+	return packages
 }
 
 type addCommandOutput struct {
+	writer           io.Writer        `json:"-"`
 	Outcome          commandOutcome   `json:"outcome,omitempty"`
 	ErrorCode        commandErrorCode `json:"error_code,omitempty"`
 	ExitCode         int              `json:"exit_code"`
@@ -166,7 +222,7 @@ func runAddCommand(cmd *cobra.Command, args []string) error {
 	configureJSONCommand(cmd, jsonOutput)
 
 	integrations, err := collectAddIntegrations(args)
-	output := addCommandOutput{Outcome: commandOutcomeSuccess}
+	output := addCommandOutput{Outcome: commandOutcomeSuccess, writer: cmd.OutOrStdout()}
 	if err != nil {
 		return emitCommandError(err, jsonOutput, &output, commandFailureInfo{Code: errorCodeInvalidArguments, Outcome: commandOutcomeFailure, ExitCode: exitCodeInvalidArguments})
 	}
@@ -182,7 +238,19 @@ func runAddCommand(cmd *cobra.Command, args []string) error {
 	output.Integrations = append([]string(nil), req.Integrations...)
 	output.VerifyRequested = req.Verify
 
-	plan, err := planAddChanges(req, &output)
+	var plan *addPlan
+	planAndApply := func() error {
+		plan, err = planAddChanges(req, &output)
+		if err != nil || req.DryRun || len(plan.ToAdd) == 0 {
+			return err
+		}
+		return applyAddChanges(cmdContext(cmd), req, plan, &output)
+	}
+	if req.DryRun {
+		err = planAndApply()
+	} else {
+		err = withTargetMutationLock(req.Dir, planAndApply)
+	}
 	if err != nil {
 		var flowErr *addFlowError
 		if errors.As(err, &flowErr) {
@@ -197,32 +265,13 @@ func runAddCommand(cmd *cobra.Command, args []string) error {
 				cli.Warning("%s already enabled", name)
 			}
 		}
-		if jsonOutput {
-			_ = emitJSON(output)
-		}
-		return nil
-	}
-
-	if req.DryRun {
+	} else if req.DryRun {
 		printAddResult(req, output)
-		if jsonOutput {
-			_ = emitJSON(output)
-		}
-		return nil
-	}
-
-	if err := applyAddChanges(cmdContext(cmd), req, plan, &output); err != nil {
-		var flowErr *addFlowError
-		if errors.As(err, &flowErr) {
-			return emitCommandError(err, jsonOutput, &output, commandFailureInfo{Code: flowErr.Code, Outcome: commandOutcomeFailure, ExitCode: flowErr.ExitCode})
-		}
-		return emitCommandError(err, jsonOutput, &output, commandFailureInfo{Code: errorCodeScaffoldFailed, Outcome: commandOutcomeFailure, ExitCode: exitCodeScaffoldFailed})
 	}
 
 	if jsonOutput {
-		_ = emitJSON(output)
+		return emitCommandJSON(&output)
 	}
-
 	return nil
 }
 
@@ -281,7 +330,7 @@ func inferIntegrationsFromGoMod(dir string) (string, *manifestIntegrations) {
 	if strings.Contains(content, "gokart/postgres") {
 		result.Postgres = true
 	}
-	if strings.Contains(content, "gokart/ai") {
+	if strings.Contains(content, "openai/openai-go/v3") {
 		result.AI = true
 	}
 	if strings.Contains(content, "gokart/cache") {
@@ -358,6 +407,7 @@ func inferTemplateData(manifest *scaffoldManifest, dir string, current *manifest
 	data.UsePostgres = merged.Postgres
 	data.UseAI = merged.AI
 	data.UseRedis = merged.Redis
+	data.Integrations = selectedIntegrationReadmeData(data)
 
 	return data, nil
 }
@@ -418,14 +468,15 @@ func checkFileSafety(dir, relPath string, manifest *scaffoldManifest) fileSafety
 }
 
 func addGoDependencies(ctx context.Context, dir string, integrations []string, verbose bool) error {
-	var packages []string
+	data := TemplateData{}
 	for _, name := range integrations {
-		dep, ok := integrationDeps[name]
+		entry, ok := integrationRegistry[name]
 		if !ok {
 			continue
 		}
-		packages = append(packages, dep.Packages...)
+		entry.setTemplate(&data)
 	}
+	packages := integrationDependencies(data)
 
 	if len(packages) == 0 {
 		return nil

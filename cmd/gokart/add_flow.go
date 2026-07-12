@@ -67,7 +67,7 @@ func collectAddIntegrations(args []string) ([]string, error) {
 	requested := make([]string, 0, len(args))
 	for _, arg := range args {
 		name := strings.ToLower(strings.TrimSpace(arg))
-		if !validIntegrations[name] {
+		if _, ok := integrationRegistry[name]; !ok {
 			return nil, fmt.Errorf("unknown integration: %s (valid: sqlite, postgres, ai, redis)", name)
 		}
 		if seen[name] {
@@ -89,7 +89,7 @@ func planAddChanges(req addRequest, output *addCommandOutput) (*addPlan, error) 
 	// Warn (non-fatal) on template-version skew: a project scaffolded by an
 	// older gokart may not match templates rendered by the running version.
 	if manifest.GeneratorVersion != "" && manifest.GeneratorVersion != gokartVersion {
-		cli.Warning("project was scaffolded by gokart %s but you are running %s; templates may not match the original project layout", manifest.GeneratorVersion, gokartVersion)
+		output.Warnings = append(output.Warnings, fmt.Sprintf("project was scaffolded by gokart %s but you are running %s; templates may not match the original project layout", manifest.GeneratorVersion, gokartVersion))
 	}
 
 	if isFlatProject(manifest) {

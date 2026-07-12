@@ -1,7 +1,7 @@
 # gokart — Go toolkit multi-module repo
 
 # All published submodules, including the independently installable CLI.
-modules := "ai cache cli cmd/gokart fs logger migrate postgres sqlite web"
+modules := "cache cli cmd/gokart logger migrate postgres sqlite web"
 
 # Build all modules
 build:
@@ -28,7 +28,7 @@ leaks:
     scripts/check-public-leaks.sh
 
 # Create local tags for all submodules and the root. Pushing is a separate gate.
-# Usage: just tag v0.10.2
+# Usage: just tag v0.11.0
 tag version:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -38,7 +38,7 @@ tag version:
         exit 1
     fi
     # Verify clean tree
-    if ! git diff --quiet || ! git diff --cached --quiet; then
+    if [[ -n "$(git status --porcelain)" ]]; then
         echo "error: working tree is dirty — commit first" >&2
         exit 1
     fi

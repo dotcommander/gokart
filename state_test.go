@@ -61,6 +61,53 @@ func TestLoadState_NotFound(t *testing.T) {
 	}
 }
 
+func TestSaveState_UsesPrivatePermissions(t *testing.T) {
+	appName := "gokart-test-permissions-" + t.Name()
+	filename := "state.json"
+	path := gokart.StatePath(appName, filename)
+	t.Cleanup(func() { _ = os.RemoveAll(filepath.Dir(path)) })
+
+	if err := gokart.SaveState(appName, filename, testState{Name: "private"}); err != nil {
+		t.Fatalf("SaveState: %v", err)
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatalf("Stat: %v", err)
+	}
+	if got := info.Mode().Perm(); got != 0o600 {
+		t.Fatalf("permissions = %o, want 600", got)
+	}
+}
+
+func TestSaveState_FailedPublicationPreservesExistingState(t *testing.T) {
+	appName := "gokart-test-atomic-" + t.Name()
+	filename := "state.json"
+	path := gokart.StatePath(appName, filename)
+	dir := filepath.Dir(path)
+	t.Cleanup(func() {
+		_ = os.Chmod(dir, 0o755)
+		_ = os.RemoveAll(dir)
+	})
+
+	if err := gokart.SaveState(appName, filename, testState{Name: "original", Count: 1}); err != nil {
+		t.Fatalf("initial SaveState: %v", err)
+	}
+	if err := os.Chmod(dir, 0o500); err != nil {
+		t.Fatalf("Chmod: %v", err)
+	}
+	if err := gokart.SaveState(appName, filename, testState{Name: "replacement", Count: 2}); err == nil {
+		t.Skip("environment permits writes to a non-writable directory")
+	}
+
+	content, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("ReadFile: %v", err)
+	}
+	if string(content) != "{\n  \"name\": \"original\",\n  \"count\": 1\n}" {
+		t.Fatalf("existing state changed after failed publication: %s", content)
+	}
+}
+
 // TestState_DocSignatures verifies SaveState and LoadState signatures are documented
 func TestState_DocSignatures(t *testing.T) {
 	t.Parallel()

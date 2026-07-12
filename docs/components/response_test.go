@@ -126,8 +126,8 @@ func handlerExampleChecks() []docCheck {
 			required: []string{
 				"func handleUser(w http.ResponseWriter, r *http.Request)",
 				`web.JSON(w, user)`,
-				`web.Error(w, http.StatusBadRequest, "Invalid user ID")`,
-				`web.JSONStatus(w, http.StatusCreated, user)`,
+				`web.Error(w, http.StatusNotFound, "user not found")`,
+				"return",
 			},
 		},
 		{

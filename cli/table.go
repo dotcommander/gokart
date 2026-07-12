@@ -3,6 +3,7 @@ package cli
 import (
 	"fmt"
 	"io"
+	"os"
 	"sort"
 	"strings"
 
@@ -29,7 +30,7 @@ func NewTable(headers ...string) *Table {
 	return &Table{
 		headers: headers,
 		rows:    make([][]string, 0),
-		writer:  Output(),
+		writer:  os.Stdout,
 	}
 }
 
@@ -119,7 +120,7 @@ func KeyValue(data map[string]string) {
 	}
 	sort.Strings(keys)
 
-	w := Output()
+	w := os.Stdout
 	for _, k := range keys {
 		fmt.Fprintf(w, "%s %s\n", keyStyle.Render(k+":"), valStyle.Render(data[k]))
 	}
@@ -132,7 +133,7 @@ func KeyValue(data map[string]string) {
 //	cli.List("Item 1", "Item 2", "Item 3")
 func List(items ...string) {
 	bullet := lipgloss.NewStyle().Foreground(lipgloss.Color("12")).Render("•")
-	w := Output()
+	w := os.Stdout
 	for _, item := range items {
 		fmt.Fprintf(w, "  %s %s\n", bullet, item)
 	}
@@ -145,7 +146,7 @@ func List(items ...string) {
 //	cli.NumberedList("First", "Second", "Third")
 func NumberedList(items ...string) {
 	numStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("12")).Width(4)
-	w := Output()
+	w := os.Stdout
 	for i, item := range items {
 		fmt.Fprintf(w, "%s %s\n", numStyle.Render(fmt.Sprintf("%d.", i+1)), item)
 	}

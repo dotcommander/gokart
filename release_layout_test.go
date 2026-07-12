@@ -14,7 +14,7 @@ func TestReleaseIncludesInstallableCLI(t *testing.T) {
 		t.Fatalf("read cmd/gokart/go.mod: %v", err)
 	}
 	moduleText := string(commandModule)
-	if !strings.Contains(moduleText, "github.com/dotcommander/gokart/cli v0.10.2") {
+	if !strings.Contains(moduleText, "github.com/dotcommander/gokart/cli v0.11.0") {
 		t.Fatal("cmd/gokart does not require the release-matched cli module")
 	}
 	if strings.Contains(moduleText, "replace github.com/dotcommander/gokart/cli") {

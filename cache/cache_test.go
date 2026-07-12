@@ -91,8 +91,8 @@ func TestCacheKey(t *testing.T) {
 			t.Parallel()
 
 			c := &Cache{prefix: tt.prefix}
-			if got := c.key(tt.key); got != tt.want {
-				t.Errorf("Cache{prefix:%q}.key(%q) = %q, want %q",
+			if got := c.Key(tt.key); got != tt.want {
+				t.Errorf("Cache{prefix:%q}.Key(%q) = %q, want %q",
 					tt.prefix, tt.key, got, tt.want)
 			}
 		})

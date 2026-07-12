@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/dotcommander/gokart/cli"
@@ -11,6 +12,7 @@ import (
 )
 
 type newCommandOutput struct {
+	writer             io.Writer          `json:"-"`
 	Outcome            commandOutcome     `json:"outcome,omitempty"`
 	ErrorCode          commandErrorCode   `json:"error_code,omitempty"`
 	ExitCode           int                `json:"exit_code"`
@@ -52,13 +54,16 @@ func failNewCommand(err error, jsonOutput bool, output *newCommandOutput, fail c
 	return emitCommandError(err, jsonOutput, output, fail)
 }
 
-func emitJSON(v any) error {
+func emitJSON(w io.Writer, v any) error {
 	data, err := json.MarshalIndent(v, "", "  ")
 	if err != nil {
 		return err
 	}
 
-	_, err = fmt.Fprintln(cli.Output(), string(data))
+	if w == nil {
+		w = os.Stdout
+	}
+	_, err = fmt.Fprintln(w, string(data))
 	return err
 }
 
@@ -98,7 +103,7 @@ func handlePersistentPreRunError(cmd *cobra.Command, err error) error {
 		cmd.SilenceErrors = true
 	}
 
-	if emitErr := emitJSON(newCommandOutput{
+	if emitErr := emitJSON(cmd.OutOrStdout(), newCommandOutput{
 		Outcome:   commandOutcomeFailure,
 		ErrorCode: errorCodeConfigInitFailed,
 		ExitCode:  exitCodeConfigInitFailed,

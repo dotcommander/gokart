@@ -10,18 +10,17 @@ import (
 var templates embed.FS
 
 const (
-	defaultGokartCLIVersion      = "latest"
-	defaultGokartSQLiteVersion   = "latest"
-	defaultGokartPostgresVersion = "latest"
-	defaultGokartAIVersion       = "latest"
-	defaultGokartCacheVersion    = "latest"
-	defaultGokartFSVersion       = "latest"
+	defaultGokartVersion         = "v0.11.0"
+	defaultGokartCLIVersion      = defaultGokartVersion
+	defaultGokartSQLiteVersion   = defaultGokartVersion
+	defaultGokartPostgresVersion = defaultGokartVersion
+	defaultGokartCacheVersion    = defaultGokartVersion
 
 	defaultCobraVersion  = "v1.10.2"
 	defaultViperVersion  = "v1.21.0"
-	defaultPGXVersion    = "v5.8.0"
-	defaultOpenAIVersion = "v3.24.0"
-	defaultRedisVersion  = "v9.7.0"
+	defaultPGXVersion    = "v5.10.0"
+	defaultOpenAIVersion = "v3.41.0"
+	defaultRedisVersion  = "v9.21.0"
 	defaultGooseVersion  = "v3.27.0"
 )
 
@@ -36,11 +35,11 @@ type TemplateData struct {
 	UseRedis       bool
 	IncludeExample bool
 	UseGlobal      bool
+	Integrations   []integrationReadmeData
 
 	GokartCLIVersion      string
 	GokartSQLiteVersion   string
 	GokartPostgresVersion string
-	GokartAIVersion       string
 	GokartCacheVersion    string
 	RedisVersion          string
 	CobraVersion          string
@@ -82,6 +81,7 @@ func ScaffoldStructured(dir, name, module string, useSQLite, usePostgres, useAI,
 	data.UsePostgres = usePostgres
 	data.UseAI = useAI
 	data.UseRedis = useRedis
+	data.Integrations = selectedIntegrationReadmeData(data)
 
 	return applyScaffoldSpec(scaffoldSpec{
 		Dir:          dir,
@@ -117,7 +117,6 @@ func baseTemplateData(name, module string, useGlobal, includeExample bool) Templ
 		GokartCLIVersion:      defaultGokartCLIVersion,
 		GokartSQLiteVersion:   defaultGokartSQLiteVersion,
 		GokartPostgresVersion: defaultGokartPostgresVersion,
-		GokartAIVersion:       defaultGokartAIVersion,
 		GokartCacheVersion:    defaultGokartCacheVersion,
 		RedisVersion:          defaultRedisVersion,
 		CobraVersion:          defaultCobraVersion,

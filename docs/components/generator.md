@@ -5,11 +5,10 @@ Scaffold new Go CLI projects and add integrations without re-scaffolding.
 ## Install
 
 ```bash
-go install github.com/dotcommander/gokart/cmd/gokart@v0.10.2
+go install github.com/dotcommander/gokart/cmd/gokart@v0.11.0
 ```
 
-Use `@latest` instead only if you intentionally want the newest published
-version rather than a reproducible install.
+The explicit version keeps installation reproducible.
 
 ---
 
@@ -108,7 +107,7 @@ These flags wire a data store or API client into the project at generation time.
 |------|---------------|---------------|
 | `--db sqlite` | `github.com/dotcommander/gokart/sqlite` | `*sql.DB` via `sqlite.Open` |
 | `--db postgres` | `github.com/dotcommander/gokart/postgres`, `github.com/jackc/pgx/v5` | `*pgxpool.Pool` via `postgres.Open` |
-| `--ai` | `github.com/dotcommander/gokart/ai`, `github.com/openai/openai-go/v3` | `openai.Client` via `ai.NewOpenAIClientWithKey` |
+| `--ai` | `github.com/openai/openai-go/v3` | `openai.Client` via `openai.NewClient` |
 | `--redis` | `github.com/dotcommander/gokart/cache`, `github.com/redis/go-redis/v9` | `*cache.Cache` via `cache.Open` |
 
 Flags may be combined:
@@ -156,11 +155,14 @@ When the target directory already exists and contains files, `gokart new` checks
 
 | Flag | Behavior |
 |------|----------|
-| `--verify` | After scaffolding, run `go mod tidy` then `go test ./...` in the project directory |
+| `--verify` | Explicitly request the normal post-generation `go mod tidy` and `go test ./...` pass |
+| `--no-verify` | Skip the default post-generation verification pass |
 | `--verify-only` | Skip scaffolding; run verification only against the existing target directory |
 | `--verify-timeout <duration>` | Maximum time allowed for verification commands (default `5m`; `0` disables the timeout) |
 
-`--verify-only` cannot be combined with `--dry-run`. Generation flags (`--flat`, `--db`, `--ai`, `--example`, `--config-scope`, `--force`, `--skip-existing`, `--no-manifest`) are ignored when `--verify-only` is set.
+Normal flat, SQLite, AI, global, and integration-free scaffolds verify automatically. PostgreSQL and Redis skip automatic verification because they may require network services; use `--verify` to force it. `GOKART_AUTO_VERIFY=0` disables automatic verification for build pipelines that verify separately.
+
+`--verify-only` cannot be combined with `--dry-run`. Generation flags (`--flat`, `--db`, `--ai`, `--redis`, `--example`, `--config-scope`, `--force`, `--skip-existing`, `--no-manifest`) are ignored when `--verify-only` is set.
 
 When `--dry-run --verify` is used together, the scaffolder writes to a temporary directory, verifies, then removes it. No files are written to the target.
 
@@ -181,7 +183,8 @@ When `--dry-run --verify` is used together, the scaffolder writes to a temporary
 | `--force` | bool | false | Overwrite existing generated files |
 | `--skip-existing` | bool | false | Keep existing files; write only missing ones |
 | `--no-manifest` | bool | false | Skip writing `.gokart-manifest.json` for managed scaffolds |
-| `--verify` | bool | false | Run `go mod tidy` and `go test ./...` after generation |
+| `--verify` | bool | default-on for normal scaffolds | Explicitly request `go mod tidy` and `go test ./...` after generation |
+| `--no-verify` | bool | false | Skip default post-generation verification |
 | `--verify-only` | bool | false | Run verification only, skip scaffolding |
 | `--verify-timeout` | duration | `5m` | Maximum time for verify commands (`0` = no timeout) |
 | `--json` | bool | false | Print machine-readable JSON result |
@@ -255,10 +258,10 @@ Use `--dry-run` to preview which files would be created or overwritten before co
 
 | Integration | Packages fetched via `go get` |
 |-------------|-------------------------------|
-| `sqlite` | `github.com/dotcommander/gokart/sqlite@latest` |
-| `postgres` | `github.com/dotcommander/gokart/postgres@latest`, `github.com/jackc/pgx/v5@latest` |
-| `ai` | `github.com/dotcommander/gokart/ai@latest`, `github.com/openai/openai-go/v3@latest` |
-| `redis` | `github.com/dotcommander/gokart/cache@latest`, `github.com/redis/go-redis/v9@latest` |
+| `sqlite` | `github.com/dotcommander/gokart/sqlite@v0.11.0` |
+| `postgres` | `github.com/dotcommander/gokart/postgres@v0.11.0`, `github.com/jackc/pgx/v5@v5.10.0` |
+| `ai` | `github.com/openai/openai-go/v3@v3.41.0` |
+| `redis` | `github.com/dotcommander/gokart/cache@v0.11.0`, `github.com/redis/go-redis/v9@v9.21.0` |
 
 ### All `gokart add` Flags
 
@@ -285,7 +288,7 @@ gokart config show
 Output:
 
 ```
-Version:     v0.9.0
+Version:     v0.11.0
 Config dir:  /Users/you/Library/Application Support
 Binary:      /Users/you/go/bin/gokart
 ```
@@ -303,7 +306,7 @@ Useful for debugging when multiple gokart binaries exist or when verifying the i
 - Generator version that produced the files
 - Template root and scaffold mode (`structured` or `flat`)
 - Module path and config scope (`use_global`)
-- Which integrations are enabled (`sqlite`, `postgres`, `ai`)
+- Which integrations are enabled (`sqlite`, `postgres`, `ai`, `redis`)
 - For each generated file: relative path, action taken, SHA-256 of the template content, SHA-256 of the written content, and file mode
 
 ### Version 1 vs. Version 2
@@ -311,7 +314,7 @@ Useful for debugging when multiple gokart binaries exist or when verifying the i
 | Field | v1 | v2 |
 |-------|----|----|
 | `version` | `1` | `2` |
-| `integrations` | absent | present (`{"sqlite":bool,"postgres":bool,"ai":bool}`) |
+| `integrations` | absent | present (`{"sqlite":bool,"postgres":bool,"ai":bool,"redis":bool}`) |
 | `mode` | absent | `"structured"` or `"flat"` |
 | `module` | absent | module path string |
 | `use_global` | absent | `true` or `false` |
@@ -323,7 +326,7 @@ Useful for debugging when multiple gokart binaries exist or when verifying the i
 ```json
 {
   "version": 2,
-  "generator": "gokart/0.9.0",
+  "generator": "gokart/v0.11.0",
   "template_root": "templates/structured",
   "existing_file_policy": "fail",
   "generated_at": "2026-03-01T12:00:00Z",
@@ -333,7 +336,8 @@ Useful for debugging when multiple gokart binaries exist or when verifying the i
   "integrations": {
     "sqlite": false,
     "postgres": true,
-    "ai": false
+    "ai": false,
+    "redis": true
   },
   "files": [
     {
@@ -357,6 +361,8 @@ Both commands accept `--json`. When set, the command writes a single JSON object
 
 ### `gokart new` JSON Output
 
+Example for `gokart new ./mycli --module github.com/myorg/mycli --no-verify --json`:
+
 ```json
 {
   "outcome": "success",
@@ -376,7 +382,7 @@ Both commands accept `--json`. When set, the command writes a single JSON object
   "verify_passed": false,
   "existing_file_policy": "fail",
   "result": {
-    "created": ["cmd/main.go", "go.mod", "..."],
+    "created": [".gitignore", "README.md", "cmd/main.go", "go.mod", "internal/commands/root.go"],
     "overwritten": [],
     "skipped": [],
     "unchanged": []
@@ -457,6 +463,7 @@ On failure the object includes `error_code` and `error`:
 | `--skip-existing` | | false | Write only missing files |
 | `--no-manifest` | | false | Skip `.gokart-manifest.json` for managed scaffolds |
 | `--verify` | | false | Run `go mod tidy` + `go test ./...` |
+| `--no-verify` | | false | Skip automatic post-generation verification |
 | `--verify-only` | | false | Verify only, no scaffolding |
 | `--verify-timeout` | | `5m` | Timeout for verify commands |
 | `--json` | | false | Machine-readable JSON output |
@@ -475,7 +482,7 @@ On failure the object includes `error_code` and `error`:
 
 ## See Also
 
-- [SQLite](/components/sqlite) — SQLite integration added by `--db sqlite`
-- [PostgreSQL](/components/postgres) — PostgreSQL integration added by `--db postgres`
-- [OpenAI](/components/openai) — OpenAI integration added by `--ai`
-- [Migrations](/components/migrate) — Database schema versioning
+- [SQLite](sqlite.md) — SQLite integration added by `--db sqlite`
+- [PostgreSQL](postgres.md) — PostgreSQL integration added by `--db postgres`
+- [openai-go](https://github.com/openai/openai-go) — official SDK used by `--ai`
+- [Migrations](migrate.md) — Database schema versioning

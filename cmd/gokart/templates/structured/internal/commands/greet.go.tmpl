@@ -2,17 +2,18 @@
 package commands
 
 import (
+	"fmt"
 	"github.com/dotcommander/gokart/cli"
 	"github.com/spf13/cobra"
 
 	"{{.Module}}/internal/actions"
-{{- if or .UseSQLite .UsePostgres .UseAI }}
+{{- if or .UseSQLite .UsePostgres .UseAI .UseRedis }}
 	"{{.Module}}/internal/app"
 {{- end }}
 )
 
 // NewGreetCmd creates the greet command.
-{{- if or .UseSQLite .UsePostgres .UseAI }}
+{{- if or .UseSQLite .UsePostgres .UseAI .UseRedis }}
 func NewGreetCmd(getAppContext func() *app.Context) *cobra.Command {
 {{- else }}
 func NewGreetCmd() *cobra.Command {
@@ -26,7 +27,7 @@ func NewGreetCmd() *cobra.Command {
 			Loud: loud,
 		}
 
-{{- if or .UseSQLite .UsePostgres .UseAI }}
+{{- if or .UseSQLite .UsePostgres .UseAI .UseRedis }}
 		var appCtx *app.Context
 		if getAppContext != nil {
 			appCtx = getAppContext()
@@ -37,11 +38,11 @@ func NewGreetCmd() *cobra.Command {
 		result, err := actions.Greet(input)
 {{- end }}
 		if err != nil {
-			cli.Error("greet failed: %v", err)
+			fmt.Fprintf(cmd.ErrOrStderr(), "greet failed: %v\n", err)
 			return err
 		}
 
-		cli.Success("%s", result)
+		fmt.Fprintln(cmd.OutOrStdout(), result)
 		return nil
 	})
 

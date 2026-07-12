@@ -2,33 +2,19 @@
 package app
 
 import (
-	"fmt"
-	"os"
-	"path/filepath"
-
-	"github.com/dotcommander/gokart/fs"
+	"github.com/dotcommander/gokart"
 )
 
 // ConfigDir returns the {{.Name}} config directory (created if missing),
-// using the platform-aware location from the gokart/fs toolkit.
+// using the platform-aware location from the root gokart module.
 func ConfigDir() (string, error) {
-	return fs.ConfigDir("{{.Name}}")
+	return gokart.ConfigDir("{{.Name}}")
 }
 
 // EnsureConfigDir creates the config directory and writes the default
 // config.yaml if it does not already exist.
 func EnsureConfigDir() error {
-	dir, err := fs.ConfigDir("{{.Name}}")
-	if err != nil {
-		return err
-	}
-	cfgPath := filepath.Join(dir, "config.yaml")
-	if _, statErr := os.Stat(cfgPath); os.IsNotExist(statErr) {
-		if err := os.WriteFile(cfgPath, []byte(defaultConfig), 0o644); err != nil {
-			return fmt.Errorf("ensure config: %w", err)
-		}
-	}
-	return nil
+	return gokart.EnsureConfigDir("{{.Name}}", []byte(defaultConfig))
 }
 
 const defaultConfig = `# {{.Name}} configuration

@@ -18,6 +18,5 @@ For focused single-component examples, see [docs/examples/](../docs/examples/):
 - [full-service](../docs/examples/full-service/) — Combined PostgreSQL + cache + web service
 - [http-server](../docs/examples/http-server/) — HTTP router and server setup
 - [logger](../docs/examples/logger/) — Structured logging and file logger
-- [openai](../docs/examples/openai/) — OpenAI chat completions
 - [postgres](../docs/examples/postgres/) — PostgreSQL connection and transactions
 - [sqlite](../docs/examples/sqlite/) — SQLite database operations

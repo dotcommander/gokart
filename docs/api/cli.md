@@ -1,513 +1,139 @@
-# GoKart CLI API Reference
+# Build a CLI
 
-API reference for the `gokart/cli` subpackage. Wraps Cobra and Lipgloss for CLI applications with styled output.
-
-## Application Builder
-
-### `type App struct`
-
-Builds CLI applications with sensible defaults. Wraps cobra.Command and viper.Viper for configuration management.
-
----
-
-### `func NewApp(name, version string) *App`
-
-Creates a new CLI application builder.
-
-**Example:**
 ```go
 app := cli.NewApp("myapp", "1.0.0").
-    WithDescription("My application").
-    WithConfig("config.yaml").
-    WithEnvPrefix("MYAPP")
+    WithDescription("Manage my application").
+    WithEnvPrefix("MYAPP").
+    WithStandardFlags()
 
-app.AddCommand(serveCmd)
-app.AddCommand(migrateCmd)
+app.AddCommand(cli.Command("run", "Run the application", func(cmd *cobra.Command, args []string) error {
+    return run(cmd.Context())
+}))
 
 if err := app.Run(); err != nil {
     os.Exit(1)
 }
 ```
 
----
+The `cli` module provides small Cobra and Lip Gloss helpers. Your `main` function owns exit status. Commands return errors.
 
-### `func (a *App) WithDescription(desc string) *App`
+## Install
 
-Sets the app description (shown in help text).
-
----
-
-### `func (a *App) WithLongDescription(long string) *App`
-
-Sets detailed app description.
-
----
-
-### `func (a *App) WithConfig(path string) *App`
-
-Sets the config file path.
-
----
-
-### `func (a *App) WithConfigName(name string) *App`
-
-Sets the config file name (without extension) to search for in standard locations.
-
----
-
-### `func (a *App) WithEnvPrefix(prefix string) *App`
-
-Sets the environment variable prefix.
-
-Automatically binds environment variables and replaces dots/dashes with underscores (e.g., `db.host` → `MYAPP_DB_HOST`).
-
----
-
-### `func (a *App) WithStandardFlags() *App`
-
-Adds common flags: `--config`, `--verbose`, `--quiet`.
-
----
-
-### `func (a *App) AddCommand(cmd *cobra.Command) *App`
-
-Adds a subcommand to the application.
-
----
-
-### `func (a *App) Root() *cobra.Command`
-
-Returns the root cobra command for advanced customization.
-
----
-
-### `func (a *App) Viper() *viper.Viper`
-
-Returns the viper instance for config access.
-
----
-
-### `func (a *App) Run() error`
-
-Executes the CLI application.
-
----
-
-### `func (a *App) RunWithArgs(args []string) error`
-
-Executes with specific arguments (useful for testing).
-
----
-
-## Command Helpers
-
-### `func Command(use, short string, run func(cmd *cobra.Command, args []string) error) *cobra.Command`
-
-Creates a new cobra command with common setup.
-
-**Example:**
-```go
-cmd := cli.Command("serve", "Start the server", func(cmd *cobra.Command, args []string) error {
-    return server.Run()
-})
+```bash
+go get github.com/dotcommander/gokart/cli@v0.11.0
 ```
 
----
+## Configure the application
 
-### `func CommandWithArgs(use, short string, nArgs int, run func(cmd *cobra.Command, args []string) error) *cobra.Command`
+`NewApp(name, version)` returns an `*App`. Chain only the setup you need:
 
-Creates a command that requires exact positional arguments.
+| Method | Behavior |
+|---|---|
+| `WithDescription(text)` | Sets the root command's short description. |
+| `WithLongDescription(text)` | Sets detailed root help. |
+| `WithConfig(path)` | Reads one explicit config file. |
+| `WithConfigName(name)` | Searches `.` and the platform app config directory for YAML, then `/etc/<app>`. |
+| `WithEnvPrefix(prefix)` | Enables Viper environment loading and maps `.` and `-` to `_`. |
+| `WithStandardFlags()` | Adds `--config`, `--verbose`/`-v`, and `--quiet`/`-q`. |
+| `Root()` | Returns the real `*cobra.Command`. |
+| `Viper()` | Returns the real `*viper.Viper`. |
+| `RunWithArgs(args)` | Executes explicit arguments in tests. |
 
----
+A missing searched config file is allowed. An explicit config file that exists but cannot be read or parsed returns an error.
 
-### `func Group(use, short string) *cobra.Command`
+## Add commands
 
-Creates a command group (no run function, just subcommands).
-
----
-
-## Output Styling
-
-Package-level output helpers write to configurable package writers. By default,
-stdout helpers use the current `os.Stdout` and error helpers use the current
-`os.Stderr`.
-
-### `func SetOutput(w io.Writer)`
-
-Redirects `Success`, `Warning`, `Info`, `Dim`, `Bold`, `KeyValue`, `List`, and
-`NumberedList`. Pass `nil` to return to the current `os.Stdout`.
-
----
-
-### `func SetErrOutput(w io.Writer)`
-
-Redirects `Error`, `Fatal`, and `FatalErr`. Pass `nil` to return to the current
-`os.Stderr`.
-
----
-
-### `func Output() io.Writer`
-
-Returns the configured stdout writer, or the current `os.Stdout` when no
-override is set.
-
----
-
-### `func ErrOutput() io.Writer`
-
-Returns the configured stderr writer, or the current `os.Stderr` when no
-override is set.
-
----
-
-### `func Success(format string, args ...interface{})`
-
-Prints a success message with green checkmark.
-
----
-
-### `func Error(format string, args ...interface{})`
-
-Prints an error message to stderr with red X.
-
----
-
-### `func Warning(format string, args ...interface{})`
-
-Prints a warning message with yellow warning symbol.
-
----
-
-### `func Info(format string, args ...interface{})`
-
-Prints an info message with blue arrow.
-
----
-
-### `func Dim(format string, args ...interface{})`
-
-Prints dimmed text (gray).
-
----
-
-### `func Bold(format string, args ...interface{})`
-
-Prints bold text.
-
----
-
-## Fatal Helpers
-
-### `func Fatal(format string, args ...interface{})`
-
-Prints an error message and exits with code 1.
-
----
-
-### `func FatalErr(msg string, err error)`
-
-Prints an error message with the error and exits.
-
----
-
-### `func Must(err error)`
-
-Exits if err is not nil.
-
----
-
-## Help Styling
-
-### `func SetStyledHelp(cmd *cobra.Command)`
-
-Configures beautiful help output for a command with colored sections.
-
----
-
-## Editor Bridge
-
-### `func CaptureInput(initial string, extension string) (string, error)`
-
-Opens `$EDITOR` with initial content and returns the edited text.
-
-Useful for capturing long-form input like commit messages, SQL queries, or configuration.
-
-The extension parameter determines the temp file suffix (e.g., "md", "sql", "json"), which helps editors apply syntax highlighting.
-
-Falls back to "vim" if `$EDITOR` is unset.
-
-**Example:**
 ```go
-text, err := cli.CaptureInput("# Enter your notes\n", "md")
-if err != nil {
-    return err
+serve := cli.Command("serve", "Start the server", func(cmd *cobra.Command, args []string) error {
+    return server.Serve(cmd.Context())
+})
+
+show := cli.CommandWithArgs("show <id>", "Show one record", 1, func(cmd *cobra.Command, args []string) error {
+    return showRecord(cmd.Context(), args[0])
+})
+
+admin := cli.Group("admin", "Administrative commands")
+admin.AddCommand(show)
+app.AddCommand(serve).AddCommand(admin)
+```
+
+These helpers return ordinary Cobra commands. Use Cobra directly when you need custom argument validation, completion, flags, or lifecycle hooks.
+
+## Write styled output
+
+```go
+cli.Success("saved %s", path) // stdout
+cli.Info("reading configuration")
+cli.Warning("using fallback")
+cli.Error("save failed: %v", err) // stderr
+```
+
+`Success`, `Info`, `Warning`, `Dim`, and `Bold` write to the process stdout. `Error` writes to process stderr. They do not expose mutable package-level writer overrides.
+
+For command output that must be captured or redirected, write through Cobra:
+
+```go
+fmt.Fprintln(cmd.OutOrStdout(), result)
+fmt.Fprintln(cmd.ErrOrStderr(), warning)
+```
+
+Tests can then use `cmd.SetOut` and `cmd.SetErr`.
+
+## Show progress
+
+```go
+spinner := cli.NewSpinner("Loading").WithWriter(cmd.OutOrStdout())
+spinner.StartWithContext(cmd.Context())
+defer spinner.Stop()
+
+progress := cli.NewProgress("Importing", len(files)).SetWriter(cmd.OutOrStdout())
+for range files {
+    progress.Increment()
 }
-fmt.Println("You entered:", text)
+progress.Done()
 ```
 
----
+Spinners animate only on a terminal. In non-TTY output they print the message once. `WithFrames` and `WithDelay` customize animation. `Update`, `StopWithMessage`, `StopSuccess`, and `StopError` control the final state.
 
-### `func CaptureInputWithEditor(editor, initial, extension string) (string, error)`
+`WithSpinner(message, fn)` is the compact process-stream helper when you do not need an injected writer.
 
-Opens a specific editor with initial content.
+## Render tables and lists
 
-Useful for testing or when you want to override the default editor.
-
-**Example:**
 ```go
-// Force nano regardless of $EDITOR
-text, err := cli.CaptureInputWithEditor("nano", "", "txt")
+table := cli.NewTable("NAME", "STATUS").
+    AddRow("api", "ready").
+    AddRow("worker", "stopped").
+    SetWriter(cmd.OutOrStdout())
+table.Print()
 ```
 
----
+`Table.String` returns rendered text. `SimpleTable`, `KeyValue`, `List`, and `NumberedList` are process-stdout shortcuts.
 
-## Spinner
+## Open an editor
 
-### `type Spinner struct`
-
-Shows an animated spinner with a message for long-running operations.
-
----
-
-### `func NewSpinner(message string) *Spinner`
-
-Creates a new spinner with a message.
-
-**Example:**
 ```go
-s := cli.NewSpinner("Loading...")
-s.Start()
-// do work
-s.Stop()
+text, err := cli.CaptureInput("initial text\n", ".md")
 ```
 
----
+`CaptureInput` uses the configured editor. `CaptureInputWithEditor` accepts an explicit editor command for deterministic callers and tests.
 
-### `func (s *Spinner) WithFrames(frames []string) *Spinner`
+## Style help
 
-Sets custom animation frames.
-
----
-
-### `func (s *Spinner) WithDelay(d time.Duration) *Spinner`
-
-Sets the animation speed.
-
----
-
-### `func (s *Spinner) WithWriter(w io.Writer) *Spinner`
-
-Sets the output writer.
-
----
-
-### `func (s *Spinner) Start()`
-
-Begins the spinner animation.
-
-For long-running operations, prefer `StartWithContext` to ensure cleanup.
-
----
-
-### `func (s *Spinner) StartWithContext(ctx context.Context)`
-
-Begins the spinner animation with context cancellation.
-
-The spinner stops automatically when the context is cancelled.
-
----
-
-### `func (s *Spinner) Update(message string)`
-
-Changes the spinner message.
-
----
-
-### `func (s *Spinner) Stop()`
-
-Stops the spinner and clears the line.
-
----
-
-### `func (s *Spinner) StopWithMessage(message string)`
-
-Stops and prints a final message.
-
----
-
-### `func (s *Spinner) StopSuccess(message string)`
-
-Stops and prints a success message.
-
----
-
-### `func (s *Spinner) StopError(message string)`
-
-Stops and prints an error message.
-
----
-
-### `func WithSpinner(message string, fn func() error) error`
-
-Runs a function with a spinner, handling success/error.
-
-**Example:**
 ```go
-err := cli.WithSpinner("Processing...", func() error {
-    return doSomething()
-})
+cli.SetStyledHelp(app.Root())
 ```
 
----
+This changes Cobra's help and usage templates. The root `App` already uses the package's normal Cobra ownership; call this only when you want the styled templates.
 
-## Progress
+## Migration from v0.10
 
-### `type Progress struct`
+| Removed API | Replacement |
+|---|---|
+| `SetOutput`, `SetErrOutput`, `Output`, `ErrOutput` | Cobra `SetOut`, `SetErr`, `OutOrStdout`, and `ErrOrStderr` |
+| `Fatal`, `FatalErr`, `Must` | Return errors; let `main` choose `os.Exit` |
 
-Shows a simple progress indicator with percentage bar.
+## See also
 
----
-
-### `func NewProgress(message string, total int) *Progress`
-
-Creates a progress indicator.
-
-**Example:**
-```go
-p := cli.NewProgress("Processing files", 100)
-for i := 0; i < 100; i++ {
-    p.Increment()
-    // do work
-}
-p.Done()
-```
-
----
-
-### `func (p *Progress) SetWriter(w io.Writer) *Progress`
-
-Sets the output writer.
-
----
-
-### `func (p *Progress) Increment()`
-
-Advances the progress by 1.
-
----
-
-### `func (p *Progress) Set(current int)`
-
-Sets the current progress value.
-
----
-
-### `func (p *Progress) Done()`
-
-Completes the progress and moves to a new line.
-
----
-
-## Tables
-
-### `type Table struct`
-
-Builds styled terminal tables using lipgloss/table.
-
----
-
-### `func NewTable(headers ...string) *Table`
-
-Creates a new table with headers.
-
-**Example:**
-```go
-t := cli.NewTable("ID", "Name", "Status")
-t.AddRow("1", "Alice", "Active")
-t.AddRow("2", "Bob", "Inactive")
-t.Print()
-```
-
----
-
-### `func (t *Table) AddRow(values ...string) *Table`
-
-Adds a row to the table.
-
----
-
-### `func (t *Table) SetWriter(w io.Writer) *Table`
-
-Sets the output writer.
-
----
-
-### `func (t *Table) Print()`
-
-Renders the table to the configured writer.
-
----
-
-### `func (t *Table) String() string`
-
-Returns the table as a string.
-
----
-
-### `func SimpleTable(headers []string, rows [][]string)`
-
-Prints a quick table without building.
-
-**Example:**
-```go
-cli.SimpleTable(
-    []string{"Name", "Value"},
-    [][]string{
-        {"Host", "localhost"},
-        {"Port", "8080"},
-    },
-)
-```
-
----
-
-### `func KeyValue(data map[string]string)`
-
-Prints a simple key-value list.
-
-**Example:**
-```go
-cli.KeyValue(map[string]string{
-    "Host": "localhost",
-    "Port": "8080",
-})
-```
-
----
-
-### `func List(items ...string)`
-
-Prints a bulleted list.
-
-**Example:**
-```go
-cli.List("Item 1", "Item 2", "Item 3")
-```
-
----
-
-### `func NumberedList(items ...string)`
-
-Prints a numbered list.
-
-**Example:**
-```go
-cli.NumberedList("First", "Second", "Third")
-```
-
----
-
-## See Also
-
-- [Configuration](/api/gokart#configuration) - Config loading utilities
-- [State](/components/state) - CLI state persistence
+- [Generator](../components/generator.md)
+- [Root package](gokart.md)
+- [Project philosophy](../../PHILOSOPHY.md)

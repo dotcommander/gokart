@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -118,20 +119,13 @@ func TestAddRejectsFlat(t *testing.T) {
 
 func TestAddRejectsUnknownIntegration(t *testing.T) {
 	t.Parallel()
-	if validIntegrations["mysql"] {
+	if _, ok := integrationRegistry["mysql"]; ok {
 		t.Fatal("mysql should not be a valid integration")
 	}
-	if !validIntegrations["sqlite"] {
-		t.Fatal("sqlite should be valid")
-	}
-	if !validIntegrations["postgres"] {
-		t.Fatal("postgres should be valid")
-	}
-	if !validIntegrations["ai"] {
-		t.Fatal("ai should be valid")
-	}
-	if !validIntegrations["redis"] {
-		t.Fatal("redis should be valid")
+	for _, name := range []string{integrationSQLite, integrationPostgres, integrationAI, integrationRedis} {
+		if _, ok := integrationRegistry[name]; !ok {
+			t.Fatalf("%s should be valid", name)
+		}
 	}
 }
 
@@ -148,12 +142,53 @@ func TestAddRejectsDuplicate(t *testing.T) {
 
 func TestIntegrationRegistryIsSingleSource(t *testing.T) {
 	t.Parallel()
+	wantDeps := map[string][]string{
+		integrationSQLite:   {"github.com/dotcommander/gokart/sqlite@" + defaultGokartSQLiteVersion},
+		integrationPostgres: {"github.com/dotcommander/gokart/postgres@" + defaultGokartPostgresVersion, "github.com/jackc/pgx/v5@" + defaultPGXVersion},
+		integrationAI:       {"github.com/openai/openai-go/v3@" + defaultOpenAIVersion},
+		integrationRedis:    {"github.com/dotcommander/gokart/cache@" + defaultGokartCacheVersion, "github.com/redis/go-redis/v9@" + defaultRedisVersion},
+	}
+	if len(integrationRegistry) != len(wantDeps) {
+		t.Fatalf("integrationRegistry has %d entries, want %d", len(integrationRegistry), len(wantDeps))
+	}
 	for name, entry := range integrationRegistry {
-		if !validIntegrations[name] {
-			t.Fatalf("%s missing from derived validIntegrations", name)
+		if entry.template == nil || entry.setTemplate == nil || entry.get == nil || entry.set == nil || entry.description == "" || entry.flag == "" || entry.golden == "" || entry.environment == "" || entry.upstream == "" || entry.recipe == "" {
+			t.Fatalf("%s has incomplete registry metadata", name)
 		}
-		if len(integrationDeps[name].Packages) == 0 {
-			t.Fatalf("%s missing deps in derived integrationDeps", name)
+		if !slices.Equal(entry.deps, wantDeps[name]) {
+			t.Fatalf("%s deps = %v, want %v", name, entry.deps, wantDeps[name])
+		}
+		if _, err := os.Stat(filepath.Join("testdata", "golden", entry.golden)); err != nil {
+			t.Fatalf("%s golden coverage: %v", name, err)
+		}
+		readme, err := os.ReadFile(filepath.Join("testdata", "golden", entry.golden, "README.md"))
+		if err != nil {
+			t.Fatalf("%s README coverage: %v", name, err)
+		}
+		wantEnvironment := strings.ReplaceAll(entry.environment, "{{APP}}", strings.ToUpper(goldenName))
+		if !strings.Contains(string(readme), entry.description) || !strings.Contains(string(readme), wantEnvironment) {
+			t.Fatalf("%s generated README omits registry metadata", name)
+		}
+		docs, err := os.ReadFile(filepath.Join("..", "..", "docs", "components", "generator.md"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(docs), entry.flag) || !strings.Contains(string(docs), name) {
+			t.Fatalf("%s missing generator help/docs coverage", name)
+		}
+		ownership, err := os.ReadFile(filepath.Join("..", "..", "docs", "generated-code.md"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(ownership), entry.upstream) {
+			t.Fatalf("%s missing ownership/upstream coverage", name)
+		}
+		recipes, err := os.ReadFile(filepath.Join("..", "..", "docs", "recipes.md"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(recipes), entry.recipe) {
+			t.Fatalf("%s missing recipe coverage", name)
 		}
 		m := &manifestIntegrations{}
 		entry.set(m, true)
@@ -164,12 +199,6 @@ func TestIntegrationRegistryIsSingleSource(t *testing.T) {
 		if integrationEnabled(m, name) {
 			t.Fatalf("setIntegration(false) did not disable %s", name)
 		}
-	}
-	if len(validIntegrations) != len(integrationRegistry) {
-		t.Fatalf("validIntegrations (%d) and registry (%d) size mismatch", len(validIntegrations), len(integrationRegistry))
-	}
-	if validIntegrations["mysql"] {
-		t.Fatal("mysql must not be valid")
 	}
 	if integrationEnabled(&manifestIntegrations{}, "mysql") {
 		t.Fatal("integrationEnabled must reject unknown name")

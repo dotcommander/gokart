@@ -113,7 +113,7 @@ func TestAddDryRunNoChanges(t *testing.T) {
 	}
 }
 
-func TestAddPostgresPoolUsesProductionConfig(t *testing.T) {
+func TestAddPostgresUsesToolkitOwner(t *testing.T) {
 	t.Parallel()
 	data := baseTemplateData("myapp", "example.com/myapp", true, false)
 	data.UsePostgres = true
@@ -129,13 +129,7 @@ func TestAddPostgresPoolUsesProductionConfig(t *testing.T) {
 	}
 	content := string(contextContent)
 
-	for _, want := range []string{
-		"pgxpool.NewWithConfig",
-		"pgxpool.ParseConfig",
-		"cfg.MaxConns = 25",
-		"cfg.MinConns = 5",
-		"cfg.MaxConnLifetime = time.Hour",
-	} {
+	for _, want := range []string{"postgres.Open(ctx, dbURL)"} {
 		if !strings.Contains(content, want) {
 			t.Fatalf("expected postgres context.go to contain %q", want)
 		}
@@ -143,6 +137,9 @@ func TestAddPostgresPoolUsesProductionConfig(t *testing.T) {
 
 	for _, bad := range []string{
 		"pgxpool.New(ctx,",
+		"pgxpool.NewWithConfig",
+		"cfg.MinConns",
+		"cfg.MaxConnLifetime",
 		"context.Background",
 	} {
 		if strings.Contains(content, bad) {

@@ -4,7 +4,7 @@ import (
 	"os"
 {{- if .UseGlobal }}
 
-	"github.com/dotcommander/gokart/fs"
+	"github.com/dotcommander/gokart"
 {{- end }}
 
 	"github.com/dotcommander/gokart/cli"
@@ -35,7 +35,7 @@ func main() {
 				return err
 			}
 		}
-		return fs.EnsureConfigDir("{{.Name}}", []byte(defaultConfig))
+		return gokart.EnsureConfigDir("{{.Name}}", []byte(defaultConfig))
 	}
 {{- end }}
 

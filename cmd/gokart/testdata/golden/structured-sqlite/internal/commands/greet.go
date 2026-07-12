@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"fmt"
 	"github.com/dotcommander/gokart/cli"
 	"github.com/spf13/cobra"
 
@@ -25,11 +26,11 @@ func NewGreetCmd(getAppContext func() *app.Context) *cobra.Command {
 
 		result, err := actions.Greet(appCtx, input)
 		if err != nil {
-			cli.Error("greet failed: %v", err)
+			fmt.Fprintf(cmd.ErrOrStderr(), "greet failed: %v\n", err)
 			return err
 		}
 
-		cli.Success("%s", result)
+		fmt.Fprintln(cmd.OutOrStdout(), result)
 		return nil
 	})
 

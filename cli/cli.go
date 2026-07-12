@@ -208,55 +208,34 @@ var (
 	registerHelpTemplateFuncsOnce sync.Once
 )
 
-// Success prints a success message to the package output writer (default stdout).
+// Success prints a success message to stdout.
 func Success(format string, args ...interface{}) {
-	fmt.Fprintln(Output(), styleSuccess.Render("✓ "+fmt.Sprintf(format, args...)))
+	fmt.Fprintln(os.Stdout, styleSuccess.Render("✓ "+fmt.Sprintf(format, args...)))
 }
 
-// Error prints an error message to the package error writer (default stderr).
+// Error prints an error message to stderr.
 func Error(format string, args ...interface{}) {
-	fmt.Fprintln(ErrOutput(), styleError.Render("✗ "+fmt.Sprintf(format, args...)))
+	fmt.Fprintln(os.Stderr, styleError.Render("✗ "+fmt.Sprintf(format, args...)))
 }
 
-// Warning prints a warning message to the package output writer.
+// Warning prints a warning message to stdout.
 func Warning(format string, args ...interface{}) {
-	fmt.Fprintln(Output(), styleWarning.Render("⚠ "+fmt.Sprintf(format, args...)))
+	fmt.Fprintln(os.Stdout, styleWarning.Render("⚠ "+fmt.Sprintf(format, args...)))
 }
 
-// Info prints an info message to the package output writer.
+// Info prints an info message to stdout.
 func Info(format string, args ...interface{}) {
-	fmt.Fprintln(Output(), styleInfo.Render("→ "+fmt.Sprintf(format, args...)))
+	fmt.Fprintln(os.Stdout, styleInfo.Render("→ "+fmt.Sprintf(format, args...)))
 }
 
-// Dim prints dimmed text to the package output writer.
+// Dim prints dimmed text to stdout.
 func Dim(format string, args ...interface{}) {
-	fmt.Fprintln(Output(), styleDim.Render(fmt.Sprintf(format, args...)))
+	fmt.Fprintln(os.Stdout, styleDim.Render(fmt.Sprintf(format, args...)))
 }
 
-// Bold prints bold text to the package output writer.
+// Bold prints bold text to stdout.
 func Bold(format string, args ...interface{}) {
-	fmt.Fprintln(Output(), styleBold.Render(fmt.Sprintf(format, args...)))
-}
-
-// --- Fatal helpers ---
-
-// Fatal prints an error and exits with code 1.
-func Fatal(format string, args ...interface{}) {
-	Error(format, args...)
-	os.Exit(1)
-}
-
-// FatalErr prints an error message with the error and exits.
-func FatalErr(msg string, err error) {
-	Error("%s: %v", msg, err)
-	os.Exit(1)
-}
-
-// Must exits if err is not nil.
-func Must(err error) {
-	if err != nil {
-		Fatal("%v", err)
-	}
+	fmt.Fprintln(os.Stdout, styleBold.Render(fmt.Sprintf(format, args...)))
 }
 
 // --- Help Styling ---

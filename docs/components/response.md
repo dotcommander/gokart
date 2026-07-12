@@ -5,7 +5,7 @@ JSON response helpers for writing consistent HTTP API responses. Provides functi
 ## Installation
 
 ```bash
-go get github.com/dotcommander/gokart/web
+go get github.com/dotcommander/gokart/web@v0.11.0
 ```
 
 ## Quick Start
@@ -14,16 +14,12 @@ go get github.com/dotcommander/gokart/web
 import "github.com/dotcommander/gokart/web"
 
 func handleUser(w http.ResponseWriter, r *http.Request) {
-    user := User{ID: 1, Name: "Alice"}
-
-    // Success response (200)
+    user, err := loadUser(r.Context(), r.PathValue("id"))
+    if err != nil {
+        web.Error(w, http.StatusNotFound, "user not found")
+        return
+    }
     web.JSON(w, user)
-
-    // Error response (400)
-    web.Error(w, http.StatusBadRequest, "Invalid user ID")
-
-    // Custom status (201)
-    web.JSONStatus(w, http.StatusCreated, user)
 }
 ```
 
@@ -314,6 +310,5 @@ web.Error(w, http.StatusInternalServerError, "Database error")
 
 ### See Also
 
-- [Validator](/components/validate) - Request validation
-- [Templ](/components/templ) - HTML rendering
-- [HTTP router](/api/gokart#http-router) - Request routing
+- [Validator](validate.md) - Request validation
+- [Web](web.md) - Request routing, binding, and serving

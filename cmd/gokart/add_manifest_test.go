@@ -10,7 +10,7 @@ func TestAddInfersStateFromGoMod(t *testing.T) {
 		Module:          "example.com/myapp",
 		ManifestVersion: scaffoldManifestV1,
 		TemplateRoot:    "templates/structured",
-		GoModExtra:      "\nrequire github.com/dotcommander/gokart/sqlite v0.0.0\nrequire github.com/dotcommander/gokart/ai v0.0.0\n",
+		GoModExtra:      "\nrequire github.com/dotcommander/gokart/sqlite v0.0.0\nrequire github.com/openai/openai-go/v3 v3.41.0\n",
 	})
 
 	_, result := inferIntegrationsFromGoMod(dir)

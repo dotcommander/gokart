@@ -244,7 +244,7 @@ func validateNewArgs(cmd *cobra.Command, args []string) error {
 
 	cmd.SilenceUsage = true
 	cmd.SilenceErrors = true
-	if emitErr := emitJSON(newCommandOutput{
+	if emitErr := emitJSON(cmd.OutOrStdout(), newCommandOutput{
 		Outcome:   commandOutcomeFailure,
 		ErrorCode: errorCodeInvalidArguments,
 		ExitCode:  exitCodeInvalidArguments,
@@ -261,12 +261,13 @@ func runNewCommand(cmd *cobra.Command, args []string) error {
 	configureJSONCommand(cmd, jsonOutput)
 
 	req, err := buildNewRequest(cmd, args)
-	output := newCommandOutput{}
+	output := newCommandOutput{writer: cmd.OutOrStdout()}
 	if err != nil {
 		return failNewCommand(err, jsonOutput, &output, commandFailureInfo{Code: errorCodeInvalidArguments, Outcome: commandOutcomeFailure, ExitCode: exitCodeInvalidArguments})
 	}
 
 	output = newCommandOutputFromRequest(req)
+	output.writer = cmd.OutOrStdout()
 	printWarnings(jsonOutput, req.Warnings)
 	return runNewRequest(cmdContext(cmd), req, jsonOutput, &output)
 }

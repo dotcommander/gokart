@@ -4,14 +4,18 @@ toolchain go1.26.3
 
 use (
 	.
-	./ai
 	./cache
 	./cli
 	./cmd/gokart
-	./fs
 	./logger
 	./migrate
 	./postgres
 	./sqlite
 	./web
 )
+
+replace github.com/dotcommander/gokart/cli v0.11.0 => ./cli
+
+replace github.com/dotcommander/gokart v0.11.0 => .
+
+replace github.com/dotcommander/gokart/web v0.11.0 => ./web

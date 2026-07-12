@@ -5,8 +5,8 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/dotcommander/gokart/ai"
 	"github.com/openai/openai-go/v3"
+	"github.com/openai/openai-go/v3/option"
 
 	"github.com/spf13/viper"
 )
@@ -38,7 +38,7 @@ func New(ctx context.Context, appName string, v *viper.Viper) (*Context, error) 
 	if apiKey == "" {
 		logger.Warn("OPENAI_API_KEY not set, AI features will not work")
 	}
-	appCtx.AI = ai.NewOpenAIClientWithKey(apiKey)
+	appCtx.AI = openai.NewClient(option.WithAPIKey(apiKey))
 
 	return appCtx, nil
 }

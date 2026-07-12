@@ -3,6 +3,7 @@ package gokart_test
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -20,6 +21,31 @@ func TestWorkspaceVerifierCoversGoWorkModules(t *testing.T) {
 	for _, module := range parseGoWorkModules(goWork) {
 		if module == "" {
 			t.Fatal("go.work contains an empty module path")
+		}
+	}
+}
+
+func TestWorkspaceReleaseAndDocsModuleInventoriesAgree(t *testing.T) {
+	t.Parallel()
+	workspace := parseGoWorkModules(readRepoFile(t, "go.work"))
+	for i := range workspace {
+		workspace[i] = strings.TrimPrefix(workspace[i], "./")
+	}
+	workspace = slices.DeleteFunc(workspace, func(module string) bool { return module == "." })
+	slices.Sort(workspace)
+
+	just := readRepoFile(t, "justfile")
+	line := strings.SplitN(strings.SplitN(just, "modules := \"", 2)[1], "\"", 2)[0]
+	release := strings.Fields(line)
+	slices.Sort(release)
+	if !slices.Equal(workspace, release) {
+		t.Fatalf("workspace modules %v do not match release modules %v", workspace, release)
+	}
+
+	readme := readRepoFile(t, "README.md")
+	for _, module := range release {
+		if !strings.Contains(readme, "`gokart/"+strings.TrimPrefix(module, "cmd/")+"`") && module != "cmd/gokart" {
+			t.Fatalf("README module inventory omits %s", module)
 		}
 	}
 }
@@ -53,7 +79,6 @@ func TestIgnoredExamplesAreCompileChecked(t *testing.T) {
 		"docs/examples/full-service/main.go",
 		"docs/examples/http-server/main.go",
 		"docs/examples/logger/main.go",
-		"docs/examples/openai/main.go",
 		"docs/examples/postgres/main.go",
 		"docs/examples/sqlite/main.go",
 		"examples/cli-app/main.go",
@@ -63,6 +88,23 @@ func TestIgnoredExamplesAreCompileChecked(t *testing.T) {
 	for _, example := range examples {
 		if !strings.Contains(verifier, example) {
 			t.Fatalf("workspace verifier does not compile-check %s", example)
+		}
+	}
+}
+
+func TestStandaloneModulesAreVerifiedWithoutWorkspaceReplacements(t *testing.T) {
+	t.Parallel()
+
+	verifier := readRepoFile(t, "scripts", "verify-workspace.sh")
+	required := []string{
+		"standalone)",
+		"verify_standalone_modules",
+		"GOWORK=off go test -modfile=\"$modfile\" -mod=readonly ./...",
+		"compile_ignored_examples\n        verify_standalone_modules",
+	}
+	for _, fragment := range required {
+		if !strings.Contains(verifier, fragment) {
+			t.Fatalf("workspace verifier is missing standalone-module gate %q", fragment)
 		}
 	}
 }

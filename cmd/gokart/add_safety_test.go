@@ -1,14 +1,51 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
-
-	"github.com/dotcommander/gokart/cli"
 )
+
+type failingAddJSONWriter struct {
+	err error
+}
+
+func (w failingAddJSONWriter) Write([]byte) (int, error) {
+	return 0, w.err
+}
+
+func TestRunAddCommandAcquiresLockBeforePlanning(t *testing.T) {
+	dir := t.TempDir()
+	manifestPath := filepath.Join(dir, scaffoldManifestPath)
+	if err := os.MkdirAll(filepath.Dir(manifestPath), 0755); err != nil {
+		t.Fatalf("create manifest dir: %v", err)
+	}
+	if err := os.WriteFile(manifestPath, []byte("not json"), 0644); err != nil {
+		t.Fatalf("seed malformed manifest: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, ".gokart.lock"), []byte(fmt.Sprintf("pid=%d\n", os.Getpid())), 0600); err != nil {
+		t.Fatalf("seed lock: %v", err)
+	}
+
+	originalWD, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("getwd: %v", err)
+	}
+	if err := os.Chdir(dir); err != nil {
+		t.Fatalf("chdir: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chdir(originalWD) })
+
+	err = runAddCommand(newAddCommand(), []string{"sqlite"})
+	var lockErr *ApplyLockError
+	if !errors.As(err, &lockErr) {
+		t.Fatalf("expected lock error before malformed manifest was planned, got %v", err)
+	}
+}
 
 func TestAddConflictsOnUserModifiedFile(t *testing.T) {
 	t.Parallel()
@@ -147,11 +184,55 @@ func TestRunAddCommandJSONMarksVerifyRequestedOnFailure(t *testing.T) {
 	}
 }
 
+func TestRunAddCommandJSONReturnsWriterFailure(t *testing.T) {
+	// Sequential: uses os.Chdir.
+	dir := setupAddTestProject(t, setupAddTestOpts{
+		Module:          "example.com/myapp",
+		ManifestVersion: scaffoldManifestV2,
+		TemplateRoot:    "templates/structured",
+		Mode:            modeStructured,
+		Integrations:    &manifestIntegrations{SQLite: true},
+	})
+	originalWD, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("getwd: %v", err)
+	}
+	if err := os.Chdir(dir); err != nil {
+		t.Fatalf("chdir: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := os.Chdir(originalWD); err != nil {
+			t.Errorf("restore working directory: %v", err)
+		}
+	})
+
+	writeErr := errors.New("write JSON")
+	cmd := newAddCommand()
+	cmd.SetOut(failingAddJSONWriter{err: writeErr})
+	mustSetFlagTrue(t, cmd, addFlagJSON)
+
+	err = runAddCommand(cmd, []string{integrationSQLite})
+	if err == nil {
+		t.Fatal("expected JSON writer failure")
+	}
+	var cmdErr *commandError
+	if !errors.As(err, &cmdErr) {
+		t.Fatalf("error type = %T, want *commandError", err)
+	}
+	if cmdErr.Code != errorCodeJSONEncodeFailed {
+		t.Fatalf("error code = %q, want %q", cmdErr.Code, errorCodeJSONEncodeFailed)
+	}
+	if cmdErr.ExitCode != exitCodeJSONEncodeFailed {
+		t.Fatalf("exit code = %d, want %d", cmdErr.ExitCode, exitCodeJSONEncodeFailed)
+	}
+	if !errors.Is(err, writeErr) {
+		t.Fatalf("error %v does not wrap writer failure", err)
+	}
+}
+
 // TestAddWarnsOnGeneratorVersionSkew covers the version-skew warning path:
 // a project scaffolded by an older gokart version must produce an operator-visible
 // WARN from planAddChanges, and the skew alone must not cause a fatal error.
-// Subtests are sequential — they share cli.SetOutput (a package-level writer) and
-// cannot safely run in parallel with each other.
 func TestAddWarnsOnGeneratorVersionSkew(t *testing.T) {
 	t.Parallel()
 
@@ -180,9 +261,6 @@ func TestAddWarnsOnGeneratorVersionSkew(t *testing.T) {
 	for _, tc := range cases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			// Sequential subtests: cli.SetOutput is a package-level global; parallel
-			// subtests would race on it.
-
 			dir := setupAddTestProject(t, setupAddTestOpts{
 				Module:           "example.com/myapp",
 				ManifestVersion:  scaffoldManifestV2,
@@ -192,17 +270,13 @@ func TestAddWarnsOnGeneratorVersionSkew(t *testing.T) {
 				GeneratorVersion: tc.generatorVersion,
 			})
 
-			var buf bytes.Buffer
-			cli.SetOutput(&buf)
-			defer cli.SetOutput(nil)
-
 			// planAddChanges is the real code path for the skew check.
 			// Request an integration that is already present so we can isolate
 			// the warning without needing full template rendering.
 			output := &addCommandOutput{}
 			_, _ = planAddChanges(addRequest{Dir: dir, Integrations: []string{"sqlite"}}, output)
 
-			got := buf.String()
+			got := strings.Join(output.Warnings, "\n")
 			if tc.wantWarn {
 				if !strings.Contains(got, tc.generatorVersion) {
 					t.Fatalf("expected warning containing %q, got %q", tc.generatorVersion, got)

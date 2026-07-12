@@ -79,8 +79,8 @@ func TestSelectGokartVersion(t *testing.T) {
 		moduleVersion string
 		want          string
 	}{
-		{name: "linker version wins", version: "v0.10.2-local", moduleVersion: "v0.10.2", want: "v0.10.2-local"},
-		{name: "installed module version", version: "dev", moduleVersion: "v0.10.2", want: "v0.10.2"},
+		{name: "linker version wins", version: "v0.11.0-local", moduleVersion: "v0.11.0", want: "v0.11.0-local"},
+		{name: "installed module version", version: "dev", moduleVersion: "v0.11.0", want: "v0.11.0"},
 		{name: "local development build", version: "dev", moduleVersion: "(devel)", want: "dev"},
 		{name: "missing build info version", version: "dev", want: "dev"},
 	}

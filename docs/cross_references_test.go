@@ -8,245 +8,154 @@ import (
 	"testing"
 )
 
-var componentDocsList = []string{
-	"postgres",
-	"sqlite",
-	"cache",
-	"validate",
-	"migrate",
-	"state",
-	"openai",
-	"response",
-	"templ",
-}
+var markdownLink = regexp.MustCompile(`\[[^]]+\]\(([^)]+)\)`)
 
-// TestCrossReferenceLinks verifies that documentation has proper cross-references
-// between related topics as per acceptance criteria:
-// AC1: Component docs have "See also" sections with links to related guides and API docs
-// AC2: Guides link to component docs when mentioning component names
-// AC3: API reference links to component docs for context
-func TestCrossReferenceLinks(t *testing.T) {
-	t.Run("AC1: Component docs have See Also sections with cross-references", verifyComponentSeeAlsoSections)
-	t.Run("AC2: API reference sections link to component docs for context", verifyAPISectionsLinkToComponents)
-	t.Run("AC3: Component See Also sections link to related API docs", verifyComponentSeeAlsoTargets)
-	t.Run("Verify: All internal links use consistent path format", verifyConsistentInternalLinkFormat)
-}
-
-func verifyComponentSeeAlsoSections(t *testing.T) {
-	for _, component := range componentDocsList {
-		t.Run(component, func(t *testing.T) {
-			docPath := filepath.Join("components", component+".md")
-			content, err := os.ReadFile(docPath)
-			if err != nil {
-				t.Fatalf("Failed to read %s: %v", component, err)
-			}
-			doc := string(content)
-
-			// Check for "See Also" section
-			if !strings.Contains(doc, "### See Also") && !strings.Contains(doc, "## See Also") {
-				t.Errorf("%s: Missing 'See Also' section", component)
-			}
-
-			// Count internal cross-references (links to /components/ or /api/)
-			internalLinkPattern := regexp.MustCompile(`\]\(/components/[^\)]+\)|\]\(/api/[^\)]+\)`)
-			matches := internalLinkPattern.FindAllString(doc, -1)
-
-			if len(matches) == 0 {
-				t.Errorf("%s: 'See Also' section exists but has no internal cross-references to other docs", component)
-			}
-
-			t.Logf("%s: Found %d internal cross-references", component, len(matches))
-		})
-	}
-}
-
-func verifyAPISectionsLinkToComponents(t *testing.T) {
-	apiDocs := []struct {
-		name     string
-		sections []string
-	}{
-		{"gokart", []string{
-			"Configuration",
-			"State Persistence",
-			"Subpackages",
-		}},
-	}
-
-	for _, apiDoc := range apiDocs {
-		t.Run(apiDoc.name, func(t *testing.T) {
-			docPath := filepath.Join("api", apiDoc.name+".md")
-			content, err := os.ReadFile(docPath)
-			if err != nil {
-				t.Fatalf("Failed to read %s: %v", apiDoc.name, err)
-			}
-			doc := string(content)
-
-			for _, section := range apiDoc.sections {
-				checkAPISectionLink(t, apiDoc.name, section, doc)
-			}
-		})
-	}
-}
-
-func checkAPISectionLink(t *testing.T, docName, section, doc string) {
-	t.Helper()
-
-	// Find the section in the doc
-	sectionPattern := regexp.MustCompile(`## ` + regexp.QuoteMeta(section) + `\n*\n*([^\n]*)`)
-	sectionMatch := sectionPattern.FindStringSubmatch(doc)
-
-	if len(sectionMatch) == 0 {
-		t.Errorf("%s: Section %q not found", docName, section)
-		return
-	}
-
-	// The text immediately after the section heading should contain a link
-	sectionText := sectionMatch[1]
-
-	// Check if there's a component documentation link
-	linkPattern := regexp.MustCompile(`\[.*?\]\(/components/`)
-	if !linkPattern.MatchString(sectionText) && sectionText != "" {
-		t.Logf("%s: Section %q may be missing component link (has: %q)", docName, section, sectionText)
-	}
-
-	// Also check the broader section for any component links
-	fullSection := extractSection(doc, section)
-
-	if !regexp.MustCompile(`\(/components/`).MatchString(fullSection) {
-		// Some sections like HTTP Server might not have component docs, that's OK
-		if isSectionExemptFromComponentLink(section) {
-			t.Logf("%s: Section %q has no component link (acceptable - no dedicated component doc)", docName, section)
-		} else {
-			t.Errorf("%s: Section %q missing link to component documentation", docName, section)
+func TestRelativeMarkdownLinksResolve(t *testing.T) {
+	err := filepath.WalkDir("..", func(path string, entry os.DirEntry, err error) error {
+		if entry != nil && entry.IsDir() && strings.HasPrefix(entry.Name(), ".") && path != ".." {
+			return filepath.SkipDir
 		}
+		if err != nil || entry.IsDir() || filepath.Ext(path) != ".md" {
+			return err
+		}
+		data, readErr := os.ReadFile(path)
+		if readErr != nil {
+			return readErr
+		}
+		var prose strings.Builder
+		inFence := false
+		for _, line := range strings.Split(string(data), "\n") {
+			if strings.HasPrefix(strings.TrimSpace(line), "```") {
+				inFence = !inFence
+				continue
+			}
+			if !inFence {
+				prose.WriteString(stripInlineCode(line))
+				prose.WriteByte('\n')
+			}
+		}
+		for _, match := range markdownLink.FindAllStringSubmatch(prose.String(), -1) {
+			target := match[1]
+			if strings.HasPrefix(target, "http://") || strings.HasPrefix(target, "https://") || strings.HasPrefix(target, "/") {
+				continue
+			}
+			file, anchor, _ := strings.Cut(target, "#")
+			if file == "" {
+				targetPath := path
+				if anchor != "" && !markdownHasAnchor(t, targetPath, anchor) {
+					t.Errorf("%s has broken anchor %q", path, target)
+				}
+				continue
+			}
+			targetPath := filepath.Join(filepath.Dir(path), filepath.FromSlash(file))
+			if _, statErr := os.Stat(targetPath); statErr != nil {
+				t.Errorf("%s has broken link %q", path, target)
+				continue
+			}
+			if anchor != "" && !markdownHasAnchor(t, targetPath, anchor) {
+				t.Errorf("%s has broken anchor %q", path, target)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
 	}
 }
 
-func extractSection(doc, section string) string {
-	sectionStart := strings.Index(doc, "## "+section)
-	if sectionStart == -1 {
-		return ""
+func markdownHasAnchor(t *testing.T, path, want string) bool {
+	t.Helper()
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
 	}
-	rest := doc[sectionStart+len("## "+section):]
-	if before, _, found := strings.Cut(rest, "\n## "); found {
-		return before
-	}
-	return rest
-}
-
-func isSectionExemptFromComponentLink(section string) bool {
-	switch section {
-	case "HTTP Server", "HTTP Router", "HTTP Client",
-		"Configuration", "Deprecated Functions", "State Persistence":
-		return true
+	for _, line := range strings.Split(string(data), "\n") {
+		if !strings.HasPrefix(line, "#") {
+			continue
+		}
+		heading := strings.TrimSpace(strings.TrimLeft(line, "#"))
+		slug := strings.ToLower(heading)
+		slug = regexp.MustCompile(`[^a-z0-9 -]`).ReplaceAllString(slug, "")
+		slug = strings.ReplaceAll(slug, " ", "-")
+		if slug == want {
+			return true
+		}
 	}
 	return false
 }
 
-func verifyComponentSeeAlsoTargets(t *testing.T) {
-	// Check that component docs link back to API reference where appropriate
-	expectedAPILinks := map[string][]string{
-		"validate": {"response"},
-		"response": {"validate", "templ"},
-		"templ":    {"response"},
-		"state":    {"Config"}, // Special case - links to API section
-		"openai":   {"HTTP client"},
+func stripInlineCode(line string) string {
+	var out strings.Builder
+	for {
+		before, rest, found := strings.Cut(line, "`")
+		out.WriteString(before)
+		if !found {
+			return out.String()
+		}
+		_, line, found = strings.Cut(rest, "`")
+		if !found {
+			return out.String()
+		}
 	}
+}
 
-	for component, expectedTargets := range expectedAPILinks {
-		t.Run(component, func(t *testing.T) {
-			docPath := filepath.Join("components", component+".md")
-			content, err := os.ReadFile(docPath)
-			if err != nil {
-				t.Fatalf("Failed to read %s: %v", component, err)
+func TestDocsDoNotUseRetiredImportsOrUnpinnedInstalls(t *testing.T) {
+	retiredImports := []string{"github.com/dotcommander/gokart/ai", "github.com/dotcommander/gokart/fs"}
+	err := filepath.WalkDir(".", func(path string, entry os.DirEntry, err error) error {
+		if err != nil || entry.IsDir() || filepath.Ext(path) != ".md" {
+			return err
+		}
+		data, readErr := os.ReadFile(path)
+		if readErr != nil {
+			return readErr
+		}
+		for _, text := range retiredImports {
+			if strings.Contains(string(data), text) {
+				t.Errorf("%s references retired import %s", path, text)
 			}
-			doc := string(content)
-
-			seeAlso := extractSeeAlso(doc)
-			if seeAlso == "" {
-				t.Skipf("%s: No See Also section found", component)
-			}
-
-			// Check for expected targets
-			for _, target := range expectedTargets {
-				if !strings.Contains(seeAlso, target) {
-					t.Errorf("%s: See Also section missing expected reference to %s", component, target)
-				}
-			}
-		})
+		}
+		if strings.Contains(string(data), "@latest") {
+			t.Errorf("%s uses non-reproducible @latest", path)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
 	}
 }
 
-func extractSeeAlso(doc string) string {
-	_, after, found := strings.Cut(doc, "### See Also")
-	if !found {
-		return ""
+func TestRemovedPublicIdentifiersHaveMigrationGuidance(t *testing.T) {
+	data, err := os.ReadFile("../README.md")
+	if err != nil {
+		t.Fatal(err)
 	}
-	if before, _, found := strings.Cut(after, "\n##"); found {
-		return before
-	}
-	return after
-}
-
-func verifyConsistentInternalLinkFormat(t *testing.T) {
-	allDocs := make([]string, 0, len(componentDocsList)+2)
-	allDocs = append(allDocs, componentDocsList...)
-	allDocs = append(allDocs, "gokart", "cli")
-
-	for _, docName := range allDocs {
-		docPath := resolveDocPath(docName)
-
-		content, err := os.ReadFile(docPath)
-		if err != nil {
-			t.Fatalf("Failed to read %s: %v", docName, err)
+	migration := string(data)
+	for _, identifier := range []string{
+		"ai.NewOpenAIClient", "fs.ConfigDir", "GetString", "cli.Fatal",
+		"SetOutput", "HealthHandler", "TemplHandler", "RateLimit",
+	} {
+		if !strings.Contains(migration, identifier) {
+			t.Errorf("README migration guidance omits removed identifier %s", identifier)
 		}
-		doc := string(content)
-
-		// Strip fenced code blocks — they contain Go generics syntax
-		// that matches markdown link patterns (e.g., F[Type](value))
-		codeBlockPattern := regexp.MustCompile("(?s)```[^\n]*\n.*?```")
-		doc = codeBlockPattern.ReplaceAllString(doc, "")
-
-		checkInternalLinkFormat(t, docName, doc)
 	}
 }
 
-func resolveDocPath(docName string) string {
-	switch {
-	case strings.Contains(docName, "/"):
-		return docName + ".md"
-	case docName == "gokart" || docName == "cli":
-		return filepath.Join("api", docName+".md")
-	default:
-		return filepath.Join("components", docName+".md")
+func TestGettingStartedCommandsMatchCLIPathRules(t *testing.T) {
+	data, err := os.ReadFile("getting-started.md")
+	if err != nil {
+		t.Fatal(err)
 	}
-}
-
-func checkInternalLinkFormat(t *testing.T, docName, doc string) {
-	t.Helper()
-
-	// Check for consistent internal link format
-	// Should be /components/name or /api/name#section
-	linkPattern := regexp.MustCompile(`\[(.*?)\]\(([^\)]+)\)`)
-	allLinks := linkPattern.FindAllStringSubmatch(doc, -1)
-
-	for _, match := range allLinks {
-		link := match[2]
-		// Skip external links
-		if strings.HasPrefix(link, "http") {
-			continue
-		}
-		// Skip Go code signatures matched as links (e.g. generic funcs)
-		if strings.Contains(link, "...") || strings.Contains(link, ",") {
-			continue
-		}
-		// Allow relative links that start with ./ or ../
-		if strings.HasPrefix(link, "./") || strings.HasPrefix(link, "../") || strings.HasPrefix(link, "#") {
-			continue
-		}
-		// Should be using /path format for absolute links within docs
-		if !strings.HasPrefix(link, "/") {
-			t.Errorf("%s: Found non-absolute internal link: %s (should be /path format)", docName, link)
+	doc := string(data)
+	if strings.Contains(doc, "gokart new . ") {
+		t.Fatal("getting started uses rejected project path '.'; use an absolute path or valid basename")
+	}
+	for _, command := range []string{
+		"gokart new mycli --db sqlite --example",
+		"gokart new service --global",
+		`gokart new "$PWD" --verify-only`,
+	} {
+		if !strings.Contains(doc, command) {
+			t.Errorf("getting started omits verified command %q", command)
 		}
 	}
 }

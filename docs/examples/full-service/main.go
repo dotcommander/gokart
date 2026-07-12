@@ -22,7 +22,6 @@ package main
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"fmt"
 	"log"
 	"log/slog"
@@ -73,7 +72,13 @@ type App struct {
 }
 
 func main() {
-	ctx := context.Background()
+	if err := run(context.Background()); err != nil {
+		log.Printf("full-service: %v", err)
+		os.Exit(1)
+	}
+}
+
+func run(ctx context.Context) error {
 
 	// Load configuration with defaults
 	defaults := Config{
@@ -117,8 +122,7 @@ func main() {
 			MaxConns: cfg.Database.MaxConns,
 		})
 		if err != nil {
-			appLog.Error("Database connection failed", "err", err)
-			os.Exit(1)
+			return fmt.Errorf("connect to database: %w", err)
 		}
 		defer db.Close()
 		appLog.Info("Connected to PostgreSQL")
@@ -168,9 +172,9 @@ func main() {
 	appLog.Info("Server starting", "addr", addr)
 
 	if err := web.ListenAndServe(addr, router); err != nil {
-		appLog.Error("Server error", "err", err)
-		os.Exit(1)
+		return fmt.Errorf("serve: %w", err)
 	}
+	return nil
 }
 
 // healthHandler returns service health status
@@ -195,7 +199,7 @@ func (app *App) healthHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Check cache
 	if app.cache != nil {
-		if _, err := app.cache.Get(ctx, "_health_check"); err != nil && !cache.IsNil(err) {
+		if _, err := app.cache.Client().Get(ctx, app.cache.Key("_health_check")).Result(); err != nil && !cache.IsNil(err) {
 			health["cache"] = "unhealthy"
 			health["status"] = "degraded"
 		} else {
@@ -285,7 +289,9 @@ func (app *App) getUserHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Cache the result
 	if app.cache != nil {
-		app.cache.SetJSON(ctx, cacheKey, user, 10*time.Minute)
+		if err := app.cache.SetJSON(ctx, cacheKey, user, 10*time.Minute); err != nil {
+			app.log.Warn("Failed to cache user", "err", err, "id", id)
+		}
 	}
 
 	web.JSON(w, user)
@@ -301,23 +307,23 @@ func (app *App) createUserHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var input struct {
-		Name  string `json:"name"`
-		Email string `json:"email"`
+		Name  string `json:"name" validate:"notblank"`
+		Email string `json:"email" validate:"required,email"`
 	}
 
-	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+	fields, err := web.BindAndValidate(r, web.NewStandardValidator(), &input)
+	if err != nil {
 		web.Error(w, http.StatusBadRequest, "Invalid request body")
 		return
 	}
-
-	if input.Name == "" || input.Email == "" {
-		web.Error(w, http.StatusBadRequest, "Name and email are required")
+	if fields != nil {
+		web.JSONStatus(w, http.StatusUnprocessableEntity, map[string]any{"errors": fields})
 		return
 	}
 
 	// Use transaction for the insert
 	var user User
-	err := postgres.Transaction(ctx, app.db, func(tx pgx.Tx) error {
+	err = postgres.Transaction(ctx, app.db, func(tx pgx.Tx) error {
 		return tx.QueryRow(ctx,
 			"INSERT INTO users (name, email) VALUES ($1, $2) RETURNING id, name, email, created_at",
 			input.Name, input.Email,
@@ -332,7 +338,9 @@ func (app *App) createUserHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Invalidate cache
 	if app.cache != nil {
-		app.cache.Delete(ctx, "users:all")
+		if err := app.cache.Client().Del(ctx, app.cache.Key("users:all")).Err(); err != nil {
+			app.log.Warn("Failed to invalidate users cache", "err", err)
+		}
 	}
 
 	app.log.Info("User created", "id", user.ID, "email", user.Email)

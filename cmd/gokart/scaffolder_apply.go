@@ -25,59 +25,36 @@ func Apply(fsys fs.FS, root string, targetDir string, data TemplateData, opts Ap
 		return nil, fmt.Errorf("resolve target directory %q: %w", targetDir, err)
 	}
 
-	var releaseLock func() error
-	if !normalizedOpts.DryRun { //nolint:nestif // lock acquisition with deferred release, nesting is inherent
-		releaseLock, err = acquireApplyLock(targetRoot)
-		if err != nil {
-			return nil, err
+	apply := func() error {
+		plan, planErr := buildPlan(fsys, root, targetDir, data, normalizedOpts.ExistingFilePolicy)
+		if planErr != nil {
+			return planErr
 		}
 
-		defer func() {
-			if releaseLock == nil {
-				return
-			}
-			if releaseErr := releaseLock(); releaseErr != nil {
-				if err == nil {
-					err = fmt.Errorf("release scaffolding lock: %w", releaseErr)
-				} else {
-					err = fmt.Errorf("%w; release scaffolding lock: %v", err, releaseErr) //nolint:errorlint // secondary error, primary already wrapped
-				}
-			}
-		}()
-
-		if err := recoverPendingJournals(targetRoot); err != nil {
-			return nil, err
+		result = collectResult(plan, normalizedOpts.DryRun)
+		if normalizedOpts.DryRun {
+			return nil
 		}
+
+		journal, journalErr := beginApplyJournal(targetRoot)
+		if journalErr != nil {
+			return journalErr
+		}
+		if writeErr := applyPlanWrites(plan, result, journal, targetRoot, root, normalizedOpts); writeErr != nil {
+			return writeErr
+		}
+		if completeErr := journal.markCompleted(); completeErr != nil {
+			return completeErr
+		}
+		return journal.cleanup()
 	}
 
-	plan, err := buildPlan(fsys, root, targetDir, data, normalizedOpts.ExistingFilePolicy)
-	if err != nil {
-		return nil, err
-	}
-
-	result = collectResult(plan, normalizedOpts.DryRun)
 	if normalizedOpts.DryRun {
-		return result, nil
+		err = apply()
+		return result, err
 	}
-
-	journal, err := beginApplyJournal(targetRoot)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := applyPlanWrites(plan, result, journal, targetRoot, root, normalizedOpts); err != nil {
-		return nil, err
-	}
-
-	if err := journal.markCompleted(); err != nil {
-		return nil, err
-	}
-
-	if err := journal.cleanup(); err != nil {
-		return nil, err
-	}
-
-	return result, nil
+	err = withTargetMutationLock(targetRoot, apply)
+	return result, err
 }
 
 //nolint:revive // params are distinct concerns

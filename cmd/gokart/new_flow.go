@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 
 	"github.com/dotcommander/gokart/cli"
 	"github.com/spf13/cobra"
@@ -195,20 +196,11 @@ func setNewNextStep(req newRequest, jsonOutput bool, output *newCommandOutput) {
 func resolveNewDependencies(ctx context.Context, req newRequest, verbose bool) error {
 	packages := []string{"github.com/dotcommander/gokart/cli@" + defaultGokartCLIVersion}
 	if req.UseGlobal {
-		packages = append(packages, "github.com/dotcommander/gokart/fs@"+defaultGokartFSVersion)
+		packages = append(packages, "github.com/dotcommander/gokart@"+defaultGokartVersion)
 	}
-	if req.UseSQLite {
-		packages = append(packages, "github.com/dotcommander/gokart/sqlite@"+defaultGokartSQLiteVersion)
-	}
-	if req.UsePostgres {
-		packages = append(packages, "github.com/dotcommander/gokart/postgres@"+defaultGokartPostgresVersion)
-	}
-	if req.UseAI {
-		packages = append(packages, "github.com/dotcommander/gokart/ai@"+defaultGokartAIVersion)
-	}
-	if req.UseRedis {
-		packages = append(packages, "github.com/dotcommander/gokart/cache@"+defaultGokartCacheVersion)
-	}
+	data := templateDataForRequest(req)
+	packages = append(packages, integrationDependencies(data)...)
+	sort.Strings(packages)
 
 	goGetArgs := append([]string{"get"}, packages...)
 	if err := runCommand(ctx, req.TargetDir, verbose, "go", goGetArgs...); err != nil {
@@ -220,4 +212,8 @@ func resolveNewDependencies(ctx context.Context, req newRequest, verbose bool) e
 	}
 
 	return nil
+}
+
+func templateDataForRequest(req newRequest) TemplateData {
+	return TemplateData{UseSQLite: req.UseSQLite, UsePostgres: req.UsePostgres, UseAI: req.UseAI, UseRedis: req.UseRedis}
 }

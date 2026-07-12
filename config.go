@@ -1,7 +1,9 @@
 package gokart
 
 import (
+	"errors"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/spf13/viper"
@@ -60,6 +62,8 @@ func LoadConfigWithDefaults[T any](defaults T, paths ...string) (T, error) {
 		if err := v.ReadInConfig(); err == nil {
 			configFound = true
 			break
+		} else if !errors.Is(err, os.ErrNotExist) {
+			return defaults, fmt.Errorf("read config %q: %w", path, err)
 		}
 	}
 

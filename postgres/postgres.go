@@ -217,6 +217,12 @@ func FromEnv(ctx context.Context) (*pgxpool.Pool, error) {
 //	    return err
 //	})
 func Transaction(ctx context.Context, pool *pgxpool.Pool, fn func(tx pgx.Tx) error) error {
+	if pool == nil {
+		return fmt.Errorf("transaction: nil pool")
+	}
+	if fn == nil {
+		return fmt.Errorf("transaction: nil callback")
+	}
 	return sqltx.Run(
 		func() (pgx.Tx, error) {
 			return pool.Begin(ctx)

@@ -5,7 +5,7 @@ Simple state persistence for CLI applications across invocations. Stores typed d
 ## Installation
 
 ```bash
-go get github.com/dotcommander/gokart
+go get github.com/dotcommander/gokart@v0.11.0
 ```
 
 ## Quick Start
@@ -370,5 +370,5 @@ mu.Unlock()
 
 - [`os.UserConfigDir`](https://pkg.go.dev/os#UserConfigDir) - Platform config directory logic
 - [`encoding/json`](https://pkg.go.dev/encoding/json) - JSON marshaling/unmarshaling
-- [Config](/api/gokart#configuration) - Application configuration
-- [Cache](/components/cache) - Server-side caching
+- [Configuration](../api/gokart.md#parse-a-configuration-map) - Application configuration
+- [Cache](cache.md) - Server-side caching

@@ -169,27 +169,17 @@ func (c *Cache) Close() error {
 	return c.client.Close()
 }
 
-// key prefixes the key if a prefix is configured.
-func (c *Cache) key(k string) string {
+// Key applies the configured prefix to key for direct go-redis operations.
+func (c *Cache) Key(key string) string {
 	if c.prefix != "" {
-		return c.prefix + k
+		return c.prefix + key
 	}
-	return k
-}
-
-// Get retrieves a string value.
-func (c *Cache) Get(ctx context.Context, key string) (string, error) {
-	return c.client.Get(ctx, c.key(key)).Result()
-}
-
-// Set stores a string value with expiration.
-func (c *Cache) Set(ctx context.Context, key string, value string, ttl time.Duration) error {
-	return c.client.Set(ctx, c.key(key), value, ttl).Err()
+	return key
 }
 
 // GetJSON retrieves and unmarshals a JSON value.
 func (c *Cache) GetJSON(ctx context.Context, key string, dest interface{}) error {
-	data, err := c.client.Get(ctx, c.key(key)).Bytes()
+	data, err := c.client.Get(ctx, c.Key(key)).Bytes()
 	if err != nil {
 		return err
 	}
@@ -202,47 +192,7 @@ func (c *Cache) SetJSON(ctx context.Context, key string, value interface{}, ttl 
 	if err != nil {
 		return fmt.Errorf("failed to marshal value: %w", err)
 	}
-	return c.client.Set(ctx, c.key(key), data, ttl).Err()
-}
-
-// Delete removes a key.
-func (c *Cache) Delete(ctx context.Context, keys ...string) error {
-	prefixedKeys := make([]string, len(keys))
-	for i, k := range keys {
-		prefixedKeys[i] = c.key(k)
-	}
-	return c.client.Del(ctx, prefixedKeys...).Err()
-}
-
-// Exists checks if a key exists.
-func (c *Cache) Exists(ctx context.Context, key string) (bool, error) {
-	n, err := c.client.Exists(ctx, c.key(key)).Result()
-	return n > 0, err
-}
-
-// Expire sets a TTL on an existing key.
-func (c *Cache) Expire(ctx context.Context, key string, ttl time.Duration) error {
-	return c.client.Expire(ctx, c.key(key), ttl).Err()
-}
-
-// TTL returns the remaining TTL of a key.
-func (c *Cache) TTL(ctx context.Context, key string) (time.Duration, error) {
-	return c.client.TTL(ctx, c.key(key)).Result()
-}
-
-// Incr increments a counter and returns the new value.
-func (c *Cache) Incr(ctx context.Context, key string) (int64, error) {
-	return c.client.Incr(ctx, c.key(key)).Result()
-}
-
-// IncrBy increments a counter by a specific amount.
-func (c *Cache) IncrBy(ctx context.Context, key string, value int64) (int64, error) {
-	return c.client.IncrBy(ctx, c.key(key), value).Result()
-}
-
-// SetNX sets a value only if the key doesn't exist (for distributed locks).
-func (c *Cache) SetNX(ctx context.Context, key string, value string, ttl time.Duration) (bool, error) {
-	return c.client.SetNX(ctx, c.key(key), value, ttl).Result()
+	return c.client.Set(ctx, c.Key(key), data, ttl).Err()
 }
 
 // Remember gets a value or sets it using the provided function.
@@ -253,7 +203,7 @@ func (c *Cache) SetNX(ctx context.Context, key string, value string, ttl time.Du
 //	    return db.GetUser(ctx, 123)
 //	})
 func (c *Cache) Remember(ctx context.Context, key string, ttl time.Duration, fn func() (interface{}, error)) (string, error) {
-	val, err := c.Get(ctx, key)
+	val, err := c.client.Get(ctx, c.Key(key)).Result()
 	if err == nil {
 		return val, nil
 	}
@@ -264,7 +214,7 @@ func (c *Cache) Remember(ctx context.Context, key string, ttl time.Duration, fn 
 	// Use singleflight to prevent cache stampede
 	v, err, _ := c.flight.Do(key, func() (interface{}, error) {
 		// Double-check cache after acquiring the flight
-		if val, err := c.Get(ctx, key); err == nil {
+		if val, err := c.client.Get(ctx, c.Key(key)).Result(); err == nil {
 			return val, nil
 		}
 
@@ -287,7 +237,7 @@ func (c *Cache) Remember(ctx context.Context, key string, ttl time.Duration, fn 
 			strVal = string(data)
 		}
 
-		if err := c.Set(ctx, key, strVal, ttl); err != nil {
+		if err := c.client.Set(ctx, c.Key(key), strVal, ttl).Err(); err != nil {
 			return nil, err
 		}
 

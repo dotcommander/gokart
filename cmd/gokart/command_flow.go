@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/dotcommander/gokart/cli"
@@ -27,8 +28,8 @@ func printWarnings(jsonOutput bool, warnings []string) {
 	}
 }
 
-func emitCommandJSON(v any) error {
-	if err := emitJSON(v); err != nil {
+func emitCommandJSON(v commandJSONOutput) error {
+	if err := emitJSON(v.outputWriter(), v); err != nil {
 		return &commandError{
 			Err:      fmt.Errorf("encode JSON output: %w", err),
 			Code:     errorCodeJSONEncodeFailed,
@@ -42,7 +43,15 @@ func emitCommandJSON(v any) error {
 
 type errorOutput interface {
 	setErrorFields(outcome commandOutcome, code commandErrorCode, exitCode int, errMsg string)
+	outputWriter() io.Writer
 }
+
+type commandJSONOutput interface {
+	outputWriter() io.Writer
+}
+
+func (o *newCommandOutput) outputWriter() io.Writer { return o.writer }
+func (o *addCommandOutput) outputWriter() io.Writer { return o.writer }
 
 func (o *newCommandOutput) setErrorFields(outcome commandOutcome, code commandErrorCode, exitCode int, errMsg string) {
 	o.Outcome = outcome
@@ -73,7 +82,7 @@ func emitCommandError(err error, jsonOutput bool, output errorOutput, fail comma
 	}
 	if jsonOutput && output != nil {
 		output.setErrorFields(fail.Outcome, fail.Code, fail.ExitCode, err.Error())
-		if emitErr := emitJSON(output); emitErr != nil {
+		if emitErr := emitJSON(output.outputWriter(), output); emitErr != nil {
 			fmt.Fprintf(os.Stderr, "failed to write JSON output: %v\n", emitErr)
 			return &commandError{
 				Err:      fmt.Errorf("%w; failed to write JSON output: %v", err, emitErr), //nolint:errorlint // secondary error, primary already wrapped

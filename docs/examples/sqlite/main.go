@@ -78,7 +78,10 @@ func main() {
 	}
 
 	// Example 4: Query multiple rows
-	rows, _ := db.QueryContext(ctx, "SELECT id, name, email FROM users LIMIT 10")
+	rows, err := db.QueryContext(ctx, "SELECT id, name, email FROM users LIMIT 10")
+	if err != nil {
+		log.Fatalf("Query users: %v", err)
+	}
 	defer rows.Close()
 
 	for rows.Next() {
@@ -89,6 +92,9 @@ func main() {
 			continue
 		}
 		log.Printf("User %d: %s <%s>", id, name, email)
+	}
+	if err := rows.Err(); err != nil {
+		log.Printf("Row iteration failed: %v", err)
 	}
 
 	// Example 5: Execute INSERT

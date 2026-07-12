@@ -137,12 +137,14 @@ func TestScaffoldStructuredGolden(t *testing.T) {
 		usePostgres bool
 		useAI       bool
 		useRedis    bool
+		useGlobal   bool
 	}{
 		{variant: "structured"},
 		{variant: "structured-sqlite", useSQLite: true},
 		{variant: "structured-postgres", usePostgres: true},
 		{variant: "structured-ai", useAI: true},
 		{variant: "structured-redis", useRedis: true},
+		{variant: "structured-global", useGlobal: true},
 	}
 	for _, tc := range cases {
 		tc := tc
@@ -151,7 +153,7 @@ func TestScaffoldStructuredGolden(t *testing.T) {
 			dir := t.TempDir()
 			if _, err := ScaffoldStructured(dir, goldenName, goldenModule,
 				tc.useSQLite, tc.usePostgres, tc.useAI, tc.useRedis,
-				false, true,
+				tc.useGlobal, true,
 				ApplyOptions{ExistingFilePolicy: ExistingFilePolicyOverwrite}); err != nil {
 				t.Fatalf("ScaffoldStructured(%s) error = %v", tc.variant, err)
 			}

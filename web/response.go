@@ -1,8 +1,21 @@
 package web
 
 import (
+	"encoding/json"
+	"fmt"
 	"net/http"
 )
+
+const jsonContentType = "application/json"
+
+func writeJSON(w http.ResponseWriter, status int, data any) error {
+	w.Header().Set("Content-Type", jsonContentType)
+	w.WriteHeader(status)
+	if err := json.NewEncoder(w).Encode(data); err != nil {
+		return fmt.Errorf("json encode: %w", err)
+	}
+	return nil
+}
 
 // JSON writes a JSON response with status 200.
 func JSON(w http.ResponseWriter, data any) {
