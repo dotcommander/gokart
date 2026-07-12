@@ -1,0 +1,17 @@
+go 1.26.1
+
+toolchain go1.26.3
+
+use (
+	.
+	./ai
+	./cache
+	./cli
+	./cmd/gokart
+	./fs
+	./logger
+	./migrate
+	./postgres
+	./sqlite
+	./web
+)
