@@ -1,7 +1,7 @@
 # Build an offline SQLite CLI
 
 ```bash
-go install github.com/dotcommander/gokart/cmd/gokart@v0.11.0
+go install github.com/dotcommander/gokart/cmd/gokart@v0.12.0
 gokart new counter --module example.com/counter --db sqlite --example
 cd counter
 go run ./cmd greet --name Ada
@@ -13,31 +13,31 @@ You now have a verified, file-backed CLI with no external service. This tutorial
 
 ```text
 cmd/main.go                         sole process-exit boundary
-internal/commands/root.go           Cobra tree and persistent initialization
+internal/commands/root.go           Kong tree and dependency initialization
 internal/commands/greet.go          flags and presentation
 internal/actions/greet.go           testable application behavior
 internal/app/context.go             shared dependencies and cleanup
 .gokart-manifest.json               generated hashes and integrations
 ```
 
-`main` calls `commands.Execute` and alone converts an error into `os.Exit(1)`. `Execute` builds `cli.App`, then chains its `PersistentPreRunE` after GoKart configuration initialization. That hook creates `app.Context`; a deferred `Context.Close` releases SQLite. Commands receive the context through a function because initialization happens after the command tree is built.
+`main` calls `commands.Execute` and alone converts an error into `os.Exit(1)`. `Execute` parses the typed Kong command tree, loads configuration, creates `app.Context`, and defers `Context.Close` so SQLite is released. It then calls `parsed.Run(appCtx)`, which binds the context to command `Run` methods that request it.
 
 Keep flags and output in `internal/commands`. Put business operations in `internal/actions` or a service package.
 
 ## 2. Add typed configuration
 
-The scaffold defines `app.AppConfigKeyDBPath` and reads `db_path`. In `internal/commands/root.go`, before `app.New` runs, set an explicit default:
+The scaffold defines `app.AppConfigKeyDBPath` and reads `db_path`. In `internal/commands/root.go`, set an explicit default in `loadConfig` before `app.New` runs:
 
 ```go
-cliApp.Viper().SetDefault(app.AppConfigKeyDBPath, "counter.db")
+v.SetDefault(app.AppConfigKeyDBPath, "counter.db")
 ```
 
-`WithEnvPrefix("COUNTER")` maps `COUNTER_DB_PATH` to `db_path`. `WithStandardFlags` adds `--config`, `--verbose`, and `--quiet`. Without this default, the generated context places the database under the platform cache directory.
+The generated Viper setup maps `COUNTER_DB_PATH` to `db_path`. The typed root fields provide `--config`, `--verbose`, and `--quiet`. Without this default, the generated context places the database under the platform cache directory.
 
 ## 3. Create and run a migration
 
 ```bash
-go get github.com/dotcommander/gokart/migrate@v0.11.0
+go get github.com/dotcommander/gokart/migrate@v0.12.0
 mkdir -p migrations
 ```
 
@@ -107,41 +107,41 @@ Create `internal/commands/counter.go`:
 package commands
 
 import (
+	"context"
 	"fmt"
 
 	"example.com/counter/internal/actions"
 	"example.com/counter/internal/app"
-	"github.com/spf13/cobra"
+	"github.com/alecthomas/kong"
 )
 
-func NewCounterCmd(getContext func() *app.Context) *cobra.Command {
-	var by int64
-	cmd := &cobra.Command{
-		Use: "counter [name]", Short: "Increment a persistent counter",
-		Args: cobra.MaximumNArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			name := "default"
-			if len(args) == 1 { name = args[0] }
-			appCtx := getContext()
-			value, err := actions.Increment(cmd.Context(), appCtx.DB, name, by)
-			if err != nil { return err }
-			appCtx.Log.Info("counter incremented", "name", name, "value", value)
-			_, err = fmt.Fprintln(cmd.OutOrStdout(), value)
-			return err
-		},
-	}
-	cmd.Flags().Int64Var(&by, "by", 1, "amount to add")
-	return cmd
+type CounterCommand struct {
+	Name string `arg:"" optional:"" help:"Counter name."`
+	By   int64  `default:"1" help:"Amount to add."`
+}
+
+func (c *CounterCommand) Run(kctx *kong.Context, ctx context.Context, appCtx *app.Context) error {
+	name := c.Name
+	if name == "" { name = "default" }
+	value, err := actions.Increment(ctx, appCtx.DB, name, c.By)
+	if err != nil { return err }
+	appCtx.Log.Info("counter incremented", "name", name, "value", value)
+	_, err = fmt.Fprintln(kctx.Stdout, value)
+	return err
 }
 ```
 
-Register it beside the generated greet command in `root.go`:
+Register it beside the generated greet command in the root `CLI` type:
 
 ```go
-getAppContext := func() *app.Context { return appCtx }
-cliApp.AddCommand(NewGreetCmd(getAppContext))
-cliApp.AddCommand(NewCounterCmd(getAppContext))
+type CLI struct {
+	// existing fields...
+	Greet   GreetCommand   `cmd:"" help:"Greet someone."`
+	Counter CounterCommand `cmd:"" help:"Increment a persistent counter."`
+}
 ```
+
+No command-specific assignment is required. The existing `parsed.Run(appCtx)` call supplies the shared dependency to every `Run` method that requests `*app.Context`.
 
 Run the complete path:
 
@@ -151,7 +151,7 @@ go run ./cmd counter build --by 3
 go run ./cmd counter build
 ```
 
-Command results use `cmd.OutOrStdout()` so Cobra tests can capture them. Operational details go to `appCtx.Log`.
+Command results use `kctx.Stdout`, so tests can capture output through `kong.Writers`. Operational details go to `appCtx.Log`.
 
 ## 6. Add state and tests
 
@@ -164,7 +164,7 @@ err := gokart.SaveState("counter", "state.json", UIState{LastCounter: name})
 
 `SaveState` publishes atomically under the platform user configuration directory; it is not a replacement for transactional domain data.
 
-Test the action with `sqlite.OpenContext(t.Context(), filepath.Join(t.TempDir(), "test.db"))`, apply the same migration, call `Increment`, and assert the returned values. Test the command with `SetOut`, `SetErr`, `SetArgs`, and `Execute`. See [testing](testing.md) for complete patterns.
+Test the action with `sqlite.OpenContext(t.Context(), filepath.Join(t.TempDir(), "test.db"))`, apply the same migration, call `Increment`, and assert the returned values. Test the command with explicit arguments, `kong.Writers`, and a test `app.Context`. See [testing](testing.md) for complete patterns.
 
 ## 7. Build and run
 
@@ -191,8 +191,8 @@ Use the [recipes](recipes.md) and [full-service example](examples/README.md#serv
 
 ```bash
 gokart new mycli --db sqlite --example
-gokart new service --global
+gokart new service --structured --global
 gokart new "$PWD" --verify-only
 ```
 
-The first is the short form of this tutorial scaffold. The second enables platform-global configuration. The third runs `go mod tidy` and `go test ./...` against an existing target without scaffolding.
+The first is the short form of this tutorial scaffold and selects structured mode because SQLite is an integration. The second explicitly combines a structured layout with platform-global configuration so it remains compatible with `gokart add`. The third runs `go mod tidy` and `go test ./...` against an existing target without scaffolding.

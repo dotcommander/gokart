@@ -1,6 +1,4 @@
-//go:build ignore
-
-// Example: Minimal CLI application using gokart/cli.
+// Example: focused typed CLI application using Kong.
 package main
 
 import (
@@ -8,42 +6,45 @@ import (
 	"os"
 	"time"
 
-	"github.com/dotcommander/gokart/cli"
-	"github.com/spf13/cobra"
+	"github.com/alecthomas/kong"
 )
 
+type CLI struct {
+	Greet GreetCommand `cmd:"" help:"Greet someone."`
+	Slow  SlowCommand  `cmd:"" help:"Do something slow."`
+	Users UsersCommand `cmd:"" help:"List users."`
+}
+
+type GreetCommand struct {
+	Name string `short:"n" default:"World" help:"Name to greet."`
+}
+
+func (c *GreetCommand) Run(ctx *kong.Context) error {
+	_, err := fmt.Fprintf(ctx.Stdout, "Hello, %s!\n", c.Name)
+	return err
+}
+
+type SlowCommand struct{}
+
+func (SlowCommand) Run(ctx *kong.Context) error {
+	if _, err := fmt.Fprintln(ctx.Stdout, "Processing..."); err != nil {
+		return err
+	}
+	time.Sleep(2 * time.Second)
+	return nil
+}
+
+type UsersCommand struct{}
+
+func (UsersCommand) Run(ctx *kong.Context) error {
+	_, err := fmt.Fprintln(ctx.Stdout, "ID\tName\tRole\n1\tAlice\tAdmin\n2\tBob\tUser\n3\tCarol\tUser")
+	return err
+}
+
 func main() {
-	app := cli.NewApp("greeter", "1.0.0").
-		WithDescription("A friendly greeting CLI")
-
-	// Add greet command
-	greetCmd := cli.Command("greet", "Greet someone", func(cmd *cobra.Command, args []string) error {
-		name := cmd.Flag("name").Value.String()
-		cli.Success("Hello, %s!", name)
-		return nil
-	})
-	greetCmd.Flags().StringP("name", "n", "World", "Name to greet")
-	app.AddCommand(greetCmd)
-
-	// Add slow command with spinner
-	app.AddCommand(cli.Command("slow", "Do something slow", func(cmd *cobra.Command, args []string) error {
-		return cli.WithSpinner("Processing...", func() error {
-			time.Sleep(2 * time.Second)
-			return nil
-		})
-	}))
-
-	// Add table command
-	app.AddCommand(cli.Command("users", "List users", func(cmd *cobra.Command, args []string) error {
-		t := cli.NewTable("ID", "Name", "Role")
-		t.AddRow("1", "Alice", "Admin")
-		t.AddRow("2", "Bob", "User")
-		t.AddRow("3", "Carol", "User")
-		t.Print()
-		return nil
-	}))
-
-	if err := app.Run(); err != nil {
+	var cli CLI
+	ctx := kong.Parse(&cli, kong.Name("greeter"), kong.Description("A friendly greeting CLI"), kong.UsageOnError(), kong.Writers(os.Stdout, os.Stderr))
+	if err := ctx.Run(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}

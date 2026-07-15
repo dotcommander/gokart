@@ -5,7 +5,7 @@
 GoKart is a modular Go toolkit for recurring infrastructure setup, safe defaults, and user-owned generated code. Its enforceable boundary is defined in [PHILOSOPHY.md](PHILOSOPHY.md).
 
 ```bash
-go install github.com/dotcommander/gokart/cmd/gokart@v0.11.0
+go install github.com/dotcommander/gokart/cmd/gokart@v0.12.0
 gokart new myapp --db sqlite --example
 cd myapp
 go run ./cmd greet --name World
@@ -14,7 +14,7 @@ go run ./cmd greet --name World
 ## Packages
 
 - `gokart`: typed configuration, platform config directories, and JSON state persistence.
-- `gokart/cli`: Cobra application construction and process-stream presentation helpers.
+- `gokart/cli`: Cobra application construction for established ecosystem-style consumers plus process-stream presentation helpers. Focused generated CLIs use Kong directly.
 - `gokart/web`: chi router/server construction, JSON responses, bounded binding, and validation.
 - `gokart/postgres`: pgx pool setup and transaction helpers.
 - `gokart/sqlite`: zero-CGO SQLite setup and operations.
@@ -26,13 +26,17 @@ All modules isolate their dependencies. Constructors expose real upstream types 
 
 ## Generator
 
-`gokart new` creates ordinary Go code. Plain scaffolds are local and unmanaged; selecting `--global` or an integration adds a manifest so `gokart add` can safely update generated wiring.
+`gokart new` creates ordinary Go code. Plain, example, local, and global CLIs default to a flat `main.go`; selecting an integration chooses the structured layout automatically. Use `--structured` when you want the multi-package layout without an integration.
 
 ```bash
-gokart new mycli --global
+gokart new mycli
+gokart new mycli --structured
+gokart new mycli --structured --global
 gokart new service --db postgres --ai --redis
 gokart add sqlite --dry-run
 ```
+
+Global scaffolds include a manifest, but `gokart add` supports structured projects only. Choose `--structured --global` when you want platform-global configuration and later integration updates.
 
 Dependencies are pinned for deterministic generation. PostgreSQL uses `postgres.Open`, SQLite uses `sqlite.Open`, Redis uses `cache.Open`, and AI uses the official OpenAI SDK directly.
 

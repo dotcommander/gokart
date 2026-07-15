@@ -34,6 +34,8 @@ Managed scaffolds record SHA-256 hashes. Before replacing the two wiring files, 
 
 `gokart add` supports managed structured projects only. It re-renders the two wiring files, fetches dependencies, tidies the module, and updates the manifest. It does not regenerate the project.
 
+Plain and global scaffolds default to flat. A global flat scaffold still has a manifest, but `gokart add` rejects it without changing files. Start with `gokart new <name> --structured --global` when you want global configuration plus later integration updates.
+
 ## Stop or remove
 
 To stop using the generator, finish the desired integrations, delete `.gokart-manifest.json`, and maintain the ordinary source yourself. The application does not call the generator at runtime.
@@ -44,7 +46,7 @@ There is no `gokart remove`. To remove an integration, delete its fields, import
 
 | GoKart surface | Direct replacement |
 |---|---|
-| `cli.App` / `cli.Command` | `*cobra.Command` and, if needed, a local `*viper.Viper` |
+| generated Kong command structs | Kong directly; the generated application already uses typed commands, `Context.Run` binding, and `kong.Context` writers |
 | `sqlite` | `database/sql` with `modernc.org/sqlite`; own pragmas and transaction cleanup |
 | `postgres` | `pgxpool.NewWithConfig` and `pgx.BeginFunc` or an explicit transaction |
 | `cache.Cache` | `redis.NewClient` or `redis.ParseURL`; apply prefixes locally |

@@ -1,6 +1,6 @@
 # Examples
 
-Runnable examples use the current `v0.11.0` package boundaries.
+Runnable examples use the current `v0.12.0` package boundaries.
 
 ```bash
 go run docs/examples/logger/main.go
