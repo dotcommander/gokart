@@ -1,5 +1,3 @@
-//go:build ignore
-
 // Example: Minimal HTTP service using gokart.
 package main
 
@@ -36,5 +34,5 @@ func main() {
 	})
 
 	log.Println("Server starting on :8080")
-	log.Fatal(http.ListenAndServe(":8080", router))
+	log.Fatal(web.ListenAndServe(":8080", router))
 }

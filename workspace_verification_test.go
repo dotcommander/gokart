@@ -25,6 +25,15 @@ func TestWorkspaceVerifierCoversGoWorkModules(t *testing.T) {
 	}
 }
 
+func TestWorkspaceUsesModulesWithoutRedundantReplacements(t *testing.T) {
+	t.Parallel()
+
+	goWork := readRepoFile(t, "go.work")
+	if strings.Contains(goWork, "replace github.com/dotcommander/gokart") {
+		t.Fatal("workspace modules must resolve through use entries, not version-specific replacements")
+	}
+}
+
 func TestWorkspaceReleaseAndDocsModuleInventoriesAgree(t *testing.T) {
 	t.Parallel()
 	workspace := parseGoWorkModules(readRepoFile(t, "go.work"))
@@ -81,8 +90,6 @@ func TestIgnoredExamplesAreCompileChecked(t *testing.T) {
 		"docs/examples/logger/main.go",
 		"docs/examples/postgres/main.go",
 		"docs/examples/sqlite/main.go",
-		"examples/cli-app/main.go",
-		"examples/http-service/main.go",
 	}
 
 	for _, example := range examples {
@@ -99,7 +106,11 @@ func TestStandaloneModulesAreVerifiedWithoutWorkspaceReplacements(t *testing.T) 
 	required := []string{
 		"standalone)",
 		"verify_standalone_modules",
-		"GOWORK=off go test -modfile=\"$modfile\" -mod=readonly ./...",
+		"GOWORK=off go mod tidy -diff",
+		"GOWORK=off go mod verify",
+		"GOWORK=off go test -mod=readonly ./...",
+		"verify_standalone_examples",
+		"verify_generated_projects",
 		"compile_ignored_examples\n        verify_standalone_modules",
 	}
 	for _, fragment := range required {

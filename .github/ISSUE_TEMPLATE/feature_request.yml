@@ -1,0 +1,29 @@
+name: Feature request
+description: Propose a focused improvement to GoKart.
+title: "feat: "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What user problem should GoKart solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Describe the smallest useful public API, CLI, or generator change.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Explain whether upstream Go packages or existing GoKart primitives already cover the need.
+  - type: textarea
+    id: compatibility
+    attributes:
+      label: Compatibility impact
+      description: Note any public API, JSON schema, module, or generated-layout impact.

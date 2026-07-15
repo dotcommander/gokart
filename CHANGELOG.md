@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.12.0 (2026-07-14)
+
+### Breaking
+- Change the default no-integration scaffold from structured to flat.
+
+### Added
+- Add `--structured` to explicitly select the multi-package layout.
+
+### Fixed
+- Make generator streams race-free and align Kong documentation, templates,
+  dependency binding, and effective generator-version metadata.
+
 ## v0.11.0 (2026-07-12)
 
 ### Breaking
