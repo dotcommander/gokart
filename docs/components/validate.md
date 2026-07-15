@@ -29,7 +29,7 @@ Validation uses `go-playground/validator/v10` and returns short field messages s
 ## Install
 
 ```bash
-go get github.com/dotcommander/gokart/web@v0.11.0
+go get github.com/dotcommander/gokart/web@v0.12.0
 ```
 
 ## Create a validator

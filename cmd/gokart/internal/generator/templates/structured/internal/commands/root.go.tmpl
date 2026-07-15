@@ -1,0 +1,112 @@
+package commands
+
+import (
+	"context"
+	"os"
+{{- if or .UseSQLite .UsePostgres .UseAI .UseRedis }}
+	"errors"
+	"path/filepath"
+	"strings"
+{{- end }}
+
+	"github.com/alecthomas/kong"
+{{- if or .UseSQLite .UsePostgres .UseAI .UseRedis }}
+	"github.com/spf13/viper"
+	"{{.Module}}/internal/app"
+{{- else if .UseGlobal }}
+	"{{.Module}}/internal/app"
+{{- end }}
+)
+
+type CLI struct {
+	Version kong.VersionFlag `name:"version" help:"Print version information and quit."`
+{{- if or .UseSQLite .UsePostgres .UseAI .UseRedis }}
+	Config  string `type:"path" help:"Config file path."`
+	Verbose *bool  `short:"v" help:"Enable verbose output."`
+	Quiet   *bool  `short:"q" help:"Only print errors."`
+{{- end }}
+{{- if .IncludeExample }}
+	Greet GreetCommand `cmd:"" help:"Greet someone."`
+{{- end }}
+}
+
+func Execute(ctx context.Context, version string) error {
+	var cli CLI
+	parser, err := kong.New(&cli, kong.Name("{{.Name}}"), kong.Description("{{.Name}} CLI"), kong.Vars{"version": version}, kong.UsageOnError(), kong.BindTo(ctx, (*context.Context)(nil)))
+	if err != nil {
+		return err
+	}
+	parsed, err := parser.Parse(os.Args[1:])
+	if err != nil {
+		return err
+	}
+	if len(os.Args) == 1 {
+		return parsed.PrintUsage(false)
+	}
+{{- if .UseGlobal }}
+	if err := app.EnsureConfigDir(); err != nil {
+		return err
+	}
+{{- end }}
+{{- if or .UseSQLite .UsePostgres .UseAI .UseRedis }}
+	workingDir, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+	userConfigDir, _ := os.UserConfigDir()
+	v, err := loadConfig(cli, workingDir, userConfigDir, "/etc")
+	if err != nil {
+		return err
+	}
+	appCtx, err := app.New(ctx, "{{.Name}}", v)
+	if err != nil {
+		return err
+	}
+	defer appCtx.Close()
+{{- if .IncludeExample }}
+	{{- if .LegacyGreetAppField }}
+	cli.Greet.App = appCtx
+	{{- end }}
+{{- end }}
+{{- end }}
+	{{- if or .UseSQLite .UsePostgres .UseAI .UseRedis }}
+	return parsed.Run(appCtx)
+	{{- else }}
+	return parsed.Run()
+	{{- end }}
+}
+{{- if or .UseSQLite .UsePostgres .UseAI .UseRedis }}
+
+func loadConfig(cli CLI, workingDir, userConfigDir, systemConfigRoot string) (*viper.Viper, error) {
+	v := viper.New()
+	v.SetEnvPrefix("{{.Name | upper}}")
+	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_", "-", "_"))
+	v.AutomaticEnv()
+	if cli.Config != "" {
+		v.SetConfigFile(cli.Config)
+	} else {
+		v.SetConfigName("{{.Name}}")
+		v.SetConfigType("yaml")
+		v.AddConfigPath(workingDir)
+		if userConfigDir != "" {
+			v.AddConfigPath(filepath.Join(userConfigDir, "{{.Name}}"))
+		}
+		if systemConfigRoot != "" {
+			v.AddConfigPath(filepath.Join(systemConfigRoot, "{{.Name}}"))
+		}
+	}
+	if err := v.ReadInConfig(); err != nil {
+		var notFound viper.ConfigFileNotFoundError
+		if cli.Config != "" || !errors.As(err, &notFound) {
+			return nil, err
+		}
+	}
+	if cli.Verbose != nil {
+		v.Set("verbose", *cli.Verbose)
+	}
+	if cli.Quiet != nil {
+		v.Set("quiet", *cli.Quiet)
+	}
+	return v, nil
+}
+{{- end }}

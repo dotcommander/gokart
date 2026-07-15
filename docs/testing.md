@@ -2,20 +2,21 @@
 
 ```go
 var out bytes.Buffer
-cmd := NewCounterCmd(func() *app.Context { return testContext })
-cmd.SetOut(&out)
-cmd.SetErr(&out)
-cmd.SetArgs([]string{"--by", "2"})
-if err := cmd.Execute(); err != nil { t.Fatal(err) }
+var cli CLI
+parser, err := kong.New(&cli, kong.Writers(&out, &out), kong.BindTo(t.Context(), (*context.Context)(nil)))
+if err != nil { t.Fatal(err) }
+parsed, err := parser.Parse([]string{"counter", "--by", "2"})
+if err != nil { t.Fatal(err) }
+if err := parsed.Run(testContext); err != nil { t.Fatal(err) }
 ```
 
-Write command results through `cmd.OutOrStdout()` and diagnostics through `cmd.ErrOrStderr()`. Cobra then lets tests replace both streams. GoKart's process-stream styling helpers remain available when terminal-global output is intentional.
+Write command results through `*kong.Context.Stdout` and diagnostics through `*kong.Context.Stderr`. Construct the parser with `kong.Writers` so tests replace both streams without mutating process globals.
 
 ## Command and action tests
 
-Construct the smallest command, inject a test context, set arguments, and assert the buffer and returned error. Do not call `main`: it owns `os.Exit` and sits outside unit tests. For root configuration, construct the root, call `SetArgs`, and use a temporary config file plus `t.Setenv`.
+Construct the smallest typed command tree, parse an explicit argument slice, pass dependencies to `parsed.Run`, and assert the buffer and returned error. Do not call `main`: it owns `os.Exit` and sits outside unit tests. For root configuration, construct the root and use a temporary config file plus injected or test-scoped environment state.
 
-Test actions as ordinary Go. Pass typed input and the narrowest dependency, then cover validation, success, and failure without Cobra. The generated greet test demonstrates this boundary.
+Test actions as ordinary Go. Pass typed input and the narrowest dependency, then cover validation, success, and failure without Kong. The generated greet test demonstrates this boundary.
 
 ## Temporary SQLite
 

@@ -12,54 +12,63 @@ var markdownLink = regexp.MustCompile(`\[[^]]+\]\(([^)]+)\)`)
 
 func TestRelativeMarkdownLinksResolve(t *testing.T) {
 	err := filepath.WalkDir("..", func(path string, entry os.DirEntry, err error) error {
-		if entry != nil && entry.IsDir() && strings.HasPrefix(entry.Name(), ".") && path != ".." {
-			return filepath.SkipDir
-		}
-		if err != nil || entry.IsDir() || filepath.Ext(path) != ".md" {
-			return err
-		}
-		data, readErr := os.ReadFile(path)
-		if readErr != nil {
-			return readErr
-		}
-		var prose strings.Builder
-		inFence := false
-		for _, line := range strings.Split(string(data), "\n") {
-			if strings.HasPrefix(strings.TrimSpace(line), "```") {
-				inFence = !inFence
-				continue
-			}
-			if !inFence {
-				prose.WriteString(stripInlineCode(line))
-				prose.WriteByte('\n')
-			}
-		}
-		for _, match := range markdownLink.FindAllStringSubmatch(prose.String(), -1) {
-			target := match[1]
-			if strings.HasPrefix(target, "http://") || strings.HasPrefix(target, "https://") || strings.HasPrefix(target, "/") {
-				continue
-			}
-			file, anchor, _ := strings.Cut(target, "#")
-			if file == "" {
-				targetPath := path
-				if anchor != "" && !markdownHasAnchor(t, targetPath, anchor) {
-					t.Errorf("%s has broken anchor %q", path, target)
-				}
-				continue
-			}
-			targetPath := filepath.Join(filepath.Dir(path), filepath.FromSlash(file))
-			if _, statErr := os.Stat(targetPath); statErr != nil {
-				t.Errorf("%s has broken link %q", path, target)
-				continue
-			}
-			if anchor != "" && !markdownHasAnchor(t, targetPath, anchor) {
-				t.Errorf("%s has broken anchor %q", path, target)
-			}
-		}
-		return nil
+		return checkMarkdownFileLinks(t, path, entry, err)
 	})
 	if err != nil {
 		t.Fatal(err)
+	}
+}
+
+func checkMarkdownFileLinks(t *testing.T, path string, entry os.DirEntry, walkErr error) error {
+	t.Helper()
+	if entry != nil && entry.IsDir() && strings.HasPrefix(entry.Name(), ".") && path != ".." {
+		return filepath.SkipDir
+	}
+	if walkErr != nil || entry.IsDir() || filepath.Ext(path) != ".md" {
+		return walkErr
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	for _, match := range markdownLink.FindAllStringSubmatch(markdownProse(data), -1) {
+		checkMarkdownLink(t, path, match[1])
+	}
+	return nil
+}
+
+func markdownProse(data []byte) string {
+	var prose strings.Builder
+	inFence := false
+	for _, line := range strings.Split(string(data), "\n") {
+		if strings.HasPrefix(strings.TrimSpace(line), "```") {
+			inFence = !inFence
+			continue
+		}
+		if !inFence {
+			prose.WriteString(stripInlineCode(line))
+			prose.WriteByte('\n')
+		}
+	}
+	return prose.String()
+}
+
+func checkMarkdownLink(t *testing.T, sourcePath, target string) {
+	t.Helper()
+	if strings.HasPrefix(target, "http://") || strings.HasPrefix(target, "https://") || strings.HasPrefix(target, "/") {
+		return
+	}
+	file, anchor, _ := strings.Cut(target, "#")
+	targetPath := sourcePath
+	if file != "" {
+		targetPath = filepath.Join(filepath.Dir(sourcePath), filepath.FromSlash(file))
+		if _, err := os.Stat(targetPath); err != nil {
+			t.Errorf("%s has broken link %q", sourcePath, target)
+			return
+		}
+	}
+	if anchor != "" && !markdownHasAnchor(t, targetPath, anchor) {
+		t.Errorf("%s has broken anchor %q", sourcePath, target)
 	}
 }
 
@@ -151,7 +160,7 @@ func TestGettingStartedCommandsMatchCLIPathRules(t *testing.T) {
 	}
 	for _, command := range []string{
 		"gokart new mycli --db sqlite --example",
-		"gokart new service --global",
+		"gokart new service --structured --global",
 		`gokart new "$PWD" --verify-only`,
 	} {
 		if !strings.Contains(doc, command) {

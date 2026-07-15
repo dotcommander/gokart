@@ -1,7 +1,7 @@
 # GoKart documentation
 
 ```bash
-go install github.com/dotcommander/gokart/cmd/gokart@v0.11.0
+go install github.com/dotcommander/gokart/cmd/gokart@v0.12.0
 gokart new mycli --db sqlite --example
 ```
 

@@ -5,7 +5,7 @@ Scaffold new Go CLI projects and add integrations without re-scaffolding.
 ## Install
 
 ```bash
-go install github.com/dotcommander/gokart/cmd/gokart@v0.11.0
+go install github.com/dotcommander/gokart/cmd/gokart@v0.12.0
 ```
 
 The explicit version keeps installation reproducible.
@@ -26,8 +26,11 @@ gokart create <project-name>            # alias for new
 ### Basic Examples
 
 ```bash
-# Structured project (default)
+# Flat single-file project (default)
 gokart new mycli
+
+# Explicit multi-package project
+gokart new mycli --structured
 
 # Explicit preset form — same output as above
 gokart new cli mycli
@@ -51,20 +54,25 @@ gokart new mycli --verify-only
 gokart new mycli --dry-run --json
 ```
 
-### Presets: Structured vs. Flat
+### Automatic Layout Selection
 
-**Structured** (default) creates a multi-package project with a `cmd/` entry point and `internal/` packages. Plain structured scaffolds are local-only and unmanaged by default: no global config bootstrap and no `.gokart-manifest.json`.
+**Flat** is the default for plain, `--example`, `--local`, and `--global` scaffolds. It creates a single `main.go`. `--flat` remains available as an explicit assertion.
 
-**Flat** (`--flat`) creates a single `main.go` file. Useful for quick scripts. Combining `--flat` with integration flags (`--db sqlite`, `--db postgres`, `--ai`, `--redis`) is an error — flat projects don't support integrations.
+**Structured** creates a `cmd/` entry point plus `internal/` packages. Select it explicitly with `--structured`, or implicitly by adding SQLite, PostgreSQL, AI, or Redis. Combining `--flat` with `--structured` or any integration is an error; an explicit flat selection is never overridden.
 
 ```bash
-gokart new mycli            # structured
-gokart new mycli --flat     # flat single-file
+gokart new mycli                         # flat single-file
+gokart new mycli --example               # flat with greet example
+gokart new mycli --structured            # structured
+gokart new mycli --db sqlite             # structured automatically
+gokart new mycli --structured --global   # managed and compatible with add
 ```
+
+Configuration scope does not choose the layout. A default-flat global scaffold is managed and has a manifest, but `gokart add` rejects flat manifests. Use `--structured --global` when later integration updates matter. `--no-manifest` preserves whichever layout was selected while omitting management metadata.
 
 ### Generated File Tree
 
-#### Structured (default)
+#### Structured (`--structured` or any integration)
 
 ```
 mycli/
@@ -74,11 +82,11 @@ mycli/
 │   └── main.go                        # Entry point
 ├── internal/
 │   └── commands/
-│       └── root.go                    # Cobra root command
+│       └── root.go                    # Kong command tree and dependency binding
 └── go.mod
 ```
 
-With `--global` or an integration flag, `gokart new` writes `.gokart-manifest.json` so `gokart add` can safely patch generated wiring later. `--global` also adds `internal/app/config.go`. Integration flags add `internal/app/context.go`.
+With `--global` or an integration flag, `gokart new` writes `.gokart-manifest.json`. Structured manifests let `gokart add` safely patch generated wiring later; flat manifests record the scaffold but are rejected by `add`. `--global` adds config bootstrap code. Integration flags add `internal/app/context.go`.
 
 With `--example`:
 
@@ -91,12 +99,14 @@ internal/
     └── greet_test.go                  # Example test
 ```
 
-#### Flat (`--flat`)
+#### Flat (default)
 
 ```
 mycli/
+├── .gitignore
+├── README.md
+├── go.mod
 ├── main.go
-└── go.mod
 ```
 
 ### Integration Flags
@@ -131,13 +141,13 @@ Controls whether the generated project bootstraps `config.yaml` under the platfo
 
 The shorthand flags `--local` and `--global` are aliases for `--config-scope local` and `--config-scope global`. They cannot be used together, and cannot be combined with `--config-scope`.
 
-The default scope is `local` in both structured and flat mode. Use `--global` when you want generated config-dir bootstrap code.
+The default scope is `local` in both structured and flat mode. Use `--global` when you want generated config-dir bootstrap code. Scope never forces structured mode.
 
 ### Manifest
 
-Plain CLI scaffolds do not write `.gokart-manifest.json`. Gokart writes the manifest only when the scaffold uses managed features: `--global`, `--db sqlite`, `--db postgres`, `--ai`, or `--redis`.
+Plain CLI scaffolds do not write `.gokart-manifest.json`. GoKart writes the manifest only when the scaffold uses managed features: `--global`, `--db sqlite`, `--db postgres`, `--ai`, or `--redis`.
 
-Use `--no-manifest` to suppress the manifest even for managed scaffolds. Without a manifest, `gokart add` cannot safely patch integrations into that project later.
+Use `--no-manifest` to suppress the manifest even for managed scaffolds. It does not change the resolved layout. Without a manifest, `gokart add` cannot safely patch integrations into that project later. Because `add` only supports structured projects, choose `--structured --global` rather than plain `--global` when you plan to add integrations later.
 
 ### Conflict Handling
 
@@ -162,7 +172,7 @@ When the target directory already exists and contains files, `gokart new` checks
 
 Normal flat, SQLite, AI, global, and integration-free scaffolds verify automatically. PostgreSQL and Redis skip automatic verification because they may require network services; use `--verify` to force it. `GOKART_AUTO_VERIFY=0` disables automatic verification for build pipelines that verify separately.
 
-`--verify-only` cannot be combined with `--dry-run`. Generation flags (`--flat`, `--db`, `--ai`, `--redis`, `--example`, `--config-scope`, `--force`, `--skip-existing`, `--no-manifest`) are ignored when `--verify-only` is set.
+`--verify-only` cannot be combined with `--dry-run`. Generation flags (`--flat`, `--structured`, `--db`, `--ai`, `--redis`, `--example`, `--config-scope`, `--force`, `--skip-existing`, `--no-manifest`) are ignored when `--verify-only` is set.
 
 When `--dry-run --verify` is used together, the scaffolder writes to a temporary directory, verifies, then removes it. No files are written to the target.
 
@@ -170,7 +180,8 @@ When `--dry-run --verify` is used together, the scaffolder writes to a temporary
 
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
-| `--flat` | bool | false | Single `main.go` instead of structured layout |
+| `--flat` | bool | false | Explicitly require the flat `main.go` layout |
+| `--structured` | bool | false | Explicitly require the multi-package layout |
 | `--module` | string | project name | Go module path |
 | `--db` | string | `none` | Database backend: `sqlite`, `postgres`, or `none` |
 | `--ai` | bool | false | Add OpenAI client wiring |
@@ -258,10 +269,10 @@ Use `--dry-run` to preview which files would be created or overwritten before co
 
 | Integration | Packages fetched via `go get` |
 |-------------|-------------------------------|
-| `sqlite` | `github.com/dotcommander/gokart/sqlite@v0.11.0` |
-| `postgres` | `github.com/dotcommander/gokart/postgres@v0.11.0`, `github.com/jackc/pgx/v5@v5.10.0` |
-| `ai` | `github.com/openai/openai-go/v3@v3.41.0` |
-| `redis` | `github.com/dotcommander/gokart/cache@v0.11.0`, `github.com/redis/go-redis/v9@v9.21.0` |
+| `sqlite` | `github.com/dotcommander/gokart/sqlite@v0.12.0` |
+| `postgres` | `github.com/dotcommander/gokart/postgres@v0.12.0`, `github.com/jackc/pgx/v5@v5.10.0`, `github.com/pressly/goose/v3@v3.27.2` |
+| `ai` | `github.com/openai/openai-go/v3@v3.42.0` |
+| `redis` | `github.com/dotcommander/gokart/cache@v0.12.0`, `github.com/redis/go-redis/v9@v9.21.0` |
 
 ### All `gokart add` Flags
 
@@ -288,7 +299,7 @@ gokart config show
 Output:
 
 ```
-Version:     v0.11.0
+Version:     v0.12.0
 Config dir:  /Users/you/Library/Application Support
 Binary:      /Users/you/go/bin/gokart
 ```
@@ -326,10 +337,10 @@ Useful for debugging when multiple gokart binaries exist or when verifying the i
 ```json
 {
   "version": 2,
-  "generator": "gokart/v0.11.0",
+  "generator": "gokart",
+  "generator_version": "v0.12.0",
   "template_root": "templates/structured",
   "existing_file_policy": "fail",
-  "generated_at": "2026-03-01T12:00:00Z",
   "mode": "structured",
   "module": "github.com/myorg/mycli",
   "use_global": true,
@@ -368,7 +379,7 @@ Example for `gokart new ./mycli --module github.com/myorg/mycli --no-verify --js
   "outcome": "success",
   "exit_code": 0,
   "preset": "cli",
-  "mode": "structured",
+  "mode": "flat",
   "project_name": "mycli",
   "target_dir": "./mycli",
   "module": "github.com/myorg/mycli",
@@ -382,7 +393,7 @@ Example for `gokart new ./mycli --module github.com/myorg/mycli --no-verify --js
   "verify_passed": false,
   "existing_file_policy": "fail",
   "result": {
-    "created": [".gitignore", "README.md", "cmd/main.go", "go.mod", "internal/commands/root.go"],
+    "created": [".gitignore", "README.md", "go.mod", "main.go"],
     "overwritten": [],
     "skipped": [],
     "unchanged": []
@@ -449,7 +460,8 @@ On failure the object includes `error_code` and `error`:
 
 | Flag | Short | Default | Description |
 |------|-------|---------|-------------|
-| `--flat` | | false | Single `main.go` layout |
+| `--flat` | | false | Explicitly require the flat `main.go` layout |
+| `--structured` | | false | Explicitly require the multi-package layout |
 | `--module` | | project name | Go module path |
 | `--db` | | `none` | Database backend: `sqlite`, `postgres`, or `none` |
 | `--ai` | | false | OpenAI client wiring |

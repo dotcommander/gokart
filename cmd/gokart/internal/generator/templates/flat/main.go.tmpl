@@ -1,0 +1,72 @@
+package main
+
+import (
+	"context"
+	"fmt"
+	"os"
+{{- if .UseGlobal }}
+
+	"github.com/dotcommander/gokart"
+{{- end }}
+
+	"github.com/alecthomas/kong"
+)
+{{- if .UseGlobal }}
+
+const defaultConfig = `# {{.Name}} configuration
+# Run: {{.Name}} --help
+`
+{{- end }}
+
+var version = "dev"
+
+type CLI struct {
+	Version kong.VersionFlag `name:"version" help:"Print version information and quit."`
+{{- if .IncludeExample }}
+	Greet GreetCommand `cmd:"" help:"Greet someone."`
+{{- end }}
+}
+{{- if .IncludeExample }}
+
+type GreetCommand struct {
+	Name string `short:"n" default:"World" help:"Name to greet."`
+	Loud bool   `short:"l" help:"Greet loudly."`
+}
+
+func (c *GreetCommand) Run(kctx *kong.Context) error {
+	msg := "Hello, " + c.Name
+	if c.Loud {
+		msg = "HELLO, " + c.Name + "!"
+	}
+	fmt.Fprintln(kctx.Stdout, msg)
+	return nil
+}
+{{- end }}
+
+func run(ctx context.Context) error {
+	var cli CLI
+	parser, err := kong.New(&cli, kong.Name("{{.Name}}"), kong.Description("{{.Name}} CLI"), kong.Vars{"version": version}, kong.UsageOnError(), kong.BindTo(ctx, (*context.Context)(nil)))
+	if err != nil {
+		return err
+	}
+	parsed, err := parser.Parse(os.Args[1:])
+	if err != nil {
+		return err
+	}
+	if len(os.Args) == 1 {
+		return parsed.PrintUsage(false)
+	}
+{{- if .UseGlobal }}
+	if err := gokart.EnsureConfigDir("{{.Name}}", []byte(defaultConfig)); err != nil {
+		return err
+	}
+{{- end }}
+	return parsed.Run()
+}
+
+func main() {
+	if err := run(context.Background()); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+}

@@ -29,7 +29,7 @@ func TestPhilosophyBoundary(t *testing.T) {
 		}
 	}
 
-	err := filepath.WalkDir("cmd/gokart/templates", func(path string, entry os.DirEntry, err error) error {
+	err := filepath.WalkDir("cmd/gokart/internal/generator/templates", func(path string, entry os.DirEntry, err error) error {
 		if err != nil || entry.IsDir() {
 			return err
 		}

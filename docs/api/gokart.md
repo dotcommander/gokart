@@ -16,7 +16,7 @@ The root module owns typed configuration parsing, platform configuration directo
 ## Install
 
 ```bash
-go get github.com/dotcommander/gokart@v0.11.0
+go get github.com/dotcommander/gokart@v0.12.0
 ```
 
 ## Parse a configuration map
@@ -102,7 +102,7 @@ State files are for small CLI state. Use a database or purpose-built store for c
 
 | Module | Purpose |
 |---|---|
-| [`gokart/cli`](cli.md) | Cobra application construction and terminal presentation |
+| [`gokart/cli`](cli.md) | Cobra construction for ecosystem-style CLIs and terminal presentation |
 | [`gokart/cache`](../components/cache.md) | Redis construction, prefixes, JSON, and Remember |
 | [`gokart/web`](../components/web.md) | HTTP setup, bounded binding, responses, and validation |
 | [`gokart/postgres`](../components/postgres.md) | pgx pool setup and transactions |

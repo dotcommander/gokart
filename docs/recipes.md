@@ -1,21 +1,28 @@
 # Recipes
 
 ```go
-cmd := &cobra.Command{Use: "list", RunE: func(cmd *cobra.Command, _ []string) error {
-	_, err := fmt.Fprintln(cmd.OutOrStdout(), "no items")
+type ListCommand struct{}
+
+func (ListCommand) Run(ctx *kong.Context) error {
+	_, err := fmt.Fprintln(ctx.Stdout, "no items")
 	return err
-}}
+}
 ```
 
 Use command-owned writers so tests can capture output. Keep parsing and presentation in commands; pass typed input to actions or services.
 
 ## Commands, flags, and configuration
 
-Create a command constructor in `internal/commands`, then register it with `cliApp.AddCommand`. Bind flags on that command:
+Create a typed command in `internal/commands`, then register it as a field on the root `CLI`. Struct tags define flags:
 
 ```go
-limit := 20
-cmd.Flags().IntVarP(&limit, "limit", "n", 20, "maximum rows")
+type ListCommand struct {
+	Limit int `short:"n" default:"20" help:"Maximum rows."`
+}
+
+type CLI struct {
+	List ListCommand `cmd:"" help:"List notes."`
+}
 ```
 
 Generated configuration comes from the `*viper.Viper` passed to `app.New`:
@@ -25,7 +32,7 @@ v.SetDefault(app.AppConfigKeyDBPath, "notes.db")
 path := v.GetString(app.AppConfigKeyDBPath)
 ```
 
-The generated environment prefix maps `NOTES_DB_PATH` to `db_path`. `--config` comes from `WithStandardFlags`. For standalone typed files, use `gokart.LoadConfigWithDefaults(defaults, "config.yaml")`.
+The generated environment prefix maps `NOTES_DB_PATH` to `db_path`. The typed root `Config` field provides `--config`. For standalone typed files, use `gokart.LoadConfigWithDefaults(defaults, "config.yaml")`.
 
 ## SQLite transaction and migrations
 
