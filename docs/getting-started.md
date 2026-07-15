@@ -1,198 +1,218 @@
-# Build an offline SQLite CLI
+# Build a TV guide CLI
+
+Install the tagged CLI:
 
 ```bash
-go install github.com/dotcommander/gokart/cmd/gokart@v0.12.0
-gokart new counter --module example.com/counter --db sqlite --example
-cd counter
-go run ./cmd greet --name Ada
+go install github.com/dotcommander/gokart/cmd/gokart@v0.13.0
+gokart new tvguide --example
+cd tvguide
+go run . greet --name World
 ```
 
-You now have a verified, file-backed CLI with no external service. This tutorial adds a persistent `counter` command while preserving the generated ownership boundaries.
+You now have a small, verified CLI in one package. This tutorial turns the
+generated `greet` example into an offline TV guide using only deterministic
+fixture data and the Go standard library.
 
-## 1. Understand the lifecycle
+## 1. Start with the generated example
 
-```text
-cmd/main.go                         sole process-exit boundary
-internal/commands/root.go           Kong tree and dependency initialization
-internal/commands/greet.go          flags and presentation
-internal/actions/greet.go           testable application behavior
-internal/app/context.go             shared dependencies and cleanup
-.gokart-manifest.json               generated hashes and integrations
-```
+The flat scaffold keeps everything in `main.go`. Its `run` function accepts an
+argument slice and output writers, so command tests do not need to replace
+`os.Args`, `os.Stdout`, or `os.Stderr`.
 
-`main` calls `commands.Execute` and alone converts an error into `os.Exit(1)`. `Execute` parses the typed Kong command tree, loads configuration, creates `app.Context`, and defers `Context.Close` so SQLite is released. It then calls `parsed.Run(appCtx)`, which binds the context to command `Run` methods that request it.
-
-Keep flags and output in `internal/commands`. Put business operations in `internal/actions` or a service package.
-
-## 2. Add typed configuration
-
-The scaffold defines `app.AppConfigKeyDBPath` and reads `db_path`. In `internal/commands/root.go`, set an explicit default in `loadConfig` before `app.New` runs:
-
-```go
-v.SetDefault(app.AppConfigKeyDBPath, "counter.db")
-```
-
-The generated Viper setup maps `COUNTER_DB_PATH` to `db_path`. The typed root fields provide `--config`, `--verbose`, and `--quiet`. Without this default, the generated context places the database under the platform cache directory.
-
-## 3. Create and run a migration
+Run the generated test and command before changing them:
 
 ```bash
-go get github.com/dotcommander/gokart/migrate@v0.12.0
-mkdir -p migrations
+go test ./...
+go run . greet --name World
 ```
 
-Create `migrations/00001_create_counter.sql`:
+## 2. Rename `greet` to `now`
 
-```sql
--- +goose Up
-CREATE TABLE counters (
-    name TEXT PRIMARY KEY,
-    value INTEGER NOT NULL DEFAULT 0
-);
-
--- +goose Down
-DROP TABLE counters;
-```
-
-In `internal/app/context.go`, after `sqlite.Open` succeeds, run it before assigning `appCtx.DB`:
-
-```go
-if err := migrate.Up(ctx, db, migrate.Config{
-	Dir: "migrations", Dialect: "sqlite3",
-}); err != nil {
-	_ = db.Close()
-	return nil, fmt.Errorf("migrate database: %w", err)
-}
-appCtx.DB = db
-```
-
-Import `fmt` and `github.com/dotcommander/gokart/migrate`. File migrations resolve from the working directory. For a binary that runs anywhere, embed the directory and set `Config.FS`; see [migrations](components/migrate.md).
-
-## 4. Add a transactional action
-
-Create `internal/actions/counter.go`:
-
-```go
-package actions
-
-import (
-	"context"
-	"database/sql"
-	"fmt"
-
-	"github.com/dotcommander/gokart/sqlite"
-)
-
-func Increment(ctx context.Context, db *sql.DB, name string, by int64) (int64, error) {
-	var value int64
-	err := sqlite.Transaction(ctx, db, func(tx *sql.Tx) error {
-		_, err := tx.ExecContext(ctx, `
-			INSERT INTO counters(name, value) VALUES (?, ?)
-			ON CONFLICT(name) DO UPDATE SET value = value + excluded.value`, name, by)
-		if err != nil { return fmt.Errorf("increment counter: %w", err) }
-		return tx.QueryRowContext(ctx,
-			`SELECT value FROM counters WHERE name = ?`, name).Scan(&value)
-	})
-	return value, err
-}
-```
-
-The action owns the transactional write and query. It accepts the narrow `*sql.DB` dependency rather than the entire application context.
-
-## 5. Add the `counter` command
-
-Create `internal/commands/counter.go`:
-
-```go
-package commands
-
-import (
-	"context"
-	"fmt"
-
-	"example.com/counter/internal/actions"
-	"example.com/counter/internal/app"
-	"github.com/alecthomas/kong"
-)
-
-type CounterCommand struct {
-	Name string `arg:"" optional:"" help:"Counter name."`
-	By   int64  `default:"1" help:"Amount to add."`
-}
-
-func (c *CounterCommand) Run(kctx *kong.Context, ctx context.Context, appCtx *app.Context) error {
-	name := c.Name
-	if name == "" { name = "default" }
-	value, err := actions.Increment(ctx, appCtx.DB, name, c.By)
-	if err != nil { return err }
-	appCtx.Log.Info("counter incremented", "name", name, "value", value)
-	_, err = fmt.Fprintln(kctx.Stdout, value)
-	return err
-}
-```
-
-Register it beside the generated greet command in the root `CLI` type:
+In `main.go`, rename the root field and command type:
 
 ```go
 type CLI struct {
-	// existing fields...
-	Greet   GreetCommand   `cmd:"" help:"Greet someone."`
-	Counter CounterCommand `cmd:"" help:"Increment a persistent counter."`
+	Version kong.VersionFlag `name:"version" help:"Print version information and quit."`
+	Now     NowCommand       `cmd:"" help:"Show programs airing now."`
+}
+
+type NowCommand struct{}
+```
+
+The CLI now reads naturally:
+
+```bash
+go run . now
+```
+
+## 3. Introduce a schedule
+
+Represent each listing with a small value and keep the tutorial data fixed:
+
+```go
+type Program struct {
+	Channel string
+	Starts  string
+	Title   string
+}
+
+var schedule = []Program{
+	{Channel: "WGBH", Starts: "8:00 PM", Title: "Nature: Wild Coast"},
+	{Channel: "WGBX", Starts: "8:00 PM", Title: "The Great British Bake Off"},
+	{Channel: "WCVB", Starts: "8:30 PM", Title: "Chronicle"},
 }
 ```
 
-No command-specific assignment is required. The existing `parsed.Run(appCtx)` call supplies the shared dependency to every `Run` method that requests `*app.Context`.
+Fixture data keeps output and tests repeatable. Loading real listings is a
+separate integration decision.
 
-Run the complete path:
+## 4. Render with `text/tabwriter`
 
-```bash
-go run ./cmd counter
-go run ./cmd counter build --by 3
-go run ./cmd counter build
-```
-
-Command results use `kctx.Stdout`, so tests can capture output through `kong.Writers`. Operational details go to `appCtx.Log`.
-
-## 6. Add state and tests
-
-Use SQLite for the counters. For a small preference such as the last selected name, use typed state:
+Use the standard library to align columns without owning terminal layout code:
 
 ```go
-type UIState struct { LastCounter string `json:"last_counter"` }
-err := gokart.SaveState("counter", "state.json", UIState{LastCounter: name})
+func writePrograms(w io.Writer, programs []Program) error {
+	tw := tabwriter.NewWriter(w, 0, 4, 2, ' ', 0)
+	if _, err := fmt.Fprintln(tw, "CHANNEL\tSTARTS\tPROGRAM"); err != nil {
+		return err
+	}
+	for _, program := range programs {
+		if _, err := fmt.Fprintf(tw, "%s\t%s\t%s\n", program.Channel, program.Starts, program.Title); err != nil {
+			return err
+		}
+	}
+	return tw.Flush()
+}
 ```
 
-`SaveState` publishes atomically under the platform user configuration directory; it is not a replacement for transactional domain data.
+Return writer errors. A CLI can then report a closed pipe or failed redirected
+write instead of silently claiming success.
 
-Test the action with `sqlite.OpenContext(t.Context(), filepath.Join(t.TempDir(), "test.db"))`, apply the same migration, call `Increment`, and assert the returned values. Test the command with explicit arguments, `kong.Writers`, and a test `app.Context`. See [testing](testing.md) for complete patterns.
+## 5. Add `--channel`
 
-## 7. Build and run
+Add an optional filter to `NowCommand` and keep the selection logic explicit:
+
+```go
+type NowCommand struct {
+	Channel string `short:"c" help:"Only show this channel."`
+}
+
+func (c *NowCommand) Run(kctx *kong.Context) error {
+	programs := schedule
+	if c.Channel != "" {
+		programs = programsForChannel(schedule, c.Channel)
+		if len(programs) == 0 {
+			return fmt.Errorf("no programs found for channel %q", c.Channel)
+		}
+	}
+	return writePrograms(kctx.Stdout, programs)
+}
+
+func programsForChannel(programs []Program, channel string) []Program {
+	selected := make([]Program, 0, len(programs))
+	for _, program := range programs {
+		if strings.EqualFold(program.Channel, channel) {
+			selected = append(selected, program)
+		}
+	}
+	return selected
+}
+```
+
+Remove the generated `Name` and `Loud` fields and the greeting body. Add
+`io`, `strings`, and `text/tabwriter` to the existing imports. Keep the generated
+`run` and `main` functions unchanged.
+
+The complete implementation is compiled in
+[`examples/cli-app/main.go`](../examples/cli-app/main.go). Its command filters
+case-insensitively and returns an error when a requested channel has no listing.
 
 ```bash
-go mod tidy
+go run . now --channel WGBH
+```
+
+Expected output:
+
+```text
+CHANNEL  STARTS   PROGRAM
+WGBH     8:00 PM  Nature: Wild Coast
+```
+
+## 6. Test arguments and output directly
+
+Keep `main` as the process boundary. Replace the generated greeting test with a
+command-boundary test:
+
+```go
+package main
+
+import (
+	"bytes"
+	"strings"
+	"testing"
+)
+
+func TestRunFiltersByChannel(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	err := run(t.Context(), []string{"now", "--channel", "WGBH"}, &stdout, &stderr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := stdout.String(); !strings.Contains(got, "Nature: Wild Coast") || strings.Contains(got, "Chronicle") {
+		t.Fatalf("unexpected output:\n%s", got)
+	}
+}
+```
+
+The repository example also covers no-argument usage, invalid commands, full
+dispatch, exact filtered output, and writer failures. From a GoKart source
+checkout, run it independently:
+
+```bash
+cd examples/cli-app
+GOWORK=off go test ./...
+```
+
+## 7. Build the named binary
+
+Back in the generated `tvguide` directory:
+
+```bash
 go test ./...
-go build -o counter ./cmd
-./counter greet --name Ada
-./counter counter release --by 2
+go build -o tvguide .
+./tvguide now
+./tvguide now --channel WGBH
 ```
 
-The new command and action files are application-owned. `gokart add` may rewrite `internal/app/context.go` and `internal/commands/root.go`; read [generated-code ownership](generated-code.md) before further customization.
+Flat projects build from `.`. Structured projects use `./cmd`, but this tutorial
+stays with the default single-package layout.
 
-## Expand into a service
+## 8. Choose the next input boundary
 
-- PostgreSQL: `gokart add postgres`, configure `DATABASE_URL`, and adapt repositories to `*pgxpool.Pool`.
-- HTTP: add the `web` module, bounded validated handlers, and graceful shutdown.
-- Redis: `gokart add redis`, configure `REDIS_ADDR`, then use `Cache.Client()` and `Cache.Key()`.
-- OpenAI: `gokart add ai`, configure `OPENAI_API_KEY`, and call the official SDK client in `app.Context`.
+Keep `Program` and `writePrograms` unchanged while replacing only the fixture
+loader.
 
-Use the [recipes](recipes.md) and [full-service example](examples/README.md#service-composition) rather than creating a second application architecture.
+For a local export, decode a JSON array from a bounded reader:
 
-## Other verified generator flows
-
-```bash
-gokart new mycli --db sqlite --example
-gokart new service --structured --global
-gokart new "$PWD" --verify-only
+```go
+decoder := json.NewDecoder(io.LimitReader(file, 1<<20))
+if err := decoder.Decode(&programs); err != nil {
+	return fmt.Errorf("decode schedule: %w", err)
+}
 ```
 
-The first is the short form of this tutorial scaffold and selects structured mode because SQLite is an integration. The second explicitly combines a structured layout with platform-global configuration so it remains compatible with `gokart add`. The third runs `go mod tidy` and `go test ./...` against an existing target without scaffolding.
+For an HTTP source, make cancellation part of the request boundary:
+
+```go
+req, err := http.NewRequestWithContext(ctx, http.MethodGet, sourceURL, nil)
+if err != nil {
+	return fmt.Errorf("create schedule request: %w", err)
+}
+resp, err := client.Do(req)
+```
+
+Provider selection, credentials, licensing, caching, and live listings are
+intentionally outside this beginner path. When the CLI needs managed
+integrations, start that project with `--structured`; see the
+[generator reference](components/generator.md) and the separate
+[SQLite CLI tutorial](sqlite-cli.md).

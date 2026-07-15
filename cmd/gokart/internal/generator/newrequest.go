@@ -14,6 +14,7 @@ type newRequest struct {
 	Mode               string
 	ProjectName        string
 	TargetDir          string
+	DisplayDir         string
 	Module             string
 	ConfigScope        string
 	UseSQLite          bool
@@ -51,6 +52,7 @@ func buildNewRequest(cmd *CreateRequest, args ...[]string) (newRequest, error) {
 		return req, err
 	}
 	req.ProjectName = projectName
+	req.DisplayDir = filepath.Clean(targetDir)
 	if !filepath.IsAbs(targetDir) && cmd.WorkingDir != "" {
 		targetDir = filepath.Join(cmd.WorkingDir, targetDir)
 	}
@@ -130,6 +132,9 @@ func finishGenerationRequest(req newRequest, cmd *CreateRequest) (newRequest, er
 	}
 	req.UseGlobal = useGlobal
 	req.Warnings = append(req.Warnings, warnings...)
+	if req.Mode == modeFlat && cmd.NoManifest {
+		req.Warnings = append(req.Warnings, "--no-manifest has no effect: flat projects are already unmanaged")
+	}
 	req.WriteManifest = resolveWriteManifest(req, cmd.NoManifest)
 	req.ExistingFilePolicy, err = resolveExistingFilePolicy(cmd.Force, cmd.SkipExisting)
 	if err != nil {
@@ -146,11 +151,7 @@ func finishGenerationRequest(req newRequest, cmd *CreateRequest) (newRequest, er
 }
 
 func resolveWriteManifest(req newRequest, noManifest bool) bool {
-	if noManifest {
-		return false
-	}
-
-	return req.UseGlobal || req.UseSQLite || req.UsePostgres || req.UseAI || req.UseRedis
+	return req.Mode == modeStructured && !noManifest
 }
 
 func verifyOnlyIgnoredFlags(cmd *CreateRequest) []string {

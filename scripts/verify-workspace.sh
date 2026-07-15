@@ -97,54 +97,105 @@ verify_standalone_examples() {
     done
 }
 
+prepare_local_generated_module() {
+    local target="$1"
+    local module="$2"
+    local local_module module_path
+
+    mkdir -p "$target"
+    (cd "$target" && GOWORK=off go mod init "$module" >/dev/null)
+    for local_module in "${workspace_modules[@]}"; do
+        module_path="$(awk '$1 == "module" { print $2; exit }' "$local_module/go.mod")"
+        (cd "$target" && GOWORK=off go mod edit -replace="$module_path=$repo_root/$local_module")
+    done
+}
+
 verify_generated_projects() {
     binary="$verify_home/gokart"
     GOCACHE="$verify_gocache" go build -o "$binary" ./cmd/gokart
 
     cases=(
-        "flat|"
-        "structured|--structured"
-        "global|--structured --global"
-        "sqlite|--db sqlite"
-        "postgres|--db postgres"
-        "ai|--ai"
-        "redis|--redis"
+        "flat|||flat"
+        "flat-example|--example|example|flat"
+        "flat-global-example|--global --example|example|flat"
+        "structured|--structured||structured"
+        "structured-example|--structured --example|example|structured"
+        "structured-global-example|--structured --global --example|example|structured"
+        "structured-unmanaged|--structured --no-manifest||structured"
+        "sqlite|--db sqlite||structured"
+        "postgres|--db postgres||structured"
+        "ai|--ai||structured"
+        "redis-example|--redis --example|example|structured"
+        "combo-example|--db postgres --ai --redis --example|example|structured"
     )
     for entry in "${cases[@]}"; do
-        name="${entry%%|*}"
-        flags="${entry#*|}"
+        IFS='|' read -r name flags example layout <<< "$entry"
         target="$verify_home/generated-$name"
         echo "== generated project $name =="
-        HOME="$verify_home" GOCACHE="$verify_gocache" "$binary" new "$target" --no-verify $flags >/dev/null 2>&1
+        # Preserve a local-only go.mod so pending release versions resolve from
+        # this checkout before their public tags exist.
+        prepare_local_generated_module "$target" "generated-$name"
+        HOME="$verify_home" GOCACHE="$verify_gocache" "$binary" new "$target" --no-verify --skip-existing $flags >/dev/null 2>&1
         case "$name" in
-            global)
-                (cd "$target" && GOWORK=off go mod edit -require=github.com/dotcommander/gokart@v0.12.0 -replace=github.com/dotcommander/gokart="$repo_root")
+            flat-global-example|structured-global-example)
+                (cd "$target" && GOWORK=off go mod edit -require=github.com/dotcommander/gokart@v0.13.0 -replace=github.com/dotcommander/gokart="$repo_root")
                 ;;
-            sqlite|postgres|redis)
+            sqlite|postgres|redis-example)
                 module="$name"
-                [[ "$name" == "redis" ]] && module="cache"
+                [[ "$name" == "redis-example" ]] && module="cache"
                 (cd "$target" && GOWORK=off go mod edit \
-                    -require=github.com/dotcommander/gokart/$module@v0.12.0 \
+                    -require=github.com/dotcommander/gokart/$module@v0.13.0 \
                     -replace=github.com/dotcommander/gokart="$repo_root" \
                     -replace=github.com/dotcommander/gokart/$module="$repo_root/$module")
+                ;;
+            combo-example)
+                (cd "$target" && GOWORK=off go mod edit \
+                    -require=github.com/dotcommander/gokart/postgres@v0.13.0 \
+                    -require=github.com/dotcommander/gokart/cache@v0.13.0 \
+                    -replace=github.com/dotcommander/gokart/postgres="$repo_root/postgres" \
+                    -replace=github.com/dotcommander/gokart/cache="$repo_root/cache")
                 ;;
         esac
         (cd "$target" && HOME="$verify_home" GOCACHE="$verify_gocache" GOWORK=off go mod tidy)
         (cd "$target" && HOME="$verify_home" GOCACHE="$verify_gocache" GOWORK=off go test -mod=readonly ./...)
-        case "$name" in
-            flat)
-                output=$(cd "$target" && HOME="$verify_home" GOCACHE="$verify_gocache" GOWORK=off go run .)
-                ;;
-            structured)
-                output=$(cd "$target" && HOME="$verify_home" GOCACHE="$verify_gocache" GOWORK=off go run ./cmd)
-                ;;
-            *)
-                output=""
-                ;;
-        esac
-        if [[ "$name" == "flat" || "$name" == "structured" ]] && [[ "$output" != *"Usage:"* ]]; then
+        generated_binary="$verify_home/$name"
+        if [[ "$layout" == "flat" ]]; then
+            (cd "$target" && HOME="$verify_home" GOCACHE="$verify_gocache" GOWORK=off go build -o "$generated_binary" .)
+        else
+            (cd "$target" && HOME="$verify_home" GOCACHE="$verify_gocache" GOWORK=off go build -o "$generated_binary" ./cmd)
+        fi
+
+        output=$(cd "$target" && HOME="$verify_home" "$generated_binary")
+        if [[ "$output" != *"Usage:"* ]]; then
             echo "generated $name run did not print usage" >&2
             return 1
+        fi
+
+        if [[ "$example" == "example" ]]; then
+            output=$(cd "$target" && HOME="$verify_home" "$generated_binary" greet --name World)
+            if [[ "$output" != "Hello, World" ]]; then
+                echo "generated $name greet output mismatch: $output" >&2
+                return 1
+            fi
+        fi
+
+        if [[ "$layout" == "flat" ]]; then
+            if [[ -e "$target/.gokart-manifest.json" ]]; then
+                echo "generated $name unexpectedly wrote a manifest" >&2
+                return 1
+            fi
+        elif [[ "$name" == "structured-unmanaged" ]]; then
+            if [[ -e "$target/.gokart-manifest.json" ]]; then
+                echo "generated $name unexpectedly wrote a manifest" >&2
+                return 1
+            fi
+        elif [[ ! -e "$target/.gokart-manifest.json" ]]; then
+            echo "generated $name omitted its manifest" >&2
+            return 1
+        fi
+
+        if [[ "$name" == "structured-example" ]]; then
+            (cd "$target" && HOME="$verify_home" GOCACHE="$verify_gocache" "$binary" add sqlite --dry-run >/dev/null)
         fi
     done
 }

@@ -27,7 +27,7 @@ func (c *addCommand) Run() error {
 	result, err := c.exec.deps.Projects.Add(c.exec.ctx, generator.AddRequest{
 		Dir: dir, Integrations: c.Integrations, DryRun: c.DryRun, Force: c.Force,
 		Verify: c.Verify, VerifyTimeout: c.VerifyTimeout,
-	}, c.exec.runtime(c.JSON))
+	}, c.exec.runtime())
 	if c.JSON {
 		return c.emitJSON(result, err)
 	}
@@ -60,7 +60,7 @@ func (c *addCommand) emitJSON(result generator.AddResult, err error) error {
 	out.Outcome, out.ErrorCode, out.ExitCode, out.Error = outcomeFailure, classified.kind, classified.exitCode, err.Error()
 	var op *generator.OperationError
 	if errors.As(err, &op) && op.Partial {
-		out.Outcome = "partial_success"
+		out.Outcome = outcomePartialSuccess
 	}
 	if writeErr := c.writeJSON(out); writeErr != nil {
 		return writeErr

@@ -18,6 +18,6 @@ func (c *GreetCommand) Run(kctx *kong.Context) error {
 	if err != nil {
 		return fmt.Errorf("greet failed: %w", err)
 	}
-	fmt.Fprintln(kctx.Stdout, result)
-	return nil
+	_, err = fmt.Fprintln(kctx.Stdout, result)
+	return err
 }

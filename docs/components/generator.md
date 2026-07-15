@@ -4,8 +4,10 @@ Scaffold new Go CLI projects and add integrations without re-scaffolding.
 
 ## Install
 
+Install the tagged CLI:
+
 ```bash
-go install github.com/dotcommander/gokart/cmd/gokart@v0.12.0
+go install github.com/dotcommander/gokart/cmd/gokart@v0.13.0
 ```
 
 The explicit version keeps installation reproducible.
@@ -18,10 +20,12 @@ Creates a new Go project in a subdirectory of the current working directory. Acc
 
 ```bash
 gokart new <project-name> [flags]
-gokart new cli <project-name> [flags]   # explicit preset (same output)
 gokart init <project-name>              # alias for new
 gokart create <project-name>            # alias for new
 ```
+
+The legacy `gokart new cli <project-name>` form remains accepted for
+compatibility, but new scripts and tutorials should use the direct form.
 
 ### Basic Examples
 
@@ -31,9 +35,6 @@ gokart new mycli
 
 # Explicit multi-package project
 gokart new mycli --structured
-
-# Explicit preset form — same output as above
-gokart new cli mycli
 
 # Custom module path
 gokart new mycli --module github.com/myorg/mycli
@@ -68,7 +69,10 @@ gokart new mycli --db sqlite             # structured automatically
 gokart new mycli --structured --global   # managed and compatible with add
 ```
 
-Configuration scope does not choose the layout. A default-flat global scaffold is managed and has a manifest, but `gokart add` rejects flat manifests. Use `--structured --global` when later integration updates matter. `--no-manifest` preserves whichever layout was selected while omitting management metadata.
+Configuration scope does not choose the layout. Every flat scaffold is
+unmanaged and manifest-free, including `--global`. Every structured scaffold is
+managed by default. Use `--no-manifest` only to opt a structured scaffold out of
+management; in flat mode it produces an "already unmanaged" warning.
 
 ### Generated File Tree
 
@@ -76,6 +80,7 @@ Configuration scope does not choose the layout. A default-flat global scaffold i
 
 ```
 mycli/
+├── .gokart-manifest.json              # Managed generated-file hashes
 ├── .gitignore
 ├── README.md                          # Build commands
 ├── cmd/
@@ -86,7 +91,10 @@ mycli/
 └── go.mod
 ```
 
-With `--global` or an integration flag, `gokart new` writes `.gokart-manifest.json`. Structured manifests let `gokart add` safely patch generated wiring later; flat manifests record the scaffold but are rejected by `add`. `--global` adds config bootstrap code. Integration flags add `internal/app/context.go`.
+Structured manifests let `gokart add` safely patch generated wiring later.
+`--global` adds config bootstrap code. Integration flags add
+`internal/app/context.go`. `--no-manifest` omits only the management metadata;
+it does not change the selected layout.
 
 With `--example`:
 
@@ -107,7 +115,11 @@ mycli/
 ├── README.md
 ├── go.mod
 ├── main.go
+└── main_test.go                       # With --example
 ```
+
+Generated modules declare exactly `go 1.26.0` and do not emit a `toolchain`
+directive.
 
 ### Integration Flags
 
@@ -129,6 +141,13 @@ gokart new mycli --redis
 gokart new mycli --redis --db postgres
 ```
 
+Generated integrations are command-lazy. Kong constructs `app.Dependencies`
+through `app.New` only when the selected command requests it. `app.Context`
+remains an alias for compatibility. Help, no-argument usage, version output, and
+`greet` do not connect to PostgreSQL or Redis, create a SQLite file, or require
+an API credential. Cleanup runs only after construction and joins database or
+cache close errors with the command result.
+
 ### Config Scope
 
 Controls whether the generated project bootstraps `config.yaml` under the platform user config directory returned by `os.UserConfigDir()`.
@@ -145,58 +164,73 @@ The default scope is `local` in both structured and flat mode. Use `--global` wh
 
 ### Manifest
 
-Plain CLI scaffolds do not write `.gokart-manifest.json`. GoKart writes the manifest only when the scaffold uses managed features: `--global`, `--db sqlite`, `--db postgres`, `--ai`, or `--redis`.
-
-Use `--no-manifest` to suppress the manifest even for managed scaffolds. It does not change the resolved layout. Without a manifest, `gokart add` cannot safely patch integrations into that project later. Because `add` only supports structured projects, choose `--structured --global` rather than plain `--global` when you plan to add integrations later.
+Flat scaffolds never write `.gokart-manifest.json`. Structured scaffolds always
+write it unless `--no-manifest` is set. Without a manifest, `gokart add` cannot
+safely update the project. There is no automatic flat-to-structured conversion
+or manifest schema migration during `new`.
 
 ### Conflict Handling
 
-When the target directory already exists and contains files, `gokart new` checks each file it would write against the manifest. The default behavior is to fail and report all conflicting paths.
+When the target directory already exists and contains files, `gokart new`
+checks every destination. By default it writes nothing and reports all
+conflicting paths.
 
-| Flag | Behavior |
-|------|----------|
-| _(default)_ | Fail on first conflicting file; report all conflicts |
-| `--force` | Overwrite conflicting files |
-| `--skip-existing` | Keep existing files; write only missing files |
+The default is to fail without writing and report the conflicts. Use
+`--force` to overwrite them or `--skip-existing` to keep existing files and
+write only missing ones. The two flags cannot be combined.
 
-`--force` and `--skip-existing` cannot be combined.
+### Verification
 
-### Verification Flags
+Dependency preparation is mandatory for every new scaffold: GoKart runs the
+pinned `go get` operation and `go mod tidy` once, even with `--no-verify`. A
+failure keeps the generated files, exits with scaffold-failure code `7`, and
+prints the exact recovery command. It never reports success for a broken module.
 
-| Flag | Behavior |
-|------|----------|
-| `--verify` | Explicitly request the normal post-generation `go mod tidy` and `go test ./...` pass |
-| `--no-verify` | Skip the default post-generation verification pass |
-| `--verify-only` | Skip scaffolding; run verification only against the existing target directory |
-| `--verify-timeout <duration>` | Maximum time allowed for verification commands (default `5m`; `0` disables the timeout) |
-
-Normal flat, SQLite, AI, global, and integration-free scaffolds verify automatically. PostgreSQL and Redis skip automatic verification because they may require network services; use `--verify` to force it. `GOKART_AUTO_VERIFY=0` disables automatic verification for build pipelines that verify separately.
+Unless disabled, every scaffold then runs `go test ./...` and `go build ./...`.
+Generated PostgreSQL and Redis tests and the `greet` example do not connect to
+services, so these integrations have no verification exemption.
+`GOKART_AUTO_VERIFY=0` disables the tests and build for pipelines that verify
+separately; dependency preparation still runs.
 
 `--verify-only` cannot be combined with `--dry-run`. Generation flags (`--flat`, `--structured`, `--db`, `--ai`, `--redis`, `--example`, `--config-scope`, `--force`, `--skip-existing`, `--no-manifest`) are ignored when `--verify-only` is set.
 
-When `--dry-run --verify` is used together, the scaffolder writes to a temporary directory, verifies, then removes it. No files are written to the target.
+Dry-run dependency preparation, tests, and build happen in a temporary
+scaffold, which is then removed. No files are written to the target.
+
+Successful human output stays concise; detailed file actions remain in dry-run
+and JSON output:
+
+```text
+Created tvguide (flat)
+Verified: tests and build
+
+Next:
+  cd 'tvguide'
+  go run . greet --name World
+  go build -o tvguide .
+```
 
 ### All `gokart new` Flags
 
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
-| `--flat` | bool | false | Explicitly require the flat `main.go` layout |
-| `--structured` | bool | false | Explicitly require the multi-package layout |
+| `--flat` | bool | false | Use a single-package root layout (the default) |
+| `--structured` | bool | false | Use a managed `cmd/` and `internal/` layout for later integrations |
 | `--module` | string | project name | Go module path |
 | `--db` | string | `none` | Database backend: `sqlite`, `postgres`, or `none` |
 | `--ai` | bool | false | Add OpenAI client wiring |
 | `--redis` | bool | false | Add Redis cache wiring |
-| `--example` | bool | false | Include example `greet` command and action |
+| `--example` | bool | false | Include a runnable `greet` command and tests |
 | `--config-scope` | string | `auto` | Config scope: `auto`, `local`, or `global` |
 | `--local` | bool | false | Shorthand for `--config-scope local` |
 | `--global` | bool | false | Shorthand for `--config-scope global` |
 | `--dry-run` | bool | false | Preview operations without writing files |
 | `--force` | bool | false | Overwrite existing generated files |
 | `--skip-existing` | bool | false | Keep existing files; write only missing ones |
-| `--no-manifest` | bool | false | Skip writing `.gokart-manifest.json` for managed scaffolds |
-| `--verify` | bool | default-on for normal scaffolds | Explicitly request `go mod tidy` and `go test ./...` after generation |
-| `--no-verify` | bool | false | Skip default post-generation verification |
-| `--verify-only` | bool | false | Run verification only, skip scaffolding |
+| `--no-manifest` | bool | false | Opt a structured project out of GoKart management |
+| `--verify` | bool | default-on | Explicitly request post-generation tests and build |
+| `--no-verify` | bool | false | Skip tests and build, but still prepare dependencies |
+| `--verify-only` | bool | false | Tidy, test, and build an existing project without scaffolding |
 | `--verify-timeout` | duration | `5m` | Maximum time for verify commands (`0` = no timeout) |
 | `--json` | bool | false | Print machine-readable JSON result |
 
@@ -204,7 +238,13 @@ When `--dry-run --verify` is used together, the scaffolder writes to a temporary
 
 ## `gokart add`
 
-Adds integrations to an existing structured project without re-scaffolding. Run from the project root directory (where `.gokart-manifest.json` lives).
+Adds integrations to an existing managed structured project without
+re-scaffolding. Run from the project root directory, where
+`.gokart-manifest.json` lives.
+
+For a flat project, add the relevant GoKart package manually. Start future
+projects that need generator-managed growth with
+`gokart new <name> --structured`.
 
 ```bash
 gokart add <integration>... [flags]
@@ -269,10 +309,10 @@ Use `--dry-run` to preview which files would be created or overwritten before co
 
 | Integration | Packages fetched via `go get` |
 |-------------|-------------------------------|
-| `sqlite` | `github.com/dotcommander/gokart/sqlite@v0.12.0` |
-| `postgres` | `github.com/dotcommander/gokart/postgres@v0.12.0`, `github.com/jackc/pgx/v5@v5.10.0`, `github.com/pressly/goose/v3@v3.27.2` |
+| `sqlite` | `github.com/dotcommander/gokart/sqlite@v0.13.0` |
+| `postgres` | `github.com/dotcommander/gokart/postgres@v0.13.0`, `github.com/jackc/pgx/v5@v5.10.0`, `github.com/pressly/goose/v3@v3.27.2` |
 | `ai` | `github.com/openai/openai-go/v3@v3.42.0` |
-| `redis` | `github.com/dotcommander/gokart/cache@v0.12.0`, `github.com/redis/go-redis/v9@v9.21.0` |
+| `redis` | `github.com/dotcommander/gokart/cache@v0.13.0`, `github.com/redis/go-redis/v9@v9.21.0` |
 
 ### All `gokart add` Flags
 
@@ -299,7 +339,7 @@ gokart config show
 Output:
 
 ```
-Version:     v0.12.0
+Version:     v0.13.0
 Config dir:  /Users/you/Library/Application Support
 Binary:      /Users/you/go/bin/gokart
 ```
@@ -310,7 +350,9 @@ Useful for debugging when multiple gokart binaries exist or when verifying the i
 
 ## Manifest
 
-`gokart new` writes `.gokart-manifest.json` at the project root only for managed scaffolds: global config or integrations. This file is used by `gokart add` to detect user modifications and track which integrations are enabled.
+`gokart new` writes `.gokart-manifest.json` at the root of every structured
+scaffold unless `--no-manifest` is set. Flat projects never receive a manifest.
+The file lets `gokart add` detect user modifications and track integrations.
 
 ### What the Manifest Tracks
 
@@ -338,7 +380,7 @@ Useful for debugging when multiple gokart binaries exist or when verifying the i
 {
   "version": 2,
   "generator": "gokart",
-  "generator_version": "v0.12.0",
+  "generator_version": "v0.13.0",
   "template_root": "templates/structured",
   "existing_file_policy": "fail",
   "mode": "structured",
@@ -362,7 +404,8 @@ Useful for debugging when multiple gokart binaries exist or when verifying the i
 }
 ```
 
-Plain scaffolds omit the manifest by default. Managed scaffolds write it unless `--no-manifest` is set. Without a manifest, `gokart add` cannot run.
+Flat scaffolds omit the manifest. Structured scaffolds write it by default.
+Without a structured manifest, `gokart add` cannot run.
 
 ---
 
@@ -372,7 +415,7 @@ Both commands accept `--json`. When set, the command writes a single JSON object
 
 ### `gokart new` JSON Output
 
-Example for `gokart new ./mycli --module github.com/myorg/mycli --no-verify --json`:
+Example for `gokart new /work/mycli --module github.com/myorg/mycli --no-verify --json`:
 
 ```json
 {
@@ -381,7 +424,7 @@ Example for `gokart new ./mycli --module github.com/myorg/mycli --no-verify --js
   "preset": "cli",
   "mode": "flat",
   "project_name": "mycli",
-  "target_dir": "./mycli",
+  "target_dir": "/work/mycli",
   "module": "github.com/myorg/mycli",
   "config_scope": "auto",
   "use_global": false,
@@ -391,6 +434,10 @@ Example for `gokart new ./mycli --module github.com/myorg/mycli --no-verify --js
   "verify_only": false,
   "verify_ran": false,
   "verify_passed": false,
+  "checks": [
+    {"command": "go get github.com/alecthomas/kong@v1.15.0", "status": "passed"},
+    {"command": "go mod tidy", "status": "passed"}
+  ],
   "existing_file_policy": "fail",
   "result": {
     "created": [".gitignore", "README.md", "go.mod", "main.go"],
@@ -399,11 +446,15 @@ Example for `gokart new ./mycli --module github.com/myorg/mycli --no-verify --js
     "unchanged": []
   },
   "next": {
-    "dir": "./mycli",
+    "dir": "/work/mycli",
     "command": "go",
-    "args": ["build", "./..."]
+    "args": ["build", "-o", "mycli", "."]
   },
-  "next_command": "cd './mycli' && go build ./..."
+  "next_command": "cd '/work/mycli' && go build -o mycli .",
+  "next_steps": [
+    "cd '/work/mycli'",
+    "go build -o mycli ."
+  ]
 }
 ```
 
@@ -444,51 +495,13 @@ On failure the object includes `error_code` and `error`:
 | `1` | failure | Unclassified failure |
 | `2` | invalid_arguments | Bad flags or argument values |
 | `3` | existing_file_conflict | Files exist and policy is `fail` |
-| `4` | verify_failed | `go mod tidy` or `go test ./...` failed |
+| `4` | verify_failed | Generated-project tests or build failed |
 | `5` | target_locked | Another scaffold is running against the target |
 | `6` | config_init_failed | Could not initialize config |
-| `7` | scaffold_failed | Template rendering or file write failed |
+| `7` | scaffold_failed | Scaffolding or dependency preparation failed |
 | `8` | json_encode_failed | Could not encode JSON output |
 | `9` | manifest_not_found | No `.gokart-manifest.json` (`gokart add` only) |
 | `10` | flat_mode_unsupported | Flat project passed to `gokart add` |
-
----
-
-## Reference
-
-### `gokart new` — Full Flag Table
-
-| Flag | Short | Default | Description |
-|------|-------|---------|-------------|
-| `--flat` | | false | Explicitly require the flat `main.go` layout |
-| `--structured` | | false | Explicitly require the multi-package layout |
-| `--module` | | project name | Go module path |
-| `--db` | | `none` | Database backend: `sqlite`, `postgres`, or `none` |
-| `--ai` | | false | OpenAI client wiring |
-| `--redis` | | false | Redis cache wiring |
-| `--example` | | false | Include greet command and action |
-| `--config-scope` | | `auto` | `auto`, `local`, or `global` |
-| `--local` | | false | Shorthand: `--config-scope local` |
-| `--global` | | false | Shorthand: `--config-scope global` |
-| `--dry-run` | | false | Preview without writing |
-| `--force` | | false | Overwrite existing files |
-| `--skip-existing` | | false | Write only missing files |
-| `--no-manifest` | | false | Skip `.gokart-manifest.json` for managed scaffolds |
-| `--verify` | | false | Run `go mod tidy` + `go test ./...` |
-| `--no-verify` | | false | Skip automatic post-generation verification |
-| `--verify-only` | | false | Verify only, no scaffolding |
-| `--verify-timeout` | | `5m` | Timeout for verify commands |
-| `--json` | | false | Machine-readable JSON output |
-
-### `gokart add` — Full Flag Table
-
-| Flag | Default | Description |
-|------|---------|-------------|
-| `--dry-run` | false | Preview without writing |
-| `--force` | false | Overwrite user-modified files |
-| `--verify` | false | Run `go test ./...` after adding |
-| `--verify-timeout` | `5m` | Timeout for verify commands |
-| `--json` | false | Machine-readable JSON output |
 
 ---
 

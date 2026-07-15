@@ -2,15 +2,13 @@ package generator
 
 import (
 	"embed"
-	"runtime"
-	"strings"
 )
 
 //go:embed all:templates
 var templates embed.FS
 
 const (
-	defaultGokartVersion         = "v0.12.0"
+	defaultGokartVersion         = "v0.13.0"
 	defaultGokartSQLiteVersion   = defaultGokartVersion
 	defaultGokartPostgresVersion = defaultGokartVersion
 	defaultGokartCacheVersion    = defaultGokartVersion
@@ -21,6 +19,7 @@ const (
 	defaultOpenAIVersion = "v3.42.0"
 	defaultRedisVersion  = "v9.21.0"
 	defaultGooseVersion  = "v3.27.2"
+	generatedGoVersion   = "1.26.0"
 )
 
 // TemplateData holds variables for template substitution.
@@ -34,6 +33,9 @@ type TemplateData struct {
 	UseRedis            bool
 	IncludeExample      bool
 	UseGlobal           bool
+	HasIntegrations     bool
+	HasAppPackage       bool
+	Managed             bool
 	LegacyGreetAppField bool
 	Integrations        []integrationReadmeData
 
@@ -59,10 +61,13 @@ type scaffoldSpec struct {
 //
 //nolint:revive // public API, params are distinct
 func ScaffoldFlat(dir, name, module string, useGlobal, includeExample bool, opts ApplyOptions) (*ApplyResult, error) {
+	opts.SkipManifest = true
+	data := baseTemplateData(name, module, useGlobal, includeExample)
+	data.derive(false)
 	return applyScaffoldSpec(scaffoldSpec{
 		Dir:          dir,
 		TemplateRoot: templateRootFlat,
-		Data:         baseTemplateData(name, module, useGlobal, includeExample),
+		Data:         data,
 		Metadata: scaffoldManifestMetadata{
 			Mode:      modeFlat,
 			Module:    module,
@@ -80,6 +85,7 @@ func ScaffoldStructured(dir, name, module string, useSQLite, usePostgres, useAI,
 	data.UsePostgres = usePostgres
 	data.UseAI = useAI
 	data.UseRedis = useRedis
+	data.derive(!opts.SkipManifest)
 	data.Integrations = selectedIntegrationReadmeData(data)
 
 	return applyScaffoldSpec(scaffoldSpec{
@@ -109,7 +115,7 @@ func baseTemplateData(name, module string, useGlobal, includeExample bool) Templ
 	return TemplateData{
 		Name:           name,
 		Module:         module,
-		GoVersion:      goVersion(),
+		GoVersion:      generatedGoVersion,
 		IncludeExample: includeExample,
 		UseGlobal:      useGlobal,
 
@@ -125,13 +131,12 @@ func baseTemplateData(name, module string, useGlobal, includeExample bool) Templ
 	}
 }
 
-func boolPtr(b bool) *bool {
-	return &b
+func (d *TemplateData) derive(managed bool) {
+	d.HasIntegrations = d.UseSQLite || d.UsePostgres || d.UseAI || d.UseRedis
+	d.HasAppPackage = d.UseGlobal || d.HasIntegrations
+	d.Managed = managed
 }
 
-// goVersion returns the current Go version without the "go" prefix.
-func goVersion() string {
-	v := runtime.Version()
-	// runtime.Version() returns "go1.24.0", we want "1.24.0"
-	return strings.TrimPrefix(v, "go")
+func boolPtr(b bool) *bool {
+	return &b
 }

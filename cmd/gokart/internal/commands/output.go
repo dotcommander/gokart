@@ -31,12 +31,14 @@ type createOutput struct {
 	VerifyOnly         bool                         `json:"verify_only"`
 	VerifyRan          bool                         `json:"verify_ran"`
 	VerifyPassed       bool                         `json:"verify_passed"`
+	Checks             []generator.CheckResult      `json:"checks,omitempty"`
 	ExistingFilePolicy generator.ExistingFilePolicy `json:"existing_file_policy,omitempty"`
 	Warnings           []string                     `json:"warnings,omitempty"`
 	Conflicts          []string                     `json:"conflicts,omitempty"`
 	Result             *generator.ApplyResult       `json:"result,omitempty"`
 	Next               *nextStep                    `json:"next,omitempty"`
 	NextCommand        string                       `json:"next_command,omitempty"`
+	NextSteps          []string                     `json:"next_steps,omitempty"`
 	Error              string                       `json:"error,omitempty"`
 }
 
@@ -45,7 +47,8 @@ func createOutputFrom(r generator.CreateResult) createOutput {
 		Module: r.Module, ConfigScope: r.ConfigScope, UseGlobal: r.UseGlobal, DryRun: r.DryRun,
 		WriteManifest: r.WriteManifest, VerifyRequested: r.VerifyRequested, VerifyOnly: r.VerifyOnly,
 		VerifyRan: r.VerifyRan, VerifyPassed: r.VerifyPassed, ExistingFilePolicy: r.ExistingFilePolicy,
-		Warnings: r.Warnings, Conflicts: r.Conflicts, Result: r.Result}
+		Checks: r.Checks, Warnings: r.Warnings, Conflicts: r.Conflicts, Result: r.Result,
+		NextSteps: append([]string(nil), r.NextSteps...)}
 	if r.NextCommand != "" {
 		out.Next = &nextStep{Dir: r.NextDir, Command: r.NextCommand, Args: r.NextArgs}
 		out.NextCommand = "cd " + shellQuote(r.NextDir) + " && " + r.NextCommand + " " + strings.Join(r.NextArgs, " ")
@@ -54,25 +57,26 @@ func createOutputFrom(r generator.CreateResult) createOutput {
 }
 
 type addOutput struct {
-	Outcome          string              `json:"outcome,omitempty"`
-	ErrorCode        generator.ErrorKind `json:"error_code,omitempty"`
-	ExitCode         int                 `json:"exit_code"`
-	Integrations     []string            `json:"integrations,omitempty"`
-	Added            []string            `json:"added,omitempty"`
-	AlreadyPresent   []string            `json:"already_present,omitempty"`
-	FilesCreated     []string            `json:"files_created,omitempty"`
-	FilesOverwritten []string            `json:"files_overwritten,omitempty"`
-	DryRun           bool                `json:"dry_run"`
-	VerifyRequested  bool                `json:"verify_requested"`
-	VerifyPassed     bool                `json:"verify_passed"`
-	Warnings         []string            `json:"warnings,omitempty"`
-	Error            string              `json:"error,omitempty"`
+	Outcome          string                  `json:"outcome,omitempty"`
+	ErrorCode        generator.ErrorKind     `json:"error_code,omitempty"`
+	ExitCode         int                     `json:"exit_code"`
+	Integrations     []string                `json:"integrations,omitempty"`
+	Added            []string                `json:"added,omitempty"`
+	AlreadyPresent   []string                `json:"already_present,omitempty"`
+	FilesCreated     []string                `json:"files_created,omitempty"`
+	FilesOverwritten []string                `json:"files_overwritten,omitempty"`
+	DryRun           bool                    `json:"dry_run"`
+	VerifyRequested  bool                    `json:"verify_requested"`
+	VerifyPassed     bool                    `json:"verify_passed"`
+	Checks           []generator.CheckResult `json:"checks,omitempty"`
+	Warnings         []string                `json:"warnings,omitempty"`
+	Error            string                  `json:"error,omitempty"`
 }
 
 func addOutputFrom(r generator.AddResult) addOutput {
 	return addOutput{Integrations: r.Integrations, Added: r.Added, AlreadyPresent: r.AlreadyPresent,
 		FilesCreated: r.FilesCreated, FilesOverwritten: r.FilesOverwritten, DryRun: r.DryRun,
-		VerifyRequested: r.VerifyRequested, VerifyPassed: r.VerifyPassed, Warnings: r.Warnings}
+		VerifyRequested: r.VerifyRequested, VerifyPassed: r.VerifyPassed, Checks: r.Checks, Warnings: r.Warnings}
 }
 
 func renderCreate(w io.Writer, r generator.CreateResult) {
@@ -80,11 +84,11 @@ func renderCreate(w io.Writer, r generator.CreateResult) {
 		writeOutputf(w, "Warning: %s\n", warning)
 	}
 	if r.DryRun {
-		writeOutputf(w, "Dry run complete for %s\n", r.TargetDir)
+		writeOutputf(w, "Dry run complete for %s (%s)\n", r.ProjectName, r.Mode)
 	} else {
-		writeOutputf(w, "Project created at %s\n", r.TargetDir)
+		writeOutputf(w, "Created %s (%s)\n", r.ProjectName, r.Mode)
 	}
-	if r.Result != nil {
+	if r.DryRun && r.Result != nil {
 		label := "Applied"
 		if r.DryRun {
 			label = "Planned"
@@ -100,10 +104,13 @@ func renderCreate(w io.Writer, r generator.CreateResult) {
 		}
 	}
 	if r.VerifyRan && r.VerifyPassed {
-		writeOutputln(w, "Verification passed")
+		writeOutputln(w, "Verified: tests and build")
 	}
-	if r.NextCommand != "" {
-		writeOutputf(w, "  cd %s && %s %s\n", shellQuote(r.NextDir), r.NextCommand, strings.Join(r.NextArgs, " "))
+	if len(r.NextSteps) > 0 {
+		writeOutputln(w, "\nNext:")
+		for _, step := range r.NextSteps {
+			writeOutputf(w, "  %s\n", step)
+		}
 	}
 }
 

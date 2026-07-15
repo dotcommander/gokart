@@ -45,11 +45,16 @@ Keep command and business tests independent of live services through consumer-ow
 
 ## Generator verification
 
-Normal flat, SQLite, AI, global, and integration-free scaffolds automatically run `go mod tidy` and `go test ./...`. PostgreSQL and Redis skip automatic verification because network access may be required. Pass `--verify`, `--no-verify`, or `--verify-only` as appropriate. The default timeout is `5m`; `--verify-timeout 0` disables it.
+Every new scaffold prepares pinned dependencies with `go get` and `go mod tidy`.
+Unless disabled, GoKart then runs `go test ./...` and `go build ./...` for flat,
+structured, and integration projects alike. `--no-verify` skips only tests and
+build. `--verify-only` tidies, tests, and builds an existing project. The
+default timeout is `5m`; `--verify-timeout 0` disables it.
 
 Before shipping:
 
 ```bash
 go test ./...
-go build -o notes ./cmd
+go build -o notes .       # flat project
+go build -o notes ./cmd   # structured project
 ```

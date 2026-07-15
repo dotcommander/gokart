@@ -1,0 +1,16 @@
+Usage: gokart add <integration> ... [flags]
+
+Add integrations to a managed structured project.
+
+Arguments:
+  <integration> ...    Integration: sqlite, postgres, ai, or redis.
+
+Flags:
+  -h, --help                 Show context-sensitive help.
+      --version              Print version information and quit.
+
+      --dry-run              Preview changes without writing files.
+      --force                Overwrite user-modified files.
+      --json                 Print machine-readable JSON result.
+      --verify               Run go test ./... after adding.
+      --verify-timeout=5m    Maximum verification time.

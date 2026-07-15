@@ -4,12 +4,18 @@
 
 GoKart is a modular Go toolkit for recurring infrastructure setup, safe defaults, and user-owned generated code. Its enforceable boundary is defined in [PHILOSOPHY.md](PHILOSOPHY.md).
 
+Install the tagged CLI and scaffold a project:
+
 ```bash
-go install github.com/dotcommander/gokart/cmd/gokart@v0.12.0
-gokart new myapp --db sqlite --example
-cd myapp
-go run ./cmd greet --name World
+go install github.com/dotcommander/gokart/cmd/gokart@v0.13.0
+gokart new tvguide --example
+cd tvguide
+go run . greet --name World
+go build -o tvguide .
 ```
+
+Continue with the [TV-guide tutorial](docs/getting-started.md) to turn the
+generated command into a tested, filterable program listing.
 
 ## Packages
 
@@ -36,7 +42,8 @@ gokart new service --db postgres --ai --redis
 gokart add sqlite --dry-run
 ```
 
-Global scaffolds include a manifest, but `gokart add` supports structured projects only. Choose `--structured --global` when you want platform-global configuration and later integration updates.
+Flat scaffolds are unmanaged and manifest-free. Structured scaffolds are managed
+by default and support later integration updates through `gokart add`.
 
 Dependencies are pinned for deterministic generation. PostgreSQL uses `postgres.Open`, SQLite uses `sqlite.Open`, Redis uses `cache.Open`, and AI uses the official OpenAI SDK directly.
 

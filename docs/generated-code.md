@@ -34,7 +34,9 @@ Managed scaffolds record SHA-256 hashes. Before replacing the two wiring files, 
 
 `gokart add` supports managed structured projects only. It re-renders the two wiring files, fetches dependencies, tidies the module, and updates the manifest. It does not regenerate the project.
 
-Plain and global scaffolds default to flat. A global flat scaffold still has a manifest, but `gokart add` rejects it without changing files. Start with `gokart new <name> --structured --global` when you want global configuration plus later integration updates.
+Plain and global scaffolds default to flat and never write a manifest. Start with
+`gokart new <name> --structured --global` when you want global configuration
+plus later generator-managed integration updates.
 
 ## Stop or remove
 

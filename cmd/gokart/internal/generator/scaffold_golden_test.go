@@ -3,7 +3,6 @@ package generator
 import (
 	"os"
 	"path/filepath"
-	"regexp"
 	"sort"
 	"strings"
 	"testing"
@@ -13,24 +12,16 @@ import (
 // `templates embed.FS`) render to a stable, committed snapshot. A bad template
 // edit that still satisfies the Apply()-mechanics tests will break these.
 //
-// Two values are intentionally normalized/excluded so goldens stay stable
-// across Go toolchains:
-//   - the `go X.Y.Z` directive in go.mod (sourced from runtime.Version()).
-//   - .gokart-manifest.json, whose SHA256 entries hash files containing the
-//     Go version. Manifest content is covered by scaffolder_manifest_test.go.
+// The manifest is excluded because its content is covered by focused manifest
+// tests rather than the generated source-tree snapshots.
 //
 // Regenerate goldens: GOKART_UPDATE_GOLDEN=1 go test ./cmd/gokart/internal/generator -run Golden
 
 const goldenModule = "github.com/example/demo"
 const goldenName = "demo"
 
-// goDirectiveLine matches the `go X[.Y[.Z]]` directive in a rendered go.mod.
-var goDirectiveLine = regexp.MustCompile(`(?m)^go [0-9]+(\.[0-9]+)*$`)
-
-// normalizeGolden replaces the volatile go-version directive so snapshots are
-// toolchain-independent. Applied to both produced and golden bytes.
 func normalizeGolden(b []byte) []byte {
-	return goDirectiveLine.ReplaceAll(b, []byte("go GOVERSION"))
+	return b
 }
 
 func goldenUpdateEnabled() bool {
@@ -38,7 +29,7 @@ func goldenUpdateEnabled() bool {
 }
 
 // collectTree walks dir and returns a map of slash-relative path -> file bytes,
-// excluding the scaffold manifest (non-deterministic; tested elsewhere).
+// excluding the scaffold manifest (tested separately).
 func collectTree(t *testing.T, dir string) map[string][]byte {
 	t.Helper()
 	out := map[string][]byte{}
@@ -171,6 +162,32 @@ func TestScaffoldFlatGolden(t *testing.T) {
 		t.Fatalf("ScaffoldFlat error = %v", err)
 	}
 	assertGolden(t, "flat", dir)
+}
+
+func TestGeneratedDependenciesCleanupOnInitializationFailure(t *testing.T) {
+	t.Parallel()
+	data := baseTemplateData(goldenName, goldenModule, false, false)
+	data.UseSQLite = true
+	data.UseRedis = true
+	data.derive(true)
+
+	rendered, err := renderTemplate(templates, "templates/structured/internal/app/context.go.tmpl", data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	source := string(rendered)
+	for _, want := range []string{
+		"func New(ctx context.Context, appName string, v *viper.Viper) (_ *Dependencies, err error)",
+		"if cleanupErr := appCtx.Close(); cleanupErr != nil",
+		`errors.Join(err, fmt.Errorf("close partially initialized dependencies: %w", cleanupErr))`,
+	} {
+		if !strings.Contains(source, want) {
+			t.Errorf("generated dependency constructor omits %q", want)
+		}
+	}
+	if cleanup, sqlite := strings.Index(source, "defer func()"), strings.Index(source, "sqlite.Open(dbPath)"); cleanup < 0 || sqlite < 0 || cleanup > sqlite {
+		t.Errorf("generated cleanup guard must be installed before resource construction")
+	}
 }
 
 func TestGlobalScaffoldsOnlyEmitProductDocumentation(t *testing.T) {

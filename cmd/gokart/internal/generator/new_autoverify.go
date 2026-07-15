@@ -7,10 +7,7 @@ import (
 
 // resolveAutoVerify decides whether the normal scaffold path runs verification.
 // Verification is default-on; --no-verify and GOKART_AUTO_VERIFY=0 opt out.
-// Network-dependent integrations (--db postgres, --redis) skip auto-verify unless
-// the user explicitly passed --verify, since `go test ./...` on those scaffolds
-// can hang against an absent DB/Redis. Explicit --verify always wins.
-func resolveAutoVerify(req newRequest, explicitVerify, noVerify bool, lookupEnv func(string) (string, bool), warnings *[]string) bool {
+func resolveAutoVerify(_ newRequest, explicitVerify, noVerify bool, lookupEnv func(string) (string, bool), _ *[]string) bool {
 	if explicitVerify {
 		return true
 	}
@@ -18,12 +15,6 @@ func resolveAutoVerify(req newRequest, explicitVerify, noVerify bool, lookupEnv 
 		return false
 	}
 	if autoVerifyEnvDisabled(lookupEnv) {
-		return false
-	}
-	if req.UsePostgres || req.UseRedis {
-		if warnings != nil {
-			*warnings = append(*warnings, "skipping automatic verification for network-dependent integration (--db postgres/--redis); rerun with --verify to force it")
-		}
 		return false
 	}
 	return true

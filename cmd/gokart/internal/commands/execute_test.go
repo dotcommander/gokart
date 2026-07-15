@@ -5,9 +5,12 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"os"
+	"reflect"
 	"strings"
 	"testing"
 
+	"github.com/alecthomas/kong"
 	"github.com/dotcommander/gokart/cmd/gokart/internal/generator"
 )
 
@@ -201,5 +204,95 @@ func TestExecuteAliasesAndRejectsCompletion(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	if code := Execute(context.Background(), []string{"completion"}, "v-test", testDependencies(&stdout, &stderr, projects)); code == 0 {
 		t.Fatal("completion unexpectedly accepted")
+	}
+}
+
+func TestHelpSnapshots(t *testing.T) {
+	t.Parallel()
+	projects := fakeProjects{
+		create: func(generator.CreateRequest) (generator.CreateResult, error) { return generator.CreateResult{}, nil },
+		add:    func(generator.AddRequest) (generator.AddResult, error) { return generator.AddResult{}, nil },
+	}
+	for _, command := range []string{"new", "add"} {
+		command := command
+		t.Run(command, func(t *testing.T) {
+			t.Parallel()
+			var stdout, stderr bytes.Buffer
+			deps := testDependencies(&stdout, &stderr, projects)
+			exec := &executor{ctx: context.Background(), version: "v-test", deps: deps}
+			root := cli{}
+			root.New.exec, root.Add.exec = exec, exec
+			parser, err := kong.New(&root, kong.Name(appName), kong.Description(rootDescription),
+				kong.Writers(&stdout, &stderr), kong.Exit(func(int) {}))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := parser.Parse([]string{command, "--help"}); err != nil && stdout.Len() == 0 {
+				t.Fatal(err)
+			}
+			want, err := os.ReadFile("testdata/help/" + command + ".txt")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := stdout.String(); got != string(want) {
+				t.Fatalf("%s help drifted\n--- got ---\n%s\n--- want ---\n%s", command, got, want)
+			}
+		})
+	}
+}
+
+func TestCreateOutputIncludesChecksAndOrderedNextSteps(t *testing.T) {
+	t.Parallel()
+	wantSteps := []string{"cd 'demo'", "go run . greet --name World", "go build -o demo ."}
+	out := createOutputFrom(generator.CreateResult{
+		Checks:    []generator.CheckResult{{Command: "go test ./...", Status: "passed"}},
+		NextSteps: wantSteps,
+	})
+	if len(out.Checks) != 1 || !reflect.DeepEqual(out.NextSteps, wantSteps) {
+		t.Fatalf("output=%+v", out)
+	}
+}
+
+func TestAddOutputIncludesChecks(t *testing.T) {
+	t.Parallel()
+	out := addOutputFrom(generator.AddResult{Checks: []generator.CheckResult{{Command: "go test ./...", Status: "passed"}}})
+	if len(out.Checks) != 1 || out.Checks[0].Command != "go test ./..." {
+		t.Fatalf("output=%+v", out)
+	}
+}
+
+func TestExecuteDependencyPreparationFailureUsesPartialExitSeven(t *testing.T) {
+	t.Parallel()
+	projects := fakeProjects{
+		create: func(generator.CreateRequest) (generator.CreateResult, error) {
+			return generator.CreateResult{ProjectName: "demo", Checks: []generator.CheckResult{{Command: "go get x", Status: "failed"}}},
+				&generator.OperationError{Kind: generator.ErrorScaffoldFailed, Partial: true, Err: errors.New("recover with: go get x")}
+		},
+		add: func(generator.AddRequest) (generator.AddResult, error) { return generator.AddResult{}, nil },
+	}
+	var stdout, stderr bytes.Buffer
+	code := Execute(context.Background(), []string{"new", "demo", "--no-verify", "--json"}, "v-test", testDependencies(&stdout, &stderr, projects))
+	if code != 7 || stderr.Len() != 0 {
+		t.Fatalf("exit=%d stderr=%q", code, stderr.String())
+	}
+	var out createOutput
+	if err := json.Unmarshal(stdout.Bytes(), &out); err != nil {
+		t.Fatal(err)
+	}
+	if out.Outcome != "partial_success" || out.ErrorCode != generator.ErrorScaffoldFailed || len(out.Checks) != 1 {
+		t.Fatalf("output=%+v", out)
+	}
+}
+
+func TestRenderCreateConciseHappyPath(t *testing.T) {
+	t.Parallel()
+	var output bytes.Buffer
+	renderCreate(&output, generator.CreateResult{
+		ProjectName: "tvguide", Mode: "flat", VerifyRan: true, VerifyPassed: true,
+		NextSteps: []string{"cd 'tvguide'", "go run . greet --name World", "go build -o tvguide ."},
+	})
+	want := "Created tvguide (flat)\nVerified: tests and build\n\nNext:\n  cd 'tvguide'\n  go run . greet --name World\n  go build -o tvguide .\n"
+	if output.String() != want {
+		t.Fatalf("output=%q want=%q", output.String(), want)
 	}
 }

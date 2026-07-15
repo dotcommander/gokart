@@ -22,7 +22,7 @@ The `cli` module provides small Cobra and Lip Gloss helpers. Your `main` functio
 ## Install
 
 ```bash
-go get github.com/dotcommander/gokart/cli@v0.12.0
+go get github.com/dotcommander/gokart/cli@v0.13.0
 ```
 
 ## Configure the application

@@ -4,10 +4,6 @@ package actions
 import (
 	"errors"
 	"strings"
-{{- if or .UseSQLite .UsePostgres .UseAI .UseRedis }}
-
-	"{{.Module}}/internal/app"
-{{- end }}
 )
 
 var ErrNameRequired = errors.New("name is required")
@@ -27,20 +23,10 @@ func (i GreetInput) Validate() error {
 }
 
 // Greet returns a greeting message for the given input.
-{{- if or .UseSQLite .UsePostgres .UseAI .UseRedis }}
-func Greet(ctx *app.Context, input GreetInput) (string, error) {
-	if err := input.Validate(); err != nil {
-		return "", err
-	}
-	if ctx != nil && ctx.Log != nil {
-		ctx.Log.Info("greeting", "name", input.Name, "loud", input.Loud)
-	}
-{{- else }}
 func Greet(input GreetInput) (string, error) {
 	if err := input.Validate(); err != nil {
 		return "", err
 	}
-{{- end }}
 	msg := "Hello, " + input.Name
 	if input.Loud {
 		msg = strings.ToUpper(msg) + "!"

@@ -1,0 +1,39 @@
+Usage: gokart new (create,init) <project> ... [flags]
+
+Create a new GoKart project.
+
+Arguments:
+  <project> ...    Project name.
+
+Flags:
+  -h, --help       Show context-sensitive help.
+      --version    Print version information and quit.
+
+Project
+  --flat             Use a single-package root layout (default).
+  --structured       Use a managed cmd/ and internal/ layout for later
+                     integrations.
+  --module=STRING    Go module path.
+  --example          Include a runnable greet command and tests.
+
+Integrations / Configuration
+  --db="none"              Database backend.
+  --ai                     Include OpenAI client.
+  --redis                  Include Redis cache.
+  --local                  Use local-only config.
+  --global                 Enable global config.
+  --config-scope="auto"    Config scope.
+
+Safety / Verification
+  --dry-run              Preview scaffold operations without writing files.
+  --force                Overwrite all existing files.
+  --skip-existing        Skip files that already exist.
+  --no-manifest          Opt a structured project out of GoKart management.
+  --verify               Force post-generation tests and build.
+  --no-verify            Skip tests and build, but still prepare dependencies.
+  --verify-only          Tidy, test, and build an existing project without
+                         scaffolding.
+  --verify-timeout=5m    Maximum verification time; zero disables timeout.
+
+Automation
+  --json    Print machine-readable JSON result.

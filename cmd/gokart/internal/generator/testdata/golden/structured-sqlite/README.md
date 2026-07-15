@@ -6,7 +6,8 @@ go run ./cmd greet --name World
 go build -o demo ./cmd
 ```
 
-This is ordinary Go source. You own it and may edit, move, or delete any file.
+This is ordinary Go source. You own it and may edit, move, or delete any file. GoKart records generated shared files so `gokart add` can update
+them safely.
 
 ## Structure and lifecycle
 
@@ -17,9 +18,10 @@ internal/actions/       Business logic independent of Kong
 internal/app/           Typed configuration and shared dependencies
 ```
 
-`cmd/main.go` calls `commands.Execute`. The root command loads configuration in
-the Kong execution path, binds `app.Context` only for commands that run, and closes
-its database, pool, or cache before returning to `main`.
+`cmd/main.go` calls `commands.Execute` and keeps process exit handling at the
+boundary. The root command creates `app.Dependencies` only when
+the selected command requests them, then closes any database, pool, or cache
+before returning to `main`. `app.Context` remains an alias for compatibility.
 
 ## Selected integrations
 
@@ -44,9 +46,8 @@ The default SQLite database is in the user cache directory at
 
 ## Build and test
 
-Use `kong.Context.Stdout` for command-owned output and `kong.Writers` at the
-parser boundary. Test action code directly and use a temporary SQLite path for database
-tests.
+Use `kong.Context.Stdout` for command-owned output and injected writers at the
+parser boundary. Test action code directly. Use a temporary SQLite path for database tests.
 
 ```bash
 go test ./...

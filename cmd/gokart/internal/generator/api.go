@@ -195,6 +195,8 @@ type CreateResult struct {
 	VerifyOnly         bool
 	VerifyRan          bool
 	VerifyPassed       bool
+	IncludeExample     bool
+	Checks             []CheckResult
 	ExistingFilePolicy ExistingFilePolicy
 	Warnings           []string
 	Conflicts          []string
@@ -202,6 +204,12 @@ type CreateResult struct {
 	NextDir            string
 	NextCommand        string
 	NextArgs           []string
+	NextSteps          []string
+}
+
+type CheckResult struct {
+	Command string `json:"command"`
+	Status  string `json:"status"`
 }
 
 type AddRequest struct {
@@ -222,5 +230,6 @@ type AddResult struct {
 	DryRun           bool
 	VerifyRequested  bool
 	VerifyPassed     bool
+	Checks           []CheckResult
 	Warnings         []string
 }

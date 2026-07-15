@@ -159,9 +159,11 @@ func TestGettingStartedCommandsMatchCLIPathRules(t *testing.T) {
 		t.Fatal("getting started uses rejected project path '.'; use an absolute path or valid basename")
 	}
 	for _, command := range []string{
-		"gokart new mycli --db sqlite --example",
-		"gokart new service --structured --global",
-		`gokart new "$PWD" --verify-only`,
+		"gokart new tvguide --example",
+		"go run . greet --name World",
+		"go run . now --channel WGBH",
+		"go build -o tvguide .",
+		"./tvguide now --channel WGBH",
 	} {
 		if !strings.Contains(doc, command) {
 			t.Errorf("getting started omits verified command %q", command)

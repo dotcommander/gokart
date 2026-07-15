@@ -2,7 +2,7 @@
 
 ```bash
 go test ./...
-go run .
+go run . greet --name World
 go build -o demo .
 ```
 

@@ -13,11 +13,12 @@ import (
 )
 
 const (
-	appName        = "gokart"
-	outcomeFailure = "failure"
-	outcomeSuccess = "success"
-	jsonFlag       = "--json"
-	configName     = "config"
+	appName               = "gokart"
+	outcomeFailure        = "failure"
+	outcomePartialSuccess = "partial_success"
+	outcomeSuccess        = "success"
+	jsonFlag              = "--json"
+	configName            = "config"
 )
 
 type ProjectGenerator interface {
@@ -43,7 +44,7 @@ type executor struct {
 type cli struct {
 	VersionFlag kong.VersionFlag `name:"version" help:"Print version information and quit."`
 	New         newCommand       `cmd:"" aliases:"create,init" help:"Create a new GoKart project."`
-	Add         addCommand       `cmd:"" help:"Add integrations to an existing GoKart project."`
+	Add         addCommand       `cmd:"" help:"Add integrations to a managed structured project."`
 	Version     versionCommand   `cmd:"" help:"Print the version number."`
 	Config      configCommand    `cmd:"" help:"Show gokart configuration."`
 }

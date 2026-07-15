@@ -1,5 +1,27 @@
 # Changelog
 
+## v0.13.0 (2026-07-14)
+
+### Added
+- Add a complete TV-guide newcomer tutorial and matching runnable example.
+- Report dependency, test, and build checks in human and JSON generator output.
+- Generate focused command tests for flat and structured example scaffolds.
+
+### Changed
+- Make every structured scaffold managed by default while keeping flat projects
+  manifest-free, including global flat projects.
+- Prepare dependencies before verification and make generated projects testable
+  through injected arguments and output writers.
+- Initialize structured integrations only for commands that request them and
+  preserve command and cleanup errors together.
+
+### Fixed
+- Return actionable partial-success output when scaffold dependency preparation
+  fails, including the recovery command.
+- Detect flat projects before reporting a missing manifest from `gokart add`.
+- Pin the generated Go directive and expand release verification across flat,
+  structured, managed, unmanaged, integration, and example scaffolds.
+
 ## v0.12.0 (2026-07-14)
 
 ### Breaking

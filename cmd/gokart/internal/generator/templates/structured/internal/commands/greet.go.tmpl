@@ -6,9 +6,6 @@ import (
 	"github.com/alecthomas/kong"
 
 	"{{.Module}}/internal/actions"
-{{- if or .UseSQLite .UsePostgres .UseAI .UseRedis }}
-	"{{.Module}}/internal/app"
-{{- end }}
 )
 
 type GreetCommand struct {
@@ -16,17 +13,13 @@ type GreetCommand struct {
 	Loud bool   `short:"l" help:"Greet loudly."`
 }
 
-func (c *GreetCommand) Run(kctx *kong.Context{{if or .UseSQLite .UsePostgres .UseAI .UseRedis}}, appCtx *app.Context{{end}}) error {
+func (c *GreetCommand) Run(kctx *kong.Context) error {
 	input := actions.GreetInput{Name: c.Name, Loud: c.Loud}
-{{- if or .UseSQLite .UsePostgres .UseAI .UseRedis }}
-	result, err := actions.Greet(appCtx, input)
-{{- else }}
 	result, err := actions.Greet(input)
-{{- end }}
 	if err != nil {
 		return fmt.Errorf("greet failed: %w", err)
 	}
-	fmt.Fprintln(kctx.Stdout, result)
-	return nil
+	_, err = fmt.Fprintln(kctx.Stdout, result)
+	return err
 }
 {{- end -}}

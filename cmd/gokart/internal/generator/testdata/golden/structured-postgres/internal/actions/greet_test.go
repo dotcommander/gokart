@@ -1,19 +1,8 @@
 package actions
 
 import (
-	"io"
-	"log/slog"
 	"testing"
-
-	"github.com/example/demo/internal/app"
 )
-
-func testContext(t *testing.T) *app.Context {
-	t.Helper()
-	return &app.Context{
-		Log: slog.New(slog.NewTextHandler(io.Discard, nil)),
-	}
-}
 
 func TestGreet(t *testing.T) {
 	t.Parallel()
@@ -52,8 +41,7 @@ func TestGreet(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			ctx := testContext(t)
-			got, err := Greet(ctx, tt.input)
+			got, err := Greet(tt.input)
 			if err != tt.wantErr {
 				t.Errorf("Greet() error = %v, wantErr %v", err, tt.wantErr)
 				return

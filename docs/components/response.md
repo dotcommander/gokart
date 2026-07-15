@@ -5,7 +5,7 @@ JSON response helpers for writing consistent HTTP API responses. Provides functi
 ## Installation
 
 ```bash
-go get github.com/dotcommander/gokart/web@v0.12.0
+go get github.com/dotcommander/gokart/web@v0.13.0
 ```
 
 ## Quick Start

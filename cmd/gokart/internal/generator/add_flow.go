@@ -86,6 +86,9 @@ func collectAddIntegrations(args []string) ([]string, error) {
 }
 
 func planAddChanges(req addRequest, output *addCommandOutput, generatorVersion ...string) (*addPlan, error) {
+	if _, err := os.Stat(filepath.Join(req.Dir, scaffoldManifestPath)); os.IsNotExist(err) && looksLikeFlatProject(req.Dir) {
+		return nil, flatAddUnsupportedError()
+	}
 	manifest, err := readAddManifest(req.Dir)
 	if err != nil {
 		return nil, wrapAddFlowError(err, ErrorManifestNotFound)
@@ -97,7 +100,7 @@ func planAddChanges(req addRequest, output *addCommandOutput, generatorVersion .
 	// Warn (non-fatal) on template-version skew: a project scaffolded by an
 	// older gokart may not match templates rendered by the running version.
 	if isFlatProject(manifest) {
-		return nil, wrapAddFlowError(errors.New("gokart add requires a structured project (flat projects don't support integrations)"), ErrorFlatModeUnsupported)
+		return nil, flatAddUnsupportedError()
 	}
 
 	goModModule, current := detectCurrentIntegrations(manifest, req.Dir)
@@ -136,6 +139,17 @@ func planAddChanges(req addRequest, output *addCommandOutput, generatorVersion .
 		RenderedFiles: renderedFiles,
 		RenderedPaths: renderedPaths,
 	}, nil
+}
+
+func looksLikeFlatProject(dir string) bool {
+	_, mainErr := os.Stat(filepath.Join(dir, "main.go"))
+	_, modErr := os.Stat(filepath.Join(dir, "go.mod"))
+	_, cmdErr := os.Stat(filepath.Join(dir, "cmd", "main.go"))
+	return mainErr == nil && modErr == nil && os.IsNotExist(cmdErr)
+}
+
+func flatAddUnsupportedError() error {
+	return wrapAddFlowError(errors.New("gokart add requires a managed structured project; add the relevant GoKart package to this flat project manually, or start future growable projects with `gokart new <name> --structured`"), ErrorFlatModeUnsupported)
 }
 
 func generatorVersionSkewed(manifest *scaffoldManifest, versions []string) bool {
@@ -185,7 +199,7 @@ func (s *Service) applyAddChanges(ctx context.Context, req addRequest, plan *add
 	}
 
 	// From here on, any failure must revert every file written above.
-	depErr := s.addGoDependencies(ctx, req.Dir, plan.ToAdd, runtime)
+	depErr := s.addGoDependencies(ctx, req.Dir, plan.ToAdd, runtime, &output.Checks)
 	applied, err = markDependencyFilesApplied(depActions, journal, applied)
 	if depErr != nil {
 		if err != nil {
@@ -215,7 +229,7 @@ func (s *Service) applyAddChanges(ctx context.Context, req addRequest, plan *add
 		return nil
 	}
 
-	if err := s.verify(ctx, req.Dir, req.VerifyTimeout, runtime); err != nil {
+	if err := s.verify(ctx, req.Dir, runtime, verificationPlan{Timeout: req.VerifyTimeout, Tidy: true}, &output.Checks); err != nil {
 		output.VerifyPassed = false
 		return &OperationError{Kind: ErrorVerifyFailed, Partial: true, Err: fmt.Errorf("verification failed: %w", err)}
 	}

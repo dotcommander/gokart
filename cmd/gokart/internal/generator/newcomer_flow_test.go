@@ -33,7 +33,6 @@ func TestDocumentedSQLiteNewcomerFlow(t *testing.T) {
 
 	contextPath := filepath.Join(dir, "internal/app/context.go")
 	appContext := readTutorialFile(t, contextPath)
-	appContext = strings.Replace(appContext, "\t\"database/sql\"", "\t\"database/sql\"\n\t\"fmt\"", 1)
 	appContext = strings.Replace(appContext, "\t\"github.com/dotcommander/gokart/sqlite\"", "\t\"github.com/dotcommander/gokart/migrate\"\n\t\"github.com/dotcommander/gokart/sqlite\"", 1)
 	appContext = strings.Replace(appContext, "\tappCtx.DB = db", "\tif err := migrate.Up(ctx, db, migrate.Config{Dir: \"migrations\", Dialect: \"sqlite3\"}); err != nil {\n\t\t_ = db.Close()\n\t\treturn nil, fmt.Errorf(\"migrate database: %w\", err)\n\t}\n\tappCtx.DB = db", 1)
 	writeTutorialFile(t, dir, "internal/app/context.go", appContext)
@@ -50,22 +49,29 @@ func TestDocumentedSQLiteNewcomerFlow(t *testing.T) {
 		runTutorialGoCommand(t, dir, "mod", "edit", "-replace="+module+"="+local)
 	}
 	writeTutorialFile(t, dir, "go.sum", readTutorialFile(t, filepath.Join(repoRoot, "migrate", "go.sum")))
-	runTutorialGoCommand(t, dir, "mod", "edit", "-require=github.com/dotcommander/gokart/migrate@v0.12.0")
+	runTutorialGoCommand(t, dir, "mod", "edit", "-require=github.com/dotcommander/gokart/migrate@v0.13.0")
 	runTutorialGoCommand(t, dir, "mod", "tidy")
 	runTutorialGoCommand(t, dir, "test", "./...")
 	writeTutorialFile(t, dir, "counter.yaml", "db_path: discovered.db\n")
 	if got := runTutorialGoCommand(t, dir, "run", "./cmd", "greet", "--name", "Ada"); !strings.Contains(got, "Hello, Ada") {
 		t.Fatalf("greet output = %q", got)
 	}
+	if _, err := os.Stat(filepath.Join(dir, "discovered.db")); !os.IsNotExist(err) {
+		t.Fatalf("greet unexpectedly initialized SQLite: %v", err)
+	}
+	runTutorialGoCommand(t, dir, "run", "./cmd", "counter", "build", "--by", "0")
 	if _, err := os.Stat(filepath.Join(dir, "discovered.db")); err != nil {
 		t.Fatalf("implicit current-directory config was not loaded: %v", err)
 	}
 	writeTutorialFile(t, dir, "explicit.yaml", "db_path: explicit.db\n")
-	runTutorialGoCommand(t, dir, "run", "./cmd", "greet", "--config", "explicit.yaml")
+	runTutorialGoCommand(t, dir, "run", "./cmd", "counter", "build", "--by", "0", "--config", "explicit.yaml")
 	if _, err := os.Stat(filepath.Join(dir, "explicit.db")); err != nil {
 		t.Fatalf("explicit config was not loaded: %v", err)
 	}
-	if output, err := runTutorialGoCommandResult(dir, "run", "./cmd", "greet", "--config", "missing.yaml"); err == nil || !strings.Contains(output, "missing.yaml") {
+	if got := runTutorialGoCommand(t, dir, "run", "./cmd", "greet", "--config", "missing.yaml"); !strings.Contains(got, "Hello, World") {
+		t.Fatalf("dependency-free greet output = %q", got)
+	}
+	if output, err := runTutorialGoCommandResult(dir, "run", "./cmd", "counter", "build", "--config", "missing.yaml"); err == nil || !strings.Contains(output, "missing.yaml") {
 		t.Fatalf("explicit missing config should fail actionably: err=%v output=%q", err, output)
 	}
 	if got := runTutorialGoCommand(t, dir, "run", "./cmd", "counter", "build", "--by", "3"); strings.TrimSpace(got) != "3" {

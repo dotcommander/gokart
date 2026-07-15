@@ -28,7 +28,7 @@ leaks:
     scripts/check-public-leaks.sh
 
 # Create local tags for all submodules and the root. Pushing is a separate gate.
-# Usage: just tag v0.12.0
+# Usage: just tag v0.13.0
 tag version:
     #!/usr/bin/env bash
     set -euo pipefail

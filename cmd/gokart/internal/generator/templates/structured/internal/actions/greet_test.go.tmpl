@@ -3,22 +3,7 @@ package actions
 
 import (
 	"testing"
-{{- if or .UseSQLite .UsePostgres .UseAI }}
-	"io"
-	"log/slog"
-
-	"{{.Module}}/internal/app"
-{{- end }}
 )
-{{- if or .UseSQLite .UsePostgres .UseAI }}
-
-func testContext(t *testing.T) *app.Context {
-	t.Helper()
-	return &app.Context{
-		Log: slog.New(slog.NewTextHandler(io.Discard, nil)),
-	}
-}
-{{- end }}
 
 func TestGreet(t *testing.T) {
 	t.Parallel()
@@ -57,12 +42,7 @@ func TestGreet(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-{{- if or .UseSQLite .UsePostgres .UseAI }}
-			ctx := testContext(t)
-			got, err := Greet(ctx, tt.input)
-{{- else }}
 			got, err := Greet(tt.input)
-{{- end }}
 			if err != tt.wantErr {
 				t.Errorf("Greet() error = %v, wantErr %v", err, tt.wantErr)
 				return

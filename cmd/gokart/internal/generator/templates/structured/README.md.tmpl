@@ -7,6 +7,9 @@ go build -o {{.Name}} ./cmd
 ```
 
 This is ordinary Go source. You own it and may edit, move, or delete any file.
+{{- if .Managed }} GoKart records generated shared files so `gokart add` can update
+them safely.{{- else }} This scaffold is unmanaged because manifest generation was
+disabled.{{- end }}
 
 ## Structure and lifecycle
 
@@ -16,14 +19,17 @@ internal/commands/      Kong commands and dependency initialization
 {{- if .IncludeExample }}
 internal/actions/       Business logic independent of Kong
 {{- end }}
-{{- if or .UseGlobal .UseSQLite .UsePostgres .UseAI .UseRedis }}
+{{- if .HasAppPackage }}
 internal/app/           Typed configuration and shared dependencies
 {{- end }}
 ```
 
-`cmd/main.go` calls `commands.Execute`. The root command loads configuration in
-the Kong execution path, binds `app.Context` only for commands that run, and closes
-its database, pool, or cache before returning to `main`.
+`cmd/main.go` calls `commands.Execute` and keeps process exit handling at the
+boundary.
+{{- if .HasIntegrations }} The root command creates `app.Dependencies` only when
+the selected command requests them, then closes any database, pool, or cache
+before returning to `main`. `app.Context` remains an alias for compatibility.
+{{- end }}
 {{- if .Integrations }}
 
 ## Selected integrations
@@ -55,7 +61,7 @@ The default SQLite database is in the user cache directory at
   `internal/app/context.go`; until then, keep custom initialization in a
   user-owned file called from the generated context.
 - Keep `cmd/main.go` small so deferred cleanup completes before `os.Exit`.
-{{- if or .UseGlobal .UseSQLite .UsePostgres .UseAI .UseRedis }}
+{{- if .Managed }}
 - `.gokart-manifest.json` records generated-file hashes. `gokart add` may rewrite
   `internal/app/context.go` and `internal/commands/root.go`; it refuses local
   changes unless you pass `--force`. Commit or copy changes before forcing.
@@ -63,9 +69,9 @@ The default SQLite database is in the user cache directory at
 
 ## Build and test
 
-Use `kong.Context.Stdout` for command-owned output and `kong.Writers` at the
-parser boundary. Test action code directly and use a temporary SQLite path for database
-tests.
+Use `kong.Context.Stdout` for command-owned output and injected writers at the
+parser boundary. Test action code directly.
+{{- if .UseSQLite }} Use a temporary SQLite path for database tests.{{- end }}
 
 ```bash
 go test ./...

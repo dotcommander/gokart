@@ -70,6 +70,9 @@ func isLegacyAppField(field *ast.Field) bool {
 }
 
 func renderIntegrationFiles(data TemplateData) (map[string][]byte, error) {
+	// Add only operates on managed structured projects. Refresh derived template
+	// policy after callers merge the requested integration booleans.
+	data.derive(true)
 	result := make(map[string][]byte)
 	templatePaths := []struct {
 		tmpl    string
@@ -114,7 +117,7 @@ func checkFileSafety(dir, relPath string, manifest *scaffoldManifest) fileSafety
 	return fileSafetyConflict
 }
 
-func (s *Service) addGoDependencies(ctx context.Context, dir string, integrations []string, runtime Runtime) error {
+func (s *Service) addGoDependencies(ctx context.Context, dir string, integrations []string, runtime Runtime, checks *[]CheckResult) error {
 	data := TemplateData{}
 	for _, name := range integrations {
 		entry, ok := integrationRegistry[name]
@@ -128,10 +131,10 @@ func (s *Service) addGoDependencies(ctx context.Context, dir string, integration
 	}
 
 	goGetArgs := append([]string{"get"}, packages...)
-	if err := s.runGoCommand(ctx, dir, runtime, goGetArgs...); err != nil {
+	if err := s.runCheckedGoCommand(ctx, dir, runtime, checks, goGetArgs...); err != nil {
 		return fmt.Errorf("go get: %w", err)
 	}
-	if err := s.runGoCommand(ctx, dir, runtime, "mod", "tidy"); err != nil {
+	if err := s.runCheckedGoCommand(ctx, dir, runtime, checks, "mod", "tidy"); err != nil {
 		return fmt.Errorf("go mod tidy: %w", err)
 	}
 	return nil

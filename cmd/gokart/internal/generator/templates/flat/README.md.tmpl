@@ -2,7 +2,7 @@
 
 ```bash
 go test ./...
-go run .
+go run .{{if .IncludeExample}} greet --name World{{end}}
 go build -o {{.Name}} .
 ```
 

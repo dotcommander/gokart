@@ -28,4 +28,6 @@ Kong provides command parsing, typed commands, dependency binding through `Conte
 - You need a wrapper that mirrors every upstream method; call upstream directly.
 - You cannot accept pre-1.0 change; pin and review migration guidance, or stay upstream.
 
-Next, build the [SQLite CLI tutorial](getting-started.md), then read [generated-code ownership](generated-code.md) before using `gokart add`.
+Next, build the [TV-guide tutorial](getting-started.md), then read
+[generated-code ownership](generated-code.md) before using `gokart add`. The
+[SQLite CLI tutorial](sqlite-cli.md) is the next step when you need persistence.

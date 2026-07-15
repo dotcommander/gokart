@@ -1,0 +1,65 @@
+{{- if .IncludeExample -}}
+package commands
+
+import (
+	"bytes"
+	"context"
+	"errors"
+	"strings"
+	"testing"
+)
+
+func TestExecuteGreet(t *testing.T) {
+	t.Parallel()
+
+	var stdout, stderr bytes.Buffer
+	if err := execute(context.Background(), "test", []string{"greet", "--name", "Ada"}, &stdout, &stderr); err != nil {
+		t.Fatalf("execute() error = %v", err)
+	}
+	if got, want := stdout.String(), "Hello, Ada\n"; got != want {
+		t.Fatalf("stdout = %q, want %q", got, want)
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("stderr = %q, want empty", stderr.String())
+	}
+}
+
+func TestExecuteWithoutArgumentsPrintsUsage(t *testing.T) {
+	t.Parallel()
+
+	var stdout, stderr bytes.Buffer
+	if err := execute(context.Background(), "test", nil, &stdout, &stderr); err != nil {
+		t.Fatalf("execute() error = %v", err)
+	}
+	if !strings.Contains(stdout.String(), "Usage: {{.Name}}") {
+		t.Fatalf("stdout = %q, want root usage", stdout.String())
+	}
+}
+
+func TestExecuteRejectsInvalidArguments(t *testing.T) {
+	t.Parallel()
+
+	var stdout, stderr bytes.Buffer
+	if err := execute(context.Background(), "test", []string{"missing"}, &stdout, &stderr); err == nil {
+		t.Fatal("execute() error = nil, want invalid-argument error")
+	}
+}
+
+func TestGreetPropagatesOutputFailure(t *testing.T) {
+	t.Parallel()
+
+	want := errors.New("write failed")
+	err := execute(context.Background(), "test", []string{"greet"}, errorWriter{err: want}, &bytes.Buffer{})
+	if !errors.Is(err, want) {
+		t.Fatalf("execute() error = %v, want %v", err, want)
+	}
+}
+
+type errorWriter struct {
+	err error
+}
+
+func (w errorWriter) Write([]byte) (int, error) {
+	return 0, w.err
+}
+{{- end -}}

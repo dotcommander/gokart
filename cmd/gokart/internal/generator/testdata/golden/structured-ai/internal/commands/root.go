@@ -3,6 +3,7 @@ package commands
 import (
 	"context"
 	"errors"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -20,34 +21,49 @@ type CLI struct {
 	Greet   GreetCommand     `cmd:"" help:"Greet someone."`
 }
 
+// Execute runs the CLI using the process arguments and streams.
 func Execute(ctx context.Context, version string) error {
+	return execute(ctx, version, os.Args[1:], os.Stdout, os.Stderr)
+}
+
+func execute(ctx context.Context, version string, args []string, stdout, stderr io.Writer) error {
 	var cli CLI
-	parser, err := kong.New(&cli, kong.Name("demo"), kong.Description("demo CLI"), kong.Vars{"version": version}, kong.UsageOnError(), kong.BindTo(ctx, (*context.Context)(nil)))
+	parser, err := kong.New(&cli, kong.Name("demo"), kong.Description("demo CLI"), kong.Vars{"version": version}, kong.Writers(stdout, stderr), kong.UsageOnError(), kong.BindTo(ctx, (*context.Context)(nil)))
 	if err != nil {
 		return err
 	}
-	parsed, err := parser.Parse(os.Args[1:])
+	if len(args) == 0 {
+		usage, err := kong.Trace(parser, args)
+		if err != nil {
+			return err
+		}
+		return usage.PrintUsage(false)
+	}
+	parsed, err := parser.Parse(args)
 	if err != nil {
 		return err
 	}
-	if len(os.Args) == 1 {
-		return parsed.PrintUsage(false)
-	}
-	workingDir, err := os.Getwd()
-	if err != nil {
+	var dependencies *app.Dependencies
+	if err := parsed.BindSingletonProvider(func() (*app.Dependencies, error) {
+		workingDir, err := os.Getwd()
+		if err != nil {
+			return nil, err
+		}
+		userConfigDir, _ := os.UserConfigDir()
+		v, err := loadConfig(cli, workingDir, userConfigDir, "/etc")
+		if err != nil {
+			return nil, err
+		}
+		dependencies, err = app.New(ctx, "demo", v)
+		return dependencies, err
+	}); err != nil {
 		return err
 	}
-	userConfigDir, _ := os.UserConfigDir()
-	v, err := loadConfig(cli, workingDir, userConfigDir, "/etc")
-	if err != nil {
-		return err
+	runErr := parsed.Run()
+	if dependencies == nil {
+		return runErr
 	}
-	appCtx, err := app.New(ctx, "demo", v)
-	if err != nil {
-		return err
-	}
-	defer appCtx.Close()
-	return parsed.Run(appCtx)
+	return errors.Join(runErr, dependencies.Close())
 }
 
 func loadConfig(cli CLI, workingDir, userConfigDir, systemConfigRoot string) (*viper.Viper, error) {

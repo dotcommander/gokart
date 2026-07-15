@@ -47,7 +47,7 @@ func TestBuildNewRequestManagedScaffoldsWriteManifest(t *testing.T) {
 		name  string
 		flags map[string]string
 	}{
-		{name: "global", flags: map[string]string{newFlagGlobal: "true"}},
+		{name: "structured", flags: map[string]string{newFlagStructured: "true"}},
 		{name: "sqlite", flags: map[string]string{newFlagDB: "sqlite"}},
 		{name: "postgres", flags: map[string]string{newFlagDB: "postgres"}},
 		{name: "ai", flags: map[string]string{newFlagAI: "true"}},
@@ -76,6 +76,19 @@ func TestBuildNewRequestManagedScaffoldsWriteManifest(t *testing.T) {
 	}
 }
 
+func TestBuildNewRequestFlatGlobalRemainsUnmanaged(t *testing.T) {
+	t.Parallel()
+	cmd := newNewCommandForTest()
+	mustSetFlagTrue(t, cmd, newFlagGlobal)
+	req, err := buildNewRequest(cmd, []string{"myapp"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if req.Mode != modeFlat || req.WriteManifest {
+		t.Fatalf("mode=%q writeManifest=%v", req.Mode, req.WriteManifest)
+	}
+}
+
 func TestBuildNewRequestExampleFlagEnablesExampleScaffold(t *testing.T) {
 	t.Parallel()
 	cmd := newNewCommandForTest()
@@ -94,7 +107,7 @@ func TestBuildNewRequestExampleFlagEnablesExampleScaffold(t *testing.T) {
 func TestBuildNewRequestNoManifestDisablesManifest(t *testing.T) {
 	t.Parallel()
 	cmd := newNewCommandForTest()
-	mustSetFlagTrue(t, cmd, newFlagGlobal)
+	mustSetFlagTrue(t, cmd, newFlagStructured)
 	if err := setCreateFlag(cmd, "no-manifest", "true"); err != nil {
 		t.Fatalf("set no-manifest flag: %v", err)
 	}
@@ -106,6 +119,19 @@ func TestBuildNewRequestNoManifestDisablesManifest(t *testing.T) {
 
 	if req.WriteManifest {
 		t.Fatal("expected write manifest to be false when --no-manifest is set")
+	}
+}
+
+func TestBuildNewRequestFlatNoManifestWarnsAlreadyUnmanaged(t *testing.T) {
+	t.Parallel()
+	cmd := newNewCommandForTest()
+	mustSetFlagTrue(t, cmd, newFlagNoManifest)
+	req, err := buildNewRequest(cmd, []string{"myapp"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if req.WriteManifest || len(req.Warnings) != 1 || !strings.Contains(req.Warnings[0], "already unmanaged") {
+		t.Fatalf("writeManifest=%v warnings=%v", req.WriteManifest, req.Warnings)
 	}
 }
 
@@ -270,7 +296,7 @@ func TestScaffoldVerifyDefault(t *testing.T) {
 		}
 	})
 
-	t.Run("postgres skips auto-verify but explicit --verify forces it", func(t *testing.T) {
+	t.Run("postgres verifies automatically", func(t *testing.T) {
 		t.Parallel()
 		cmd := newNewCommandForTest()
 		if err := setCreateFlag(cmd, newFlagDB, "postgres"); err != nil {
@@ -280,21 +306,8 @@ func TestScaffoldVerifyDefault(t *testing.T) {
 		if err != nil {
 			t.Fatalf("buildNewRequest() error = %v", err)
 		}
-		if req.Verify {
-			t.Fatal("expected auto-verify to be skipped for --db postgres")
-		}
-
-		cmd2 := newNewCommandForTest()
-		if err := setCreateFlag(cmd2, newFlagDB, "postgres"); err != nil {
-			t.Fatalf("set db flag: %v", err)
-		}
-		mustSetFlagTrue(t, cmd2, newFlagVerify)
-		req2, err := buildNewRequest(cmd2, []string{"myapp"})
-		if err != nil {
-			t.Fatalf("buildNewRequest() error = %v", err)
-		}
-		if !req2.Verify {
-			t.Fatal("expected explicit --verify to force verification for --db postgres")
+		if !req.Verify {
+			t.Fatal("expected automatic verification for --db postgres")
 		}
 	})
 }
