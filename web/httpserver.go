@@ -65,7 +65,7 @@ var StandardMiddleware = []func(http.Handler) http.Handler{
 //	    w.WriteHeader(http.StatusOK)
 //	})
 //
-//	http.ListenAndServe(":8080", router)
+//	web.ListenAndServe(":8080", router)
 func NewRouter(cfg RouterConfig) chi.Router {
 	r := chi.NewRouter()
 

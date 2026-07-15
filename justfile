@@ -28,7 +28,7 @@ leaks:
     scripts/check-public-leaks.sh
 
 # Create local tags for all submodules and the root. Pushing is a separate gate.
-# Usage: just tag v0.11.0
+# Usage: just tag v0.12.0
 tag version:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -58,9 +58,9 @@ tag version:
     for mod in {{modules}}; do
         tag="$mod/$v"
         echo "  tagging $tag"
-        git tag "$tag"
+        git tag -a "$tag" -m "Release $tag"
     done
     # Tag root
     echo "  tagging $v"
-    git tag "$v"
+    git tag -a "$v" -m "Release $v"
     echo "Done. Local tags created at $v; nothing was pushed."

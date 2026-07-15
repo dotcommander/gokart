@@ -7,7 +7,14 @@ Complete application examples demonstrating GoKart patterns.
 | Example | Description |
 |---------|-------------|
 | [http-service/](http-service/) | Minimal HTTP API with chi router, response helpers, and graceful shutdown |
-| [cli-app/](cli-app/) | CLI tool with commands, styled output, tables, and spinners |
+| [cli-app/](cli-app/) | Focused Kong CLI with typed commands and command-scoped output writers |
+
+Run either standalone module with workspace replacements disabled:
+
+```bash
+cd examples/cli-app && GOWORK=off go run .
+cd examples/http-service && GOWORK=off go run .
+```
 
 ## Component Examples
 

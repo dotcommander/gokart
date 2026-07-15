@@ -19,19 +19,18 @@ func atomicWriteFile(path string, data []byte, perm os.FileMode) error {
 		return fmt.Errorf("create temporary file: %w", err)
 	}
 	tmpPath := tmp.Name()
-	defer os.Remove(tmpPath)
+	defer func() {
+		_ = os.Remove(tmpPath)
+	}()
 
 	if err := tmp.Chmod(perm); err != nil {
-		tmp.Close()
-		return fmt.Errorf("set temporary file permissions: %w", err)
+		return closeTemporaryFile(tmp, fmt.Errorf("set temporary file permissions: %w", err))
 	}
 	if _, err := tmp.Write(data); err != nil {
-		tmp.Close()
-		return fmt.Errorf("write temporary file: %w", err)
+		return closeTemporaryFile(tmp, fmt.Errorf("write temporary file: %w", err))
 	}
 	if err := tmp.Sync(); err != nil {
-		tmp.Close()
-		return fmt.Errorf("sync temporary file: %w", err)
+		return closeTemporaryFile(tmp, fmt.Errorf("sync temporary file: %w", err))
 	}
 	if err := tmp.Close(); err != nil {
 		return fmt.Errorf("close temporary file: %w", err)
@@ -65,19 +64,18 @@ func readOrCreateFile(path string, defaultContent []byte, perm os.FileMode) ([]b
 		return nil, fmt.Errorf("create temporary file: %w", err)
 	}
 	tmpPath := tmp.Name()
-	defer os.Remove(tmpPath)
+	defer func() {
+		_ = os.Remove(tmpPath)
+	}()
 
 	if err := tmp.Chmod(perm); err != nil {
-		tmp.Close()
-		return nil, fmt.Errorf("set temporary file permissions: %w", err)
+		return nil, closeTemporaryFile(tmp, fmt.Errorf("set temporary file permissions: %w", err))
 	}
 	if _, err := tmp.Write(defaultContent); err != nil {
-		tmp.Close()
-		return nil, fmt.Errorf("write temporary file: %w", err)
+		return nil, closeTemporaryFile(tmp, fmt.Errorf("write temporary file: %w", err))
 	}
 	if err := tmp.Sync(); err != nil {
-		tmp.Close()
-		return nil, fmt.Errorf("sync temporary file: %w", err)
+		return nil, closeTemporaryFile(tmp, fmt.Errorf("sync temporary file: %w", err))
 	}
 	if err := tmp.Close(); err != nil {
 		return nil, fmt.Errorf("close temporary file: %w", err)
@@ -104,6 +102,12 @@ func syncDirectory(path string) error {
 	if err != nil {
 		return err
 	}
-	defer dir.Close()
-	return dir.Sync()
+	return errors.Join(dir.Sync(), dir.Close())
+}
+
+func closeTemporaryFile(file *os.File, operationErr error) error {
+	if err := file.Close(); err != nil {
+		return errors.Join(operationErr, fmt.Errorf("close temporary file: %w", err))
+	}
+	return operationErr
 }

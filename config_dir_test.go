@@ -17,7 +17,11 @@ func TestEnsureConfigDirPreservesExistingConfig(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ConfigDir: %v", err)
 	}
-	t.Cleanup(func() { os.RemoveAll(dir) })
+	t.Cleanup(func() {
+		if err := os.RemoveAll(dir); err != nil {
+			t.Errorf("RemoveAll(%q): %v", dir, err)
+		}
+	})
 
 	if err := gokart.EnsureConfigDir(appName, []byte("first\n")); err != nil {
 		t.Fatalf("EnsureConfigDir(first): %v", err)
@@ -40,7 +44,11 @@ func TestEnsureConfigDirConcurrentCallersPreserveWinner(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ConfigDir: %v", err)
 	}
-	t.Cleanup(func() { os.RemoveAll(dir) })
+	t.Cleanup(func() {
+		if err := os.RemoveAll(dir); err != nil {
+			t.Errorf("RemoveAll(%q): %v", dir, err)
+		}
+	})
 
 	const callers = 16
 	start := make(chan struct{})

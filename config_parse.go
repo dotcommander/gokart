@@ -49,33 +49,37 @@ func ParseConfig[T any](config map[string]any) (T, error) {
 
 func applyConfigDefaults(resultType reflect.Type, input, original map[string]any) error {
 	for i := 0; i < resultType.NumField(); i++ {
-		field := resultType.Field(i)
-		if !field.IsExported() {
-			continue
+		if err := applyConfigField(resultType.Field(i), input, original); err != nil {
+			return err
 		}
-		if field.Anonymous && field.Type.Kind() == reflect.Struct {
-			if err := applyConfigDefaults(field.Type, input, original); err != nil {
-				return err
-			}
-			continue
-		}
+	}
+	return nil
+}
 
-		key := configFieldKey(field)
-		if key == "-" {
-			continue
+func applyConfigField(field reflect.StructField, input, original map[string]any) error {
+	if !field.IsExported() {
+		return nil
+	}
+	if field.Anonymous && field.Type.Kind() == reflect.Struct {
+		return applyConfigDefaults(field.Type, input, original)
+	}
+
+	key := configFieldKey(field)
+	if key == "-" {
+		return nil
+	}
+	value, exists := original[key]
+	defaultValue := field.Tag.Get("default")
+	if (!exists || value == nil) && defaultValue != "" {
+		parsed, err := parseConfigDefault(field.Type, defaultValue)
+		if err != nil {
+			return fmt.Errorf("field %s: invalid default %q: %w", field.Name, defaultValue, err)
 		}
-		value, exists := original[key]
-		if (!exists || value == nil) && field.Tag.Get("default") != "" {
-			parsed, err := parseConfigDefault(field.Type, field.Tag.Get("default"))
-			if err != nil {
-				return fmt.Errorf("field %s: invalid default %q: %w", field.Name, field.Tag.Get("default"), err)
-			}
-			input[key] = parsed
-			exists = true
-		}
-		if field.Tag.Get("required") == "true" && !exists {
-			return fmt.Errorf("field %s (config key %q): required but not provided", field.Name, key)
-		}
+		input[key] = parsed
+		exists = true
+	}
+	if field.Tag.Get("required") == "true" && !exists {
+		return fmt.Errorf("field %s (config key %q): required but not provided", field.Name, key)
 	}
 	return nil
 }
@@ -113,9 +117,13 @@ func parseConfigDefault(fieldType reflect.Type, value string) (any, error) {
 			return nil, err
 		}
 		return reflect.ValueOf(parsed).Convert(fieldType).Interface(), nil
-	default:
+	case reflect.Invalid,
+		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr,
+		reflect.Complex64, reflect.Complex128, reflect.Array, reflect.Chan, reflect.Func,
+		reflect.Interface, reflect.Map, reflect.Pointer, reflect.Slice, reflect.Struct, reflect.UnsafePointer:
 		return nil, fmt.Errorf("unsupported field type %v for string default", fieldType.Kind())
 	}
+	return nil, fmt.Errorf("unsupported field type %v for string default", fieldType.Kind())
 }
 
 func configConversionHook(from, to reflect.Type, data any) (any, error) {
@@ -137,9 +145,12 @@ func configNumericKind(kind reflect.Kind) bool {
 		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr,
 		reflect.Float32, reflect.Float64:
 		return true
-	default:
+	case reflect.Invalid, reflect.Bool, reflect.Complex64, reflect.Complex128,
+		reflect.Array, reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Pointer,
+		reflect.Slice, reflect.String, reflect.Struct, reflect.UnsafePointer:
 		return false
 	}
+	return false
 }
 
 func forbiddenConfigConversion(from, to reflect.Kind) bool {
