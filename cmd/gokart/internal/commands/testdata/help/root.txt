@@ -1,0 +1,21 @@
+Usage: gokart <command> [flags]
+
+GoKart scaffolds focused Go command-line applications.
+
+Commands:
+  new (create,init)      Create a new GoKart project.
+    <project> ...        Project name.
+
+  add                    Add integrations to a managed structured project.
+    <integration> ...    Integration: sqlite, postgres, ai, or redis.
+
+  version                Print the version number.
+
+  config                 Show gokart configuration.
+    show                 Print where gokart stores data.
+
+Flags:
+  -h, --help       Show context-sensitive help.
+      --version    Print version information and quit.
+
+Run "gokart <command> --help" for more information on a command.

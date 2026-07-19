@@ -213,7 +213,7 @@ func TestHelpSnapshots(t *testing.T) {
 		create: func(generator.CreateRequest) (generator.CreateResult, error) { return generator.CreateResult{}, nil },
 		add:    func(generator.AddRequest) (generator.AddResult, error) { return generator.AddResult{}, nil },
 	}
-	for _, command := range []string{"new", "add"} {
+	for _, command := range []string{"root", "new", "add"} {
 		command := command
 		t.Run(command, func(t *testing.T) {
 			t.Parallel()
@@ -222,12 +222,15 @@ func TestHelpSnapshots(t *testing.T) {
 			exec := &executor{ctx: context.Background(), version: "v-test", deps: deps}
 			root := cli{}
 			root.New.exec, root.Add.exec = exec, exec
-			parser, err := kong.New(&root, kong.Name(appName), kong.Description(rootDescription),
-				kong.Writers(&stdout, &stderr), kong.Exit(func(int) {}))
+			parser, err := newParser(&root, "v-test", deps, kong.Exit(func(int) {}))
 			if err != nil {
 				t.Fatal(err)
 			}
-			if _, err := parser.Parse([]string{command, "--help"}); err != nil && stdout.Len() == 0 {
+			args := []string{command, "--help"}
+			if command == "root" {
+				args = []string{"--help"}
+			}
+			if _, err := parser.Parse(args); err != nil && stdout.Len() == 0 {
 				t.Fatal(err)
 			}
 			want, err := os.ReadFile("testdata/help/" + command + ".txt")

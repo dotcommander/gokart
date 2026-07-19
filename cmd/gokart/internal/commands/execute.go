@@ -60,13 +60,7 @@ func Execute(ctx context.Context, args []string, version string, deps Dependenci
 	root := cli{}
 	root.New.exec, root.Add.exec = exec, exec
 	root.Version.exec, root.Config.exec = exec, exec
-	parser, err := kong.New(&root,
-		kong.Name(appName),
-		kong.Description(rootDescription),
-		kong.Vars{"version": appName + " version " + version},
-		kong.Writers(deps.Stdout, deps.Stderr),
-		kong.UsageOnError(),
-	)
+	parser, err := newParser(&root, version, deps)
 	var parsed *kong.Context
 	parseFailed := false
 	if err == nil {
@@ -102,6 +96,27 @@ func Execute(ctx context.Context, args []string, version string, deps Dependenci
 		return 2
 	}
 	return 1
+}
+
+func newParser(root *cli, version string, deps Dependencies, extra ...kong.Option) (*kong.Kong, error) {
+	options := []kong.Option{
+		kong.Name(appName),
+		kong.Description(rootDescription),
+		kong.Vars{"version": appName + " version " + version},
+		kong.Writers(deps.Stdout, deps.Stderr),
+		kong.UsageOnError(),
+		kong.ConfigureHelp(helpOptions()),
+	}
+	return kong.New(root, append(options, extra...)...)
+}
+
+func helpOptions() kong.HelpOptions {
+	return kong.HelpOptions{
+		Compact:   true,
+		Tree:      true,
+		Summary:   true,
+		FlagsLast: true,
+	}
 }
 
 func normalizedDependencies(deps Dependencies) Dependencies {
