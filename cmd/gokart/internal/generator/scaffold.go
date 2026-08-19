@@ -13,12 +13,12 @@ const (
 	defaultGokartPostgresVersion = defaultGokartVersion
 	defaultGokartCacheVersion    = defaultGokartVersion
 
-	defaultKongVersion   = "v1.15.0"
+	defaultKongVersion   = "v1.16.1"
 	defaultViperVersion  = "v1.21.0"
 	defaultPGXVersion    = "v5.10.0"
-	defaultOpenAIVersion = "v3.42.0"
-	defaultRedisVersion  = "v9.21.0"
-	defaultGooseVersion  = "v3.27.2"
+	defaultOpenAIVersion = "v3.52.0"
+	defaultRedisVersion  = "v9.22.0"
+	defaultGooseVersion  = "v3.27.3"
 	generatedGoVersion   = "1.26.0"
 )
 

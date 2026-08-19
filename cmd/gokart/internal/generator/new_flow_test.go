@@ -34,7 +34,7 @@ func TestCreatePreparesDependenciesWhenVerificationDisabled(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got, want := commandArgs(runner.commands), []string{"go get github.com/alecthomas/kong@v1.15.0", "go mod tidy"}; !reflect.DeepEqual(got, want) {
+	if got, want := commandArgs(runner.commands), []string{"go get github.com/alecthomas/kong@v1.16.1", "go mod tidy"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("commands=%v want=%v", got, want)
 	}
 	if result.VerifyRan {
@@ -56,7 +56,7 @@ func TestCreateRunsTestsAndBuildAfterSingleDependencyPreparation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := []string{"go get github.com/alecthomas/kong@v1.15.0", "go mod tidy", "go test ./...", "go build ./..."}
+	want := []string{"go get github.com/alecthomas/kong@v1.16.1", "go mod tidy", "go test ./...", "go build ./..."}
 	if got := commandArgs(runner.commands); !reflect.DeepEqual(got, want) {
 		t.Fatalf("commands=%v want=%v", got, want)
 	}
