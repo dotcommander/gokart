@@ -9,6 +9,10 @@ import (
 // ConfigDir returns the app's platform-specific configuration directory,
 // creating it when necessary.
 func ConfigDir(appName string) (string, error) {
+	if !filepath.IsLocal(appName) || filepath.Clean(appName) == "." {
+		return "", fmt.Errorf("invalid app name %q: must name a local application directory", appName)
+	}
+
 	base, err := os.UserConfigDir()
 	if err != nil {
 		return "", fmt.Errorf("get user config directory: %w", err)

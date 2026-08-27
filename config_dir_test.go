@@ -10,6 +10,54 @@ import (
 	"github.com/dotcommander/gokart"
 )
 
+func TestConfigDirRejectsUnsafeAppNames(t *testing.T) {
+	t.Parallel()
+
+	for _, appName := range []string{"", ".", "..", "../escape", filepath.Join(string(filepath.Separator), "absolute")} {
+		t.Run(fmt.Sprintf("ConfigDir_%q", appName), func(t *testing.T) {
+			t.Parallel()
+
+			if _, err := gokart.ConfigDir(appName); err == nil {
+				t.Fatalf("ConfigDir(%q) succeeded, want error", appName)
+			}
+		})
+		t.Run(fmt.Sprintf("EnsureConfigDir_%q", appName), func(t *testing.T) {
+			t.Parallel()
+
+			if err := gokart.EnsureConfigDir(appName, []byte("unsafe\n")); err == nil {
+				t.Fatalf("EnsureConfigDir(%q) succeeded, want error", appName)
+			}
+		})
+	}
+}
+
+func TestConfigDirAllowsNestedLocalAppName(t *testing.T) {
+	t.Parallel()
+
+	rootName := fmt.Sprintf("gokart-config-nested-test-%d", os.Getpid())
+	appName := filepath.Join(rootName, "child")
+	dir, err := gokart.ConfigDir(appName)
+	if err != nil {
+		t.Fatalf("ConfigDir: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := os.RemoveAll(filepath.Dir(dir)); err != nil {
+			t.Errorf("RemoveAll(%q): %v", filepath.Dir(dir), err)
+		}
+	})
+
+	if err := gokart.EnsureConfigDir(appName, []byte("nested\n")); err != nil {
+		t.Fatalf("EnsureConfigDir: %v", err)
+	}
+	got, err := os.ReadFile(filepath.Join(dir, "config.yaml"))
+	if err != nil {
+		t.Fatalf("ReadFile: %v", err)
+	}
+	if string(got) != "nested\n" {
+		t.Fatalf("config.yaml = %q, want nested content", got)
+	}
+}
+
 func TestEnsureConfigDirPreservesExistingConfig(t *testing.T) {
 	t.Parallel()
 	appName := fmt.Sprintf("gokart-config-test-%d", os.Getpid())
