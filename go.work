@@ -7,7 +7,6 @@ use (
 	./cache
 	./cli
 	./cmd/gokart
-	./kongapp
 	./logger
 	./migrate
 	./postgres

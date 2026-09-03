@@ -21,7 +21,6 @@ generated command into a tested, filterable program listing.
 
 - `gokart`: typed configuration, platform config directories, and JSON state persistence.
 - `gokart/cli`: Cobra application construction for established ecosystem-style consumers plus process-stream presentation helpers. Focused generated CLIs use Kong directly.
-- `gokart/kongapp`: caller-owned Kong command trees with context, streams, post-parse initialization, and teardown.
 - `gokart/web`: chi router/server construction, JSON responses, bounded binding, and validation.
 - `gokart/postgres`: pgx pool setup and transaction helpers.
 - `gokart/sqlite`: zero-CGO SQLite setup and operations.
