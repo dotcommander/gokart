@@ -26,10 +26,6 @@ type Config struct {
 	DBName   string `config:"dbname" default:"postgres"`
 	SSLMode  string `config:"sslmode" default:"disable"`
 
-	// ConnectionString is retained for config-map compatibility.
-	// Deprecated: use URL.
-	ConnectionString string `config:"connection_string"`
-
 	// MaxConns is the maximum number of connections in the pool.
 	// Default: 25
 	MaxConns int32 `config:"max_conns"`
@@ -51,14 +47,11 @@ type Config struct {
 	HealthCheckPeriod time.Duration `config:"health_check_period"`
 }
 
-// DSN returns URL when set, then ConnectionString, otherwise safely assembles
-// a PostgreSQL URL from the discrete connection fields.
+// DSN returns URL when set, otherwise safely assembles a PostgreSQL URL
+// from the discrete connection fields.
 func (c Config) DSN() string {
 	if c.URL != "" {
 		return c.URL
-	}
-	if c.ConnectionString != "" {
-		return c.ConnectionString
 	}
 	dsn := &url.URL{
 		Scheme:  "postgres",

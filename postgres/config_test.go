@@ -13,8 +13,7 @@ func TestConfigDSNPrecedenceAndEscaping(t *testing.T) {
 		cfg  Config
 		want string
 	}{
-		{"url", Config{URL: "postgres://url/db", ConnectionString: "postgres://legacy/db"}, "postgres://url/db"},
-		{"legacy", Config{ConnectionString: "postgres://legacy/db"}, "postgres://legacy/db"},
+		{"url", Config{URL: "postgres://url/db"}, "postgres://url/db"},
 		{"fields", Config{Host: "localhost", Port: 5432, User: "user:name", Password: "p@ss/word?#", DBName: "tenant/db", SSLMode: "verify-full"}, "postgres://user%3Aname:p%40ss%2Fword%3F%23@localhost:5432/tenant%2Fdb?sslmode=verify-full"},
 	}
 	for _, test := range tests {
