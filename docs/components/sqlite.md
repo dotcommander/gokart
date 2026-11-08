@@ -66,7 +66,7 @@ foreignKeys, err := sqlite.ForeignKeyCheck(ctx, db)
 stats, err := sqlite.Inspect(ctx, db, "app.db")
 ```
 
-Maintenance APIs include `Optimize`, `Vacuum`, `VacuumInto`, `Backup`, `WALCheckpoint`, and `WALCheckpointTruncate`. `BackupOptions{Overwrite:true}` permits replacing the destination.
+Maintenance APIs include `VacuumInto`, `Backup`, and `WALCheckpoint`. For plain `PRAGMA optimize` or `VACUUM`, call `db.ExecContext` directly. `BackupOptions{Overwrite:true}` permits replacing the destination.
 
 ## Retry lock contention
 

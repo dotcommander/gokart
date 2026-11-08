@@ -39,9 +39,6 @@ func WALCheckpoint(ctx context.Context, db *sql.DB, mode WALCheckpointMode) (WAL
 	}
 	return result, nil
 }
-func WALCheckpointTruncate(ctx context.Context, db *sql.DB) (WALCheckpointResult, error) {
-	return WALCheckpoint(ctx, db, WALCheckpointModeTruncate)
-}
 
 type CheckResult struct {
 	OK       bool
@@ -256,21 +253,6 @@ func Inspect(ctx context.Context, db *sql.DB, path string) (Stats, error) {
 	return stats, nil
 }
 
-func Optimize(ctx context.Context, db *sql.DB) error {
-	return execMaintenance(ctx, db, "optimize", "PRAGMA optimize")
-}
-func Vacuum(ctx context.Context, db *sql.DB) error {
-	return execMaintenance(ctx, db, "vacuum", "VACUUM")
-}
-func execMaintenance(ctx context.Context, db *sql.DB, name, query string) error {
-	if db == nil {
-		return fmt.Errorf("%s: nil db", name)
-	}
-	if _, err := db.ExecContext(ctx, query); err != nil {
-		return fmt.Errorf("%s: %w", name, err)
-	}
-	return nil
-}
 func VacuumInto(ctx context.Context, db *sql.DB, destination string) error {
 	if db == nil {
 		return fmt.Errorf("vacuum into: nil db")

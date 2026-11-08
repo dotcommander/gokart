@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-func TestHealthInspectAndMaintenance(t *testing.T) {
+func TestHealthAndInspect(t *testing.T) {
 	db, err := InMemory()
 	if err != nil {
 		t.Fatal(err)
@@ -31,12 +31,6 @@ func TestHealthInspectAndMaintenance(t *testing.T) {
 	stats, err := Inspect(ctx, db, ":memory:")
 	if err != nil || stats.PageSize == 0 {
 		t.Fatalf("stats=%+v err=%v", stats, err)
-	}
-	if err := Optimize(ctx, db); err != nil {
-		t.Fatal(err)
-	}
-	if err := Vacuum(ctx, db); err != nil {
-		t.Fatal(err)
 	}
 }
 
@@ -145,7 +139,7 @@ func TestWALCheckpoint(t *testing.T) {
 	if _, err := db.Exec("CREATE TABLE item (id INTEGER)"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := WALCheckpointTruncate(context.Background(), db); err != nil {
+	if _, err := WALCheckpoint(context.Background(), db, WALCheckpointModeTruncate); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := WALCheckpoint(context.Background(), db, "INVALID"); err == nil {
@@ -160,9 +154,6 @@ func TestOperationNilInputs(t *testing.T) {
 	}
 	if _, err := Inspect(ctx, nil, ""); err == nil {
 		t.Fatal("inspect nil")
-	}
-	if err := Optimize(ctx, nil); err == nil {
-		t.Fatal("optimize nil")
 	}
 	if err := Savepoint(ctx, nil, "ok", func() error { return nil }); err == nil {
 		t.Fatal("savepoint nil")

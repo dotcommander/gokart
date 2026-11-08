@@ -26,7 +26,7 @@ func TestPostgresDocMatchesPublicSurface(t *testing.T) {
 }
 
 func TestSQLiteDocMatchesPublicSurface(t *testing.T) {
-	assertDocContains(t, "sqlite.md", "pure-Go", "OpenReadOnly", "OpenImmutable", "ReadHeavyConfig", "ResolveConfig", "TransactionWithOptions", "Savepoint", "QuickCheck", "IntegrityCheck", "ForeignKeyCheck", "Inspect", "Optimize", "Vacuum", "Backup", "WALCheckpoint", "Retry", "IsBusy", "IsLocked", "IsConstraint")
+	assertDocContains(t, "sqlite.md", "pure-Go", "OpenReadOnly", "OpenImmutable", "ReadHeavyConfig", "ResolveConfig", "TransactionWithOptions", "Savepoint", "QuickCheck", "IntegrityCheck", "ForeignKeyCheck", "Inspect", "Backup", "WALCheckpoint", "Retry", "IsBusy", "IsLocked", "IsConstraint")
 }
 
 func TestMigrateDocMatchesPublicSurface(t *testing.T) {
