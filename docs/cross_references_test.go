@@ -134,7 +134,7 @@ func TestDocsDoNotUseRetiredImportsOrUnpinnedInstalls(t *testing.T) {
 }
 
 func TestRemovedPublicIdentifiersHaveMigrationGuidance(t *testing.T) {
-	data, err := os.ReadFile("../README.md")
+	data, err := os.ReadFile("../MIGRATION.md")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -144,7 +144,7 @@ func TestRemovedPublicIdentifiersHaveMigrationGuidance(t *testing.T) {
 		"SetOutput", "HealthHandler", "TemplHandler", "RateLimit",
 	} {
 		if !strings.Contains(migration, identifier) {
-			t.Errorf("README migration guidance omits removed identifier %s", identifier)
+			t.Errorf("MIGRATION.md guidance omits removed identifier %s", identifier)
 		}
 	}
 }

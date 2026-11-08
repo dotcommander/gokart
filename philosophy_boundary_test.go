@@ -69,7 +69,7 @@ func TestWebSourceAllowlist(t *testing.T) {
 
 func TestMigrationInventoryNamesEveryRemovedAPI(t *testing.T) {
 	t.Parallel()
-	data, err := os.ReadFile("README.md")
+	data, err := os.ReadFile("MIGRATION.md")
 	if err != nil {
 		t.Fatal(err)
 	}
