@@ -51,10 +51,6 @@ type Config struct {
 	HealthCheckPeriod time.Duration `config:"health_check_period"`
 }
 
-// PostgresConfig is retained for compatibility with applications that used
-// the longer historical name.
-type PostgresConfig = Config
-
 // DSN returns URL when set, then ConnectionString, otherwise safely assembles
 // a PostgreSQL URL from the discrete connection fields.
 func (c Config) DSN() string {
@@ -76,9 +72,6 @@ func (c Config) DSN() string {
 	dsn.RawQuery = query.Encode()
 	return dsn.String()
 }
-
-// BuildConnectionString is a compatibility alias for DSN.
-func (c Config) BuildConnectionString() string { return c.DSN() }
 
 // DefaultConfig returns production-ready defaults.
 func DefaultConfig(url string) Config {

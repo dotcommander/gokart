@@ -34,7 +34,6 @@ func main() {
 	greet.Flags().String("name", "", "Who to greet.")
 	app.AddCommand(greet)
 
-	cli.Success("starting") // process stdout; use cmd.OutOrStdout() in commands
 	if err := app.Run(); err != nil {
 		_, _ = fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)

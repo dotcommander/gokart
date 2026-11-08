@@ -20,7 +20,7 @@ generated command into a tested, filterable program listing.
 ## Packages
 
 - `gokart`: typed configuration, platform config directories, and JSON state persistence.
-- `gokart/cli`: Cobra application construction for established ecosystem-style consumers plus process-stream presentation helpers. Focused generated CLIs use Kong directly.
+- `gokart/cli`: Cobra application construction for established ecosystem-style consumers. Terminal presentation is left to lipgloss/bubbles directly. Focused generated CLIs use Kong directly.
 - `gokart/kongapp`: caller-owned Kong command trees with context, streams, post-parse initialization, and teardown. See [Kong lifecycle](docs/components/kongapp.md).
 - `gokart/web`: chi router/server construction, JSON responses, bounded binding, and validation.
 - `gokart/postgres`: pgx pool setup and transaction helpers.
@@ -74,6 +74,8 @@ Use this searchable inventory when migrating:
 - Root getters: `GetString`, `GetInt`, `GetFloat`, `GetBool`.
 - Cache commands: `Get`, `Set`, `Delete`, `Exists`, `Expire`, `TTL`, `Incr`, `IncrBy`, `SetNX`, `HGet`, `HSet`, `HGetAll`, `HDel`, `HIncrBy`, `ZAdd`, `ZRange`, `ZRangeByScore`, `ZScore`, `ZRem`, `ZCard`, `SAdd`, `SRem`, `SMembers`, `SIsMember`, `LPush`, `RPush`, `LRange`, `LPop`, `RPop`, `Decr`, and `DecrBy`. Call the corresponding go-redis method through `Client`, applying `Key` to every logical key.
 - CLI process control and writers: `Fatal`, `FatalErr`, `Must`, `SetOutput`, `SetErrOutput`, `Output`, and `ErrOutput`.
+- CLI presentation: `Success`, `Info`, `Warning`, `Error`, `Dim`, `Bold`, `NewSpinner`, `WithSpinner`, `NewProgress`, `NewTable`, `SimpleTable`, `KeyValue`, `List`, `NumberedList`, and `SetStyledHelp`. Use lipgloss, bubbles, or lipgloss/table directly.
+- Postgres compatibility aliases: `PostgresConfig` and `BuildConnectionString`. Use `Config` and `DSN`.
 - Web assets and auth: `NewAssets`, `AssetConfig`, `Assets`, `Assets.Path`, `Assets.Handler`, `APIKeyAuth`, and `BearerAuth`.
 - Web CSRF and flash: `CSRFProtect`, `CSRFProtectWithOrigins`, `SetFlash`, `GetFlash`, `FlashFromContext`, `FlashMiddleware`, `FlashLevel`, `FlashMessage`, `FlashSuccess`, `FlashError`, `FlashWarning`, and `FlashInfo`.
 - Web health and clients: `HealthHandler`, `ReadyHandler`, `HealthCheck`, `HealthFunc`, `NewHTTPClient`, `NewStandardClient`, and `HTTPConfig`.

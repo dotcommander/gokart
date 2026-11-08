@@ -1,14 +1,14 @@
-// Package cli provides CLI application utilities wrapping Cobra and Lipgloss.
+// Package cli provides Cobra application construction for established
+// ecosystem-style CLIs. For terminal presentation (styles, tables,
+// spinners, progress), depend on lipgloss, bubbles, or lipgloss/table
+// directly: this module deliberately does not wrap them.
 package cli
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 
-	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -187,110 +187,3 @@ func Group(use, short string) *cobra.Command {
 		Short: short,
 	}
 }
-
-// --- Output Styling ---
-
-var (
-	// Styles for terminal output
-	styleSuccess = lipgloss.NewStyle().Foreground(lipgloss.Color("10")).Bold(true)
-	styleError   = lipgloss.NewStyle().Foreground(lipgloss.Color("9")).Bold(true)
-	styleWarning = lipgloss.NewStyle().Foreground(lipgloss.Color("11")).Bold(true)
-	styleInfo    = lipgloss.NewStyle().Foreground(lipgloss.Color("12"))
-	styleDim     = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
-	styleBold    = lipgloss.NewStyle().Bold(true)
-
-	// Help styling
-	styleTitle   = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("13")).MarginBottom(1)
-	styleHeading = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("6"))
-	styleCommand = lipgloss.NewStyle().Foreground(lipgloss.Color("10"))
-	styleFlag    = lipgloss.NewStyle().Foreground(lipgloss.Color("11"))
-
-	registerHelpTemplateFuncsOnce sync.Once
-)
-
-// Success prints a success message to stdout.
-func Success(format string, args ...interface{}) {
-	fmt.Fprintln(os.Stdout, styleSuccess.Render("✓ "+fmt.Sprintf(format, args...)))
-}
-
-// Error prints an error message to stderr.
-func Error(format string, args ...interface{}) {
-	fmt.Fprintln(os.Stderr, styleError.Render("✗ "+fmt.Sprintf(format, args...)))
-}
-
-// Warning prints a warning message to stdout.
-func Warning(format string, args ...interface{}) {
-	fmt.Fprintln(os.Stdout, styleWarning.Render("⚠ "+fmt.Sprintf(format, args...)))
-}
-
-// Info prints an info message to stdout.
-func Info(format string, args ...interface{}) {
-	fmt.Fprintln(os.Stdout, styleInfo.Render("→ "+fmt.Sprintf(format, args...)))
-}
-
-// Dim prints dimmed text to stdout.
-func Dim(format string, args ...interface{}) {
-	fmt.Fprintln(os.Stdout, styleDim.Render(fmt.Sprintf(format, args...)))
-}
-
-// Bold prints bold text to stdout.
-func Bold(format string, args ...interface{}) {
-	fmt.Fprintln(os.Stdout, styleBold.Render(fmt.Sprintf(format, args...)))
-}
-
-// --- Help Styling ---
-
-// SetStyledHelp configures beautiful help output for a command.
-func SetStyledHelp(cmd *cobra.Command) {
-	if cmd == nil {
-		return
-	}
-
-	registerHelpTemplateFuncsOnce.Do(func() {
-		cobra.AddTemplateFunc("styleTitle", func(s string) string { return styleTitle.Render(s) })
-		cobra.AddTemplateFunc("styleHeading", func(s string) string { return styleHeading.Render(s) })
-		cobra.AddTemplateFunc("styleCommand", func(s string) string { return styleCommand.Render(s) })
-		cobra.AddTemplateFunc("styleFlag", func(s string) string { return styleFlag.Render(s) })
-		cobra.AddTemplateFunc("styleDim", func(s string) string { return styleDim.Render(s) })
-	})
-
-	cmd.SetHelpTemplate(styledHelpTemplate)
-	cmd.SetUsageTemplate(styledUsageTemplate)
-}
-
-var styledHelpTemplate = `{{ styleTitle .Short }}
-{{ if .Long }}
-{{ .Long }}
-{{ end }}
-{{ styleHeading "Usage:" }}
-  {{ styleCommand .UseLine }}
-{{ if .HasAvailableSubCommands }}
-{{ styleHeading "Commands:" }}{{ range .Commands }}{{ if .IsAvailableCommand }}
-  {{ styleCommand (rpad .Name .NamePadding) }}  {{ .Short }}{{ end }}{{ end }}
-{{ end }}
-{{ if .HasAvailableLocalFlags }}
-{{ styleHeading "Flags:" }}
-{{ .LocalFlags.FlagUsages | trimTrailingWhitespaces }}
-{{ end }}
-{{ if .HasAvailableInheritedFlags }}
-{{ styleHeading "Global Flags:" }}
-{{ .InheritedFlags.FlagUsages | trimTrailingWhitespaces }}
-{{ end }}
-{{ if .HasExample }}
-{{ styleHeading "Examples:" }}
-{{ styleDim .Example }}
-{{ end }}
-{{ styleDim "Use \"" }}{{ styleCommand (printf "%s [command] --help" .CommandPath) }}{{ styleDim "\" for more information." }}
-`
-
-var styledUsageTemplate = `{{ styleHeading "Usage:" }}
-  {{ styleCommand .UseLine }}
-{{ if .HasAvailableSubCommands }}
-{{ styleHeading "Commands:" }}{{ range .Commands }}{{ if .IsAvailableCommand }}
-  {{ styleCommand (rpad .Name .NamePadding) }}  {{ .Short }}{{ end }}{{ end }}
-{{ end }}
-{{ if .HasAvailableLocalFlags }}
-{{ styleHeading "Flags:" }}
-{{ .LocalFlags.FlagUsages | trimTrailingWhitespaces }}
-{{ end }}
-`

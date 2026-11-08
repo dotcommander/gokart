@@ -17,7 +17,7 @@ if err := app.Run(); err != nil {
 }
 ```
 
-The `cli` module provides small Cobra and Lip Gloss helpers. Your `main` function owns exit status. Commands return errors.
+The `cli` module provides small Cobra and Viper helpers. Your `main` function owns exit status. Commands return errors. Terminal presentation (styles, tables, spinners, progress) is intentionally not wrapped: depend on lipgloss, bubbles, or lipgloss/table directly so you can delete this module without redesigning output code.
 
 ## Install
 
@@ -61,55 +61,30 @@ app.AddCommand(serve).AddCommand(admin)
 
 These helpers return ordinary Cobra commands. Use Cobra directly when you need custom argument validation, completion, flags, or lifecycle hooks.
 
-## Write styled output
+## Write command output
 
-```go
-cli.Success("saved %s", path) // stdout
-cli.Info("reading configuration")
-cli.Warning("using fallback")
-cli.Error("save failed: %v", err) // stderr
-```
-
-`Success`, `Info`, `Warning`, `Dim`, and `Bold` write to the process stdout. `Error` writes to process stderr. They do not expose mutable package-level writer overrides.
-
-For command output that must be captured or redirected, write through Cobra:
+Write through Cobra so tests can capture both streams without touching process globals:
 
 ```go
 fmt.Fprintln(cmd.OutOrStdout(), result)
 fmt.Fprintln(cmd.ErrOrStderr(), warning)
 ```
 
-Tests can then use `cmd.SetOut` and `cmd.SetErr`.
+Tests use `cmd.SetOut` and `cmd.SetErr`. There are no package-level output helpers: styling is lipgloss's job, not this module's.
 
-## Show progress
+## Present terminal output directly
 
-```go
-spinner := cli.NewSpinner("Loading").WithWriter(cmd.OutOrStdout())
-spinner.StartWithContext(cmd.Context())
-defer spinner.Stop()
-
-progress := cli.NewProgress("Importing", len(files)).SetWriter(cmd.OutOrStdout())
-for range files {
-    progress.Increment()
-}
-progress.Done()
-```
-
-Spinners animate only on a terminal. In non-TTY output they print the message once. `WithFrames` and `WithDelay` customize animation. `Update`, `StopWithMessage`, `StopSuccess`, and `StopError` control the final state.
-
-`WithSpinner(message, fn)` is the compact process-stream helper when you do not need an injected writer.
-
-## Render tables and lists
+For styles, tables, spinners, and progress, use the upstream Charm packages directly:
 
 ```go
-table := cli.NewTable("NAME", "STATUS").
-    AddRow("api", "ready").
-    AddRow("worker", "stopped").
-    SetWriter(cmd.OutOrStdout())
-table.Print()
+style := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("12"))
+fmt.Fprintln(cmd.OutOrStdout(), style.Render("ready"))
+
+tbl := table.New().Headers("NAME", "STATUS").Rows([][]string{{"api", "ready"}})
+fmt.Fprintln(cmd.OutOrStdout(), tbl)
 ```
 
-`Table.String` returns rendered text. `SimpleTable`, `KeyValue`, `List`, and `NumberedList` are process-stdout shortcuts.
+This keeps the dependency cost where the presentation decision lives, and deleting `gokart/cli` never forces an output redesign.
 
 ## Open an editor
 
@@ -119,20 +94,16 @@ text, err := cli.CaptureInput("initial text\n", ".md")
 
 `CaptureInput` uses the configured editor. `CaptureInputWithEditor` accepts an explicit editor command for deterministic callers and tests.
 
-## Style help
-
-```go
-cli.SetStyledHelp(app.Root())
-```
-
-This changes Cobra's help and usage templates. The root `App` already uses the package's normal Cobra ownership; call this only when you want the styled templates.
-
 ## Migration from v0.10
 
 | Removed API | Replacement |
 |---|---|
 | `SetOutput`, `SetErrOutput`, `Output`, `ErrOutput` | Cobra `SetOut`, `SetErr`, `OutOrStdout`, and `ErrOrStderr` |
 | `Fatal`, `FatalErr`, `Must` | Return errors; let `main` choose `os.Exit` |
+| `Success`, `Info`, `Warning`, `Error`, `Dim`, `Bold` | `fmt.Fprintln(cmd.OutOrStdout(), ...)` plus lipgloss styles directly |
+| `NewSpinner`, `WithSpinner`, `NewProgress` | bubbles spinner/progress components directly |
+| `NewTable`, `SimpleTable`, `KeyValue`, `List`, `NumberedList` | lipgloss/table and stdlib formatting directly |
+| `SetStyledHelp` | Cobra `SetHelpTemplate` / `SetUsageTemplate` with your own templates |
 
 ## See also
 

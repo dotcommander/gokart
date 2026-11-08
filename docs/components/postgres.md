@@ -37,11 +37,9 @@ pool, err := postgres.OpenWithConfig(ctx, cfg)
 
 ## Configure the connection
 
-`Config.DSN` selects `URL`, then the deprecated `ConnectionString`, then constructs a URL from `Host`, `Port`, `User`, `Password`, `DBName`, and `SSLMode`. Passwords and database names are URL-escaped.
+`Config.DSN` selects `URL`, then `ConnectionString`, then constructs a URL from `Host`, `Port`, `User`, `Password`, `DBName`, and `SSLMode`. Passwords and database names are URL-escaped.
 
 Pool defaults are 25 maximum connections, 5 minimum connections, a one-hour maximum lifetime, a 30-minute maximum idle time, and a one-minute health-check period. Zero or negative pool values use these defaults.
-
-`BuildConnectionString` is the compatibility name for `DSN`.
 
 ## Run a transaction
 
