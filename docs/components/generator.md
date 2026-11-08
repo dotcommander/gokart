@@ -127,10 +127,12 @@ These flags wire a data store or API client into the project at generation time.
 
 | Flag | Package added | What it wires |
 |------|---------------|---------------|
-| `--db sqlite` | `github.com/dotcommander/gokart/sqlite` | `*sql.DB` via `sqlite.Open` |
-| `--db postgres` | `github.com/dotcommander/gokart/postgres`, `github.com/jackc/pgx/v5` | `*pgxpool.Pool` via `postgres.Open` |
-| `--ai` | `github.com/openai/openai-go/v3` | `openai.Client` via `openai.NewClient` |
-| `--redis` | `github.com/dotcommander/gokart/cache`, `github.com/redis/go-redis/v9` | `*cache.Cache` via `cache.Open` |
+| `--db sqlite` | `modernc.org/sqlite` | `*sql.DB` via `sql.Open("sqlite", ...)` directly |
+| `--db postgres` | `github.com/jackc/pgx/v5` | `*pgxpool.Pool` via `pgxpool` directly |
+| `--ai` | `github.com/openai/openai-go/v3` | `openai.Client` via `openai.NewClient` directly |
+| `--redis` | `github.com/redis/go-redis/v9` | `*redis.Client` via go-redis directly |
+
+Generated scaffolds use these upstream packages directly and import no `gokart/*` package. For hand-adopted library use, see [`gokart/sqlite`](sqlite.md), [`gokart/postgres`](postgres.md), [`gokart/cache`](cache.md).
 
 Flags may be combined:
 
@@ -309,10 +311,10 @@ Use `--dry-run` to preview which files would be created or overwritten before co
 
 | Integration | Packages fetched via `go get` |
 |-------------|-------------------------------|
-| `sqlite` | `github.com/dotcommander/gokart/sqlite@v0.15.0` |
-| `postgres` | `github.com/dotcommander/gokart/postgres@v0.15.0`, `github.com/jackc/pgx/v5@v5.10.0`, `github.com/pressly/goose/v3@v3.27.3` |
+| `sqlite` | `modernc.org/sqlite` |
+| `postgres` | `github.com/jackc/pgx/v5@v5.10.0`, `github.com/pressly/goose/v3@v3.27.3` |
 | `ai` | `github.com/openai/openai-go/v3@v3.52.0` |
-| `redis` | `github.com/dotcommander/gokart/cache@v0.15.0`, `github.com/redis/go-redis/v9@v9.22.0` |
+| `redis` | `github.com/redis/go-redis/v9@v9.22.0` |
 
 ### All `gokart add` Flags
 

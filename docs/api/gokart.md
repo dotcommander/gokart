@@ -105,8 +105,8 @@ State files are for small CLI state. Use a database or purpose-built store for c
 | [`gokart/cli`](cli.md) | Cobra construction for ecosystem-style CLIs and terminal presentation |
 | [`gokart/cache`](../components/cache.md) | Redis construction, prefixes, JSON, and Remember |
 | [`gokart/web`](../components/web.md) | HTTP setup, bounded binding, responses, and validation |
-| [`gokart/postgres`](../components/postgres.md) | pgx pool setup and transactions |
-| [`gokart/sqlite`](../components/sqlite.md) | pure-Go SQLite setup and operations |
+| [`gokart/postgres`](../components/postgres.md) | Optional library constructors for pgx pool setup and transactions; generated scaffolds use `pgxpool` directly (see [generator](../components/generator.md)) |
+| [`gokart/sqlite`](../components/sqlite.md) | Optional library constructors for pure-Go SQLite setup and operations; generated scaffolds use `modernc.org/sqlite` directly (see [generator](../components/generator.md)) |
 | [`gokart/migrate`](../components/migrate.md) | goose migrations |
 | [`gokart/logger`](../components/logger.md) | slog setup |
 | [`gokart/kongapp`](../components/kongapp.md) | Kong parse/run lifecycle with caller-owned streams (source-checked, unreleased) |

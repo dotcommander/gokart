@@ -103,10 +103,10 @@ Flat projects are unmanaged, so `gokart add` refuses with exit 10: "add the rele
 | `gokart` | Typed configuration, platform config directories, and JSON state persistence. |
 | `gokart/kongapp` | Caller-owned Kong command trees with context, streams, and teardown. See [Kong lifecycle](docs/components/kongapp.md). |
 | `gokart/web` | chi router/server construction, JSON responses, bounded binding, and validation. |
-| `gokart/postgres` | pgx pool setup and transaction helpers. |
-| `gokart/sqlite` | Zero-CGO SQLite setup and operations. |
+| `gokart/postgres` | pgx pool setup and transaction helpers. Generated scaffolds use pgxpool directly. |
+| `gokart/sqlite` | Zero-CGO SQLite setup and operations. Generated scaffolds use modernc.org/sqlite directly. |
 | `gokart/migrate` | goose migrations. |
-| `gokart/cache` | Redis construction, prefixes, JSON operations, and `Remember`. |
+| `gokart/cache` | Redis construction, prefixes, JSON operations, and `Remember`. Generated scaffolds use go-redis directly. |
 | `gokart/logger` | `log/slog` setup. |
 | `gokart/cli` | Legacy Cobra helpers for established apps. New apps: generated Kong code. |
 | `gokart/fslock` | Advisory whole-file locks for cross-process coordination. See [file locks](docs/components/fslock.md). |
