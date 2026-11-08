@@ -16,7 +16,7 @@ The root module owns typed configuration parsing, platform configuration directo
 ## Install
 
 ```bash
-go get github.com/dotcommander/gokart@v0.15.0
+go get github.com/dotcommander/gokart@v0.16.0
 ```
 
 ## Parse a configuration map

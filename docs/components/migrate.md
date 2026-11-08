@@ -12,7 +12,7 @@ The migration module uses goose's provider API with `*sql.DB`.
 ## Install
 
 ```bash
-go get github.com/dotcommander/gokart/migrate@v0.15.0
+go get github.com/dotcommander/gokart/migrate@v0.16.0
 ```
 
 ## Configure migrations

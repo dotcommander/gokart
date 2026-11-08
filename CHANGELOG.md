@@ -1,5 +1,26 @@
 # Changelog
 
+## v0.16.0 (2026-11-08)
+
+### Breaking
+- None. This is a look-and-feel and documentation release.
+
+### Added
+- Add `MIGRATION.md` at the repo root (moved from the README).
+- Rework the README as a newcomer funnel: prerequisites, a 60-second start with real output, generated-file trees, pick-your-shape, and add-things-later.
+
+### Changed
+- `gokart new` help and docs: `--dry-run` discloses that it runs `go get`/`tidy`/`test`/`build` over the network; `--verify-only` prints `Verified <name> (mode)`; conflict errors list the files and offer `--skip-existing`; the JSON failure payload carries the dry-run and verify flags; path-form name errors echo the full input; help documents the preset form and the TTY wizard; `--force` help now reads "Overwrite existing files that the scaffold generates".
+- `docs/components/generator.md`: the integration table shows upstream-direct dependencies (`modernc.org/sqlite`, `pgxpool`, `go-redis`, `openai-go/v3`); the `gokart new` flags table matches the actual `--help` (`GOKART_AUTO_VERIFY` env var, aliases, `--db` values, `--verify` default-on).
+- `docs/components/kongapp.md`: replace the "unreleased" caveat with an install snippet for v0.16.0.
+- README Packages table: the postgres, sqlite, and cache rows note that generated scaffolds use upstream packages directly.
+
+### Fixed
+- Split `sqlite/operations.go` into `operations.go` and `operations_backup.go` (300-line tripwire).
+- `logger.NewFile` wraps the open error and reports the close error.
+- Generator uses `slices.SortFunc` instead of `sort.Slice`.
+- `cache`: `interface{}` replaced with `any` (8 sites); examples: `interface{}` replaced with `any` (2 sites).
+
 ## v0.15.0 (2026-11-08)
 
 ### Breaking
