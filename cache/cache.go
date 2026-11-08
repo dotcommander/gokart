@@ -269,11 +269,14 @@ func (c *Cache) RememberJSON(ctx context.Context, key string, ttl time.Duration,
 		return err
 	}
 
-	// Use singleflight to prevent cache stampede
+	// Use singleflight to prevent cache stampede. The flight returns the
+	// stored JSON bytes so each caller unmarshals into its own dest:
+	// exactly one Marshal of the fn result (for storage) and one Unmarshal
+	// per caller, with no shared mutable dest inside the callback.
 	result, err, _ := c.flight.Do("json:"+key, func() (interface{}, error) {
 		// Double-check cache
-		if err := c.GetJSON(ctx, key, dest); err == nil {
-			return nil, nil
+		if data, err := c.client.Get(ctx, c.Key(key)).Bytes(); err == nil {
+			return data, nil
 		}
 
 		fnResult, fnErr := fn()
@@ -281,23 +284,22 @@ func (c *Cache) RememberJSON(ctx context.Context, key string, ttl time.Duration,
 			return nil, fnErr
 		}
 
-		if err := c.SetJSON(ctx, key, fnResult, ttl); err != nil {
+		data, err := json.Marshal(fnResult)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal value: %w", err)
+		}
+		if err := c.client.Set(ctx, c.Key(key), data, ttl).Err(); err != nil {
 			return nil, err
 		}
 
-		return fnResult, nil
+		return data, nil
 	})
 	if err != nil {
 		return err
 	}
 
-	// If result is non-nil (wasn't a cache hit in the double-check), unmarshal into dest
 	if result != nil {
-		data, err := json.Marshal(result)
-		if err != nil {
-			return fmt.Errorf("marshal result for dest: %w", err)
-		}
-		return json.Unmarshal(data, dest)
+		return json.Unmarshal(result.([]byte), dest)
 	}
 
 	return nil
