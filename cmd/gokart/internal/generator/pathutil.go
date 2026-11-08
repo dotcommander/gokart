@@ -29,7 +29,7 @@ func normalizeProjectArg(projectArg string) (projectName, targetDir string, err 
 	}
 
 	if !projectNamePattern.MatchString(projectName) {
-		return "", "", fmt.Errorf("invalid project name %q (allowed: letters, numbers, ., _, -)", projectName)
+		return "", "", fmt.Errorf("invalid project name %q (allowed: letters, numbers, ., _, -)", projectArg)
 	}
 
 	if filepath.IsAbs(raw) {

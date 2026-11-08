@@ -44,7 +44,7 @@ type executor struct {
 
 type cli struct {
 	VersionFlag kong.VersionFlag `name:"version" help:"Print version information and quit."`
-	New         newCommand       `cmd:"" aliases:"create,init" help:"Create a new GoKart project."`
+	New         newCommand       `cmd:"" aliases:"create,init" help:"Create a new GoKart project (no project name on a terminal starts an interactive wizard)."`
 	Add         addCommand       `cmd:"" help:"Add integrations to a managed structured project."`
 	Detach      detachCommand    `cmd:"" help:"Remove GoKart runtime coupling from a structured project."`
 	Version     versionCommand   `cmd:"" help:"Print the version number."`

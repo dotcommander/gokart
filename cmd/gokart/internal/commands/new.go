@@ -9,7 +9,7 @@ import (
 )
 
 type newCommand struct {
-	Args          []string      `arg:"" name:"project" help:"Project name." optional:""`
+	Args          []string      `arg:"" name:"project" help:"Project name or path (e.g. my-app); also accepts the preset form \"<preset> <project>\" (e.g. \"cli my-app\"). Run with no project on a terminal to start the interactive wizard." optional:""`
 	Flat          bool          `help:"Use a single-package root layout (default; Kong-based CLI)." group:"Project"`
 	Structured    bool          `help:"Use a managed cmd/ and internal/ layout (Kong-based) for later gokart add integrations." group:"Project"`
 	Module        string        `help:"Go module path." group:"Project"`
@@ -20,8 +20,8 @@ type newCommand struct {
 	Local         bool          `help:"Use local-only config (no global config directory)." group:"Integrations / Configuration"`
 	Global        bool          `help:"Enable global config in the user config directory." group:"Integrations / Configuration"`
 	ConfigScope   string        `default:"auto" enum:"auto,local,global" help:"Config scope: auto, local, or global." group:"Integrations / Configuration"`
-	DryRun        bool          `help:"Preview scaffold operations without writing files." group:"Safety / Verification"`
-	Force         bool          `help:"Overwrite all existing files." group:"Safety / Verification"`
+	DryRun        bool          `help:"Preview scaffold operations without writing project files. Still runs go get and go mod tidy (network) in a temporary copy, plus tests and build unless --no-verify." group:"Safety / Verification"`
+	Force         bool          `help:"Overwrite existing files that the scaffold generates (other files are left alone)." group:"Safety / Verification"`
 	SkipExisting  bool          `help:"Skip files that already exist." group:"Safety / Verification"`
 	NoManifest    bool          `help:"Opt a structured project out of GoKart management." group:"Safety / Verification"`
 	Verify        bool          `help:"Force post-generation tests and build." group:"Safety / Verification"`

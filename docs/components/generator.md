@@ -39,8 +39,11 @@ gokart new mycli --structured
 # Custom module path
 gokart new mycli --module github.com/myorg/mycli
 
-# Preview what would be written, without writing anything
+# Preview what would be written (no project files; still runs go get/tidy over the network)
 gokart new mycli --dry-run
+
+# Plan-only preview: no tests/build (dependency preparation still uses the network)
+gokart new mycli --dry-run --no-verify
 
 # Preview and verify the scaffold compiles
 gokart new mycli --dry-run --verify
@@ -196,8 +199,13 @@ separately; dependency preparation still runs.
 
 `--verify-only` cannot be combined with `--dry-run`. Generation flags (`--flat`, `--structured`, `--db`, `--ai`, `--redis`, `--example`, `--config-scope`, `--force`, `--skip-existing`, `--no-manifest`) are ignored when `--verify-only` is set.
 
-Dry-run dependency preparation, tests, and build happen in a temporary
-scaffold, which is then removed. No files are written to the target.
+`--dry-run` is not plan-only. It runs dependency preparation (`go get`,
+`go mod tidy`, network required) and, unless `--no-verify` or
+`GOKART_AUTO_VERIFY=0` is set, tests and build, all inside a temporary scaffold
+that is then removed. No files are written to the target. Human output states
+this with a "Note:" line. `--no-verify` skips only the tests and build.
+Failure JSON echoes the request flags (`dry_run`, `verify_requested`,
+`verify_only`) as passed.
 
 Successful human output stays concise; detailed file actions remain in dry-run
 and JSON output:
@@ -216,25 +224,28 @@ Next:
 
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
-| `--flat` | bool | false | Use a single-package root layout (the default) |
+| `<project>` / `<preset> <project>` | arg | - | Project name or path. Two args mean preset then project (only preset `cli`, e.g. `gokart new cli my-app`). `create` and `init` are aliases for `new`. With no project on a terminal, an interactive wizard starts |
+| `--flat` | bool | false | Use a single-package root layout. This is already the default when no integration or `--structured` is given; the flag only asserts it |
 | `--structured` | bool | false | Use a managed `cmd/` and `internal/` layout for later integrations |
 | `--module` | string | project name | Go module path |
-| `--db` | string | `none` | Database backend: `sqlite`, `postgres`, or `none` |
+| `--db` | string | `none` | Database backend: `sqlite`, `postgres`, or `none` (sqlite/postgres imply structured) |
 | `--ai` | bool | false | Add OpenAI client wiring |
 | `--redis` | bool | false | Add Redis cache wiring |
 | `--example` | bool | false | Include a runnable `greet` command and tests |
 | `--config-scope` | string | `auto` | Config scope: `auto`, `local`, or `global` |
 | `--local` | bool | false | Shorthand for `--config-scope local` |
 | `--global` | bool | false | Shorthand for `--config-scope global` |
-| `--dry-run` | bool | false | Preview operations without writing files |
-| `--force` | bool | false | Overwrite existing generated files |
+| `--dry-run` | bool | false | Preview without writing project files. Still runs `go get` and `go mod tidy` (network) in a temporary copy, plus tests/build unless `--no-verify`. Cannot combine with `--verify-only` |
+| `--force` | bool | false | Overwrite existing files that the scaffold generates; other files in the directory are left alone |
 | `--skip-existing` | bool | false | Keep existing files; write only missing ones |
 | `--no-manifest` | bool | false | Opt a structured project out of GoKart management |
-| `--verify` | bool | default-on | Explicitly request post-generation tests and build |
+| `--verify` | bool | default-on | Force post-generation tests and build, even when `GOKART_AUTO_VERIFY=0` is set. Verification is on by default; `--no-verify` or `GOKART_AUTO_VERIFY=0` (or `false`) turns it off |
 | `--no-verify` | bool | false | Skip tests and build, but still prepare dependencies |
 | `--verify-only` | bool | false | Tidy, test, and build an existing project without scaffolding |
 | `--verify-timeout` | duration | `5m` | Maximum time for verify commands (`0` = no timeout) |
 | `--json` | bool | false | Print machine-readable JSON result |
+
+Environment: `GOKART_AUTO_VERIFY` set to `0` or `false` disables the default tests and build (dependency preparation still runs); an explicit `--verify` overrides it.
 
 ---
 
@@ -481,7 +492,7 @@ On failure the object includes `error_code` and `error`:
   "error_code": "existing_file_conflict",
   "exit_code": 3,
   "conflicts": ["cmd/main.go", "go.mod"],
-  "error": "2 destination files already exist (use --force to overwrite or --skip-existing to keep existing files)"
+  "error": "2 destination files already exist: cmd/main.go, go.mod (use --force to overwrite or --skip-existing to keep existing files)"
 }
 ```
 

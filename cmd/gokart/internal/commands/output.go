@@ -83,9 +83,15 @@ func renderCreate(w io.Writer, r generator.CreateResult) {
 	for _, warning := range r.Warnings {
 		writeOutputf(w, "Warning: %s\n", warning)
 	}
-	if r.DryRun {
+	switch {
+	case r.DryRun:
 		writeOutputf(w, "Dry run complete for %s (%s)\n", r.ProjectName, r.Mode)
-	} else {
+		if len(r.Checks) > 0 {
+			writeOutputln(w, "Note: dry run ran go get and go mod tidy in a temporary copy (network used), plus tests and build unless --no-verify; no project files were written.")
+		}
+	case r.VerifyOnly:
+		writeOutputf(w, "Verified %s (%s)\n", r.ProjectName, r.Mode)
+	default:
 		writeOutputf(w, "Created %s (%s)\n", r.ProjectName, r.Mode)
 	}
 	if r.DryRun && r.Result != nil {
@@ -102,6 +108,9 @@ func renderCreate(w io.Writer, r generator.CreateResult) {
 				writeOutputf(w, "  %-10s %s\n", group.label, path)
 			}
 		}
+	}
+	if r.VerifyOnly && r.VerifyPassed && len(r.NextSteps) == 0 {
+		r.NextSteps = []string{"cd " + shellQuote(r.TargetDir), "go run ."}
 	}
 	if r.VerifyRan && r.VerifyPassed {
 		writeOutputln(w, "Verified: tests and build")

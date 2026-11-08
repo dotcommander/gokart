@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 )
@@ -12,11 +14,18 @@ func (s *Service) Create(ctx context.Context, request CreateRequest, runtime Run
 	request.lookupEnv = s.deps.LookupEnv
 	req, err := buildNewRequest(&request)
 	if err != nil {
-		return CreateResult{}, &OperationError{Kind: ErrorInvalidArguments, Err: err}
+		failed := CreateResult{DryRun: request.DryRun, VerifyRequested: request.Verify, VerifyOnly: request.VerifyOnly}
+		opErr := &OperationError{Kind: ErrorInvalidArguments, Err: err}
+		var notEmpty *targetDirNotEmptyError
+		if errors.As(err, &notEmpty) {
+			opErr.Conflicts = append([]string(nil), notEmpty.Entries...)
+		}
+		return failed, opErr
 	}
 	result := createResultFromRequest(req)
 	if req.VerifyOnly {
 		result.VerifyRan = true
+		result.Mode = detectExistingMode(req.TargetDir)
 		err := s.verify(ctx, req.TargetDir, runtime, verificationPlan{Timeout: req.VerifyTimeout, Tidy: true, Build: true}, &result.Checks)
 		result.VerifyPassed = err == nil
 		if err != nil {
@@ -159,4 +168,12 @@ func nextSteps(req newRequest, buildArgs []string) []string {
 
 func templateDataForRequest(req newRequest) TemplateData {
 	return TemplateData{UseSQLite: req.UseSQLite, UsePostgres: req.UsePostgres, UseAI: req.UseAI, UseRedis: req.UseRedis}
+}
+
+// detectExistingMode infers the layout of an existing project for --verify-only.
+func detectExistingMode(dir string) string {
+	if info, err := os.Stat(filepath.Join(dir, "cmd")); err == nil && info.IsDir() {
+		return modeStructured
+	}
+	return modeFlat
 }

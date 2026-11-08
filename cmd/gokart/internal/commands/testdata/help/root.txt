@@ -10,8 +10,12 @@ Quick start:
     gokart config show
 
 Commands:
-  new (create,init)      Create a new GoKart project.
-    [<project> ...]      Project name.
+  new (create,init)      Create a new GoKart project (no project name on a
+                         terminal starts an interactive wizard).
+    [<project> ...]      Project name or path (e.g. my-app); also accepts the
+                         preset form "<preset> <project>" (e.g. "cli my-app").
+                         Run with no project on a terminal to start the
+                         interactive wizard.
 
   add                    Add integrations to a managed structured project.
     <integration> ...    Integration: sqlite, postgres, ai, or redis.

@@ -1,9 +1,12 @@
 Usage: gokart new (create,init) [<project> ...] [flags]
 
-Create a new GoKart project.
+Create a new GoKart project (no project name on a terminal starts an interactive
+wizard).
 
 Arguments:
-  [<project> ...]    Project name.
+  [<project> ...]    Project name or path (e.g. my-app); also accepts the preset
+                     form "<preset> <project>" (e.g. "cli my-app"). Run with no
+                     project on a terminal to start the interactive wizard.
 
 Flags:
   -h, --help       Show context-sensitive help.
@@ -28,8 +31,12 @@ Integrations / Configuration
   --config-scope="auto"    Config scope: auto, local, or global.
 
 Safety / Verification
-  --dry-run              Preview scaffold operations without writing files.
-  --force                Overwrite all existing files.
+  --dry-run              Preview scaffold operations without writing project
+                         files. Still runs go get and go mod tidy (network)
+                         in a temporary copy, plus tests and build unless
+                         --no-verify.
+  --force                Overwrite existing files that the scaffold generates
+                         (other files are left alone).
   --skip-existing        Skip files that already exist.
   --no-manifest          Opt a structured project out of GoKart management.
   --verify               Force post-generation tests and build.

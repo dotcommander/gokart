@@ -48,7 +48,7 @@ func (e *ExistingFileConflictError) Error() string {
 		return fmt.Sprintf("destination file %s already exists (use --force to overwrite or --skip-existing to keep existing files)", e.Paths[0])
 	}
 
-	return fmt.Sprintf("%d destination files already exist (use --force to overwrite or --skip-existing to keep existing files)", len(e.Paths))
+	return fmt.Sprintf("%d destination files already exist: %s (use --force to overwrite or --skip-existing to keep existing files)", len(e.Paths), formatPathList(e.Paths))
 }
 
 // ApplyLockError indicates another scaffolding operation already holds the target lock.

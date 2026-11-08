@@ -252,7 +252,11 @@ func validateTargetDir(targetDir string, policy ExistingFilePolicy) error {
 			return fmt.Errorf("read target directory: %w", readErr)
 		}
 		if len(entries) > 0 {
-			return fmt.Errorf("directory %q already exists and is not empty (use --force to overwrite)", targetDir)
+			names := make([]string, 0, len(entries))
+			for _, entry := range entries {
+				names = append(names, entry.Name())
+			}
+			return &targetDirNotEmptyError{Dir: targetDir, Entries: names}
 		}
 	}
 
@@ -273,4 +277,24 @@ func requireExistingTargetDir(targetDir string) error {
 	}
 
 	return nil
+}
+
+// targetDirNotEmptyError reports a non-empty target directory under the fail policy.
+type targetDirNotEmptyError struct {
+	Dir     string
+	Entries []string
+}
+
+func (e *targetDirNotEmptyError) Error() string {
+	return fmt.Sprintf("directory %q already exists and is not empty: %s (use --force to overwrite or --skip-existing to keep existing files)", e.Dir, formatPathList(e.Entries))
+}
+
+const maxListedPaths = 10
+
+// formatPathList joins paths with commas, truncating to maxListedPaths with a remainder count.
+func formatPathList(paths []string) string {
+	if len(paths) <= maxListedPaths {
+		return strings.Join(paths, ", ")
+	}
+	return fmt.Sprintf("%s, and %d more", strings.Join(paths[:maxListedPaths], ", "), len(paths)-maxListedPaths)
 }
