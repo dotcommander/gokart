@@ -1,0 +1,13 @@
+Usage: gokart detach [flags]
+
+Remove GoKart runtime coupling from a structured project.
+
+Flags:
+  -h, --help                 Show context-sensitive help.
+      --version              Print version information and quit.
+
+      --dry-run              Preview changes without writing files.
+      --force                Overwrite user-modified files.
+      --json                 Print machine-readable JSON result.
+      --verify               Run go test ./... after detaching.
+      --verify-timeout=5m    Maximum verification time.

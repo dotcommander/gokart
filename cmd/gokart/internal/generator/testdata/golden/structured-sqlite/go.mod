@@ -5,6 +5,7 @@ go 1.26.0
 require (
 	github.com/alecthomas/kong v1.16.1
 	github.com/spf13/viper v1.21.0
+	modernc.org/sqlite v1.61.1
 	github.com/pressly/goose/v3 v3.27.3
 )
 

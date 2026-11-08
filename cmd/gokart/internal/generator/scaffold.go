@@ -8,18 +8,14 @@ import (
 var templates embed.FS
 
 const (
-	defaultGokartVersion         = "v0.13.0"
-	defaultGokartSQLiteVersion   = defaultGokartVersion
-	defaultGokartPostgresVersion = defaultGokartVersion
-	defaultGokartCacheVersion    = defaultGokartVersion
-
-	defaultKongVersion   = "v1.16.1"
-	defaultViperVersion  = "v1.21.0"
-	defaultPGXVersion    = "v5.10.0"
-	defaultOpenAIVersion = "v3.52.0"
-	defaultRedisVersion  = "v9.22.0"
-	defaultGooseVersion  = "v3.27.3"
-	generatedGoVersion   = "1.26.0"
+	defaultKongVersion    = "v1.16.1"
+	defaultViperVersion   = "v1.21.0"
+	defaultPGXVersion     = "v5.10.0"
+	defaultOpenAIVersion  = "v3.52.0"
+	defaultRedisVersion   = "v9.22.0"
+	defaultModerncVersion = "v1.61.1"
+	defaultGooseVersion   = "v3.27.3"
+	generatedGoVersion    = "1.26.0"
 )
 
 // TemplateData holds variables for template substitution.
@@ -39,15 +35,13 @@ type TemplateData struct {
 	LegacyGreetAppField bool
 	Integrations        []integrationReadmeData
 
-	GokartSQLiteVersion   string
-	GokartPostgresVersion string
-	GokartCacheVersion    string
-	RedisVersion          string
-	KongVersion           string
-	ViperVersion          string
-	PGXVersion            string
-	OpenAIVersion         string
-	GooseVersion          string
+	ModerncVersion string
+	RedisVersion   string
+	KongVersion    string
+	ViperVersion   string
+	PGXVersion     string
+	OpenAIVersion  string
+	GooseVersion   string
 }
 
 type scaffoldSpec struct {
@@ -119,15 +113,13 @@ func baseTemplateData(name, module string, useGlobal, includeExample bool) Templ
 		IncludeExample: includeExample,
 		UseGlobal:      useGlobal,
 
-		GokartSQLiteVersion:   defaultGokartSQLiteVersion,
-		GokartPostgresVersion: defaultGokartPostgresVersion,
-		GokartCacheVersion:    defaultGokartCacheVersion,
-		RedisVersion:          defaultRedisVersion,
-		KongVersion:           defaultKongVersion,
-		ViperVersion:          defaultViperVersion,
-		PGXVersion:            defaultPGXVersion,
-		OpenAIVersion:         defaultOpenAIVersion,
-		GooseVersion:          defaultGooseVersion,
+		ModerncVersion: defaultModerncVersion,
+		RedisVersion:   defaultRedisVersion,
+		KongVersion:    defaultKongVersion,
+		ViperVersion:   defaultViperVersion,
+		PGXVersion:     defaultPGXVersion,
+		OpenAIVersion:  defaultOpenAIVersion,
+		GooseVersion:   defaultGooseVersion,
 	}
 }
 

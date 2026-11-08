@@ -10,20 +10,22 @@ import (
 {{- end }}
 	"log/slog"
 	"os"
-{{- if .UseRedis }}
-
-	"github.com/dotcommander/gokart/cache"
-{{- end }}
 {{- if .UseSQLite }}
 	"path/filepath"
 {{- end }}
-{{- if .UseSQLite }}
-
-	"github.com/dotcommander/gokart/sqlite"
+{{- if or .UseSQLite .UsePostgres }}
+	"time"
 {{- end }}
+{{- if or .UseSQLite .UsePostgres .UseRedis }}
+{{ end }}
 {{- if .UsePostgres }}
-	"github.com/dotcommander/gokart/postgres"
 	"github.com/jackc/pgx/v5/pgxpool"
+{{- end }}
+{{- if .UseRedis }}
+	"github.com/redis/go-redis/v9"
+{{- end }}
+{{- if .UseSQLite }}
+	_ "modernc.org/sqlite"
 {{- end }}
 {{- if .UseAI }}
 
@@ -63,7 +65,7 @@ type Dependencies struct {
 	AI  openai.Client
 {{- end }}
 {{- if .UseRedis }}
-	Cache *cache.Cache
+	Cache *redis.Client
 {{- end }}
 }
 
@@ -101,9 +103,18 @@ func New(ctx context.Context, appName string, v *viper.Viper) (_ *Dependencies, 
 		dbPath = filepath.Join(dbDir, "data.db")
 	}
 
-	db, err := sqlite.Open(dbPath)
+	// Pragmas mirror the gokart/sqlite defaults: WAL, foreign keys, 5s busy timeout.
+	dsn := "file:" + dbPath + "?_txlock=immediate&_pragma=busy_timeout(5000)&_pragma=journal_mode(WAL)&_pragma=foreign_keys(1)&_pragma=cache_size(-2000)"
+	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("open sqlite: %w", err)
+	}
+	db.SetMaxOpenConns(1)
+	db.SetMaxIdleConns(1)
+	db.SetConnMaxLifetime(time.Hour)
+	if err := db.PingContext(ctx); err != nil {
+		_ = db.Close()
+		return nil, fmt.Errorf("ping sqlite: %w", err)
 	}
 	appCtx.DB = db
 {{- end }}
@@ -117,9 +128,22 @@ func New(ctx context.Context, appName string, v *viper.Viper) (_ *Dependencies, 
 	if dbURL == "" {
 		logger.Warn("DATABASE_URL not set, PostgreSQL features will not work")
 	} else {
-		pool, err := postgres.Open(ctx, dbURL)
+		poolCfg, err := pgxpool.ParseConfig(dbURL)
+		if err != nil {
+			return nil, fmt.Errorf("parse postgres config: %w", err)
+		}
+		poolCfg.MaxConns = 25
+		poolCfg.MinConns = 5
+		poolCfg.MaxConnLifetime = time.Hour
+		poolCfg.MaxConnIdleTime = 30 * time.Minute
+		poolCfg.HealthCheckPeriod = time.Minute
+		pool, err := pgxpool.NewWithConfig(ctx, poolCfg)
 		if err != nil {
 			return nil, fmt.Errorf("connect to postgres: %w", err)
+		}
+		if err := pool.Ping(ctx); err != nil {
+			pool.Close()
+			return nil, fmt.Errorf("ping postgres: %w", err)
 		}
 		appCtx.Pool = pool
 	}
@@ -146,9 +170,10 @@ func New(ctx context.Context, appName string, v *viper.Viper) (_ *Dependencies, 
 	if redisAddr == "" {
 		redisAddr = "localhost:6379"
 	}
-	cacheClient, err := cache.Open(ctx, redisAddr)
-	if err != nil {
-		return nil, fmt.Errorf("open cache: %w", err)
+	cacheClient := redis.NewClient(&redis.Options{Addr: redisAddr})
+	if err := cacheClient.Ping(ctx).Err(); err != nil {
+		_ = cacheClient.Close()
+		return nil, fmt.Errorf("ping redis: %w", err)
 	}
 	appCtx.Cache = cacheClient
 {{- end }}

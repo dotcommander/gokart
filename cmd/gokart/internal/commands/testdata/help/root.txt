@@ -2,12 +2,22 @@ Usage: gokart <command> [flags]
 
 GoKart scaffolds focused Go command-line applications.
 
+Quick start:
+
+    gokart new demo --example
+    cd demo && go run . greet --name World
+    gokart add sqlite --dry-run
+    gokart config show
+
 Commands:
   new (create,init)      Create a new GoKart project.
-    <project> ...        Project name.
+    [<project> ...]      Project name.
 
   add                    Add integrations to a managed structured project.
     <integration> ...    Integration: sqlite, postgres, ai, or redis.
+
+  detach                 Remove GoKart runtime coupling from a structured
+                         project.
 
   version                Print the version number.
 

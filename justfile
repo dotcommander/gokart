@@ -1,7 +1,7 @@
 # gokart — Go toolkit multi-module repo
 
 # All published submodules, including the independently installable CLI.
-modules := "cache cli cmd/gokart logger migrate postgres sqlite web"
+modules := "cache cli cmd/gokart fslock kongapp logger migrate postgres sqlite web"
 
 # Build all modules
 build:

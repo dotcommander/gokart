@@ -7,8 +7,10 @@ import (
 	"path/filepath"
 )
 
-// atomicWriteFile publishes a fully synced sibling file over path.
-func atomicWriteFile(path string, data []byte, perm os.FileMode) error {
+// AtomicWriteFile publishes data to path atomically via a synced temporary
+// file in the same directory plus rename. It creates parent directories (0755)
+// and sets perm on the temporary file (typically 0600). Errors are wrapped.
+func AtomicWriteFile(path string, data []byte, perm os.FileMode) error {
 	dir := filepath.Dir(path)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return fmt.Errorf("create directory: %w", err)

@@ -135,9 +135,6 @@ func (s *Service) resolveDependencies(ctx context.Context, req newRequest, runti
 
 func (s *Service) dependencyPackages(req newRequest) []string {
 	packages := []string{"github.com/alecthomas/kong@" + defaultKongVersion}
-	if req.UseGlobal {
-		packages = append(packages, "github.com/dotcommander/gokart@"+defaultGokartVersion)
-	}
 	packages = append(packages, integrationDependencies(templateDataForRequest(req))...)
 	sort.Strings(packages)
 	return packages

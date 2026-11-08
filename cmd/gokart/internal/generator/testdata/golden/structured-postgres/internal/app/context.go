@@ -4,10 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/dotcommander/gokart/postgres"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"log/slog"
 	"os"
+	"time"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/spf13/viper"
 )
@@ -50,9 +51,22 @@ func New(ctx context.Context, appName string, v *viper.Viper) (_ *Dependencies, 
 	if dbURL == "" {
 		logger.Warn("DATABASE_URL not set, PostgreSQL features will not work")
 	} else {
-		pool, err := postgres.Open(ctx, dbURL)
+		poolCfg, err := pgxpool.ParseConfig(dbURL)
+		if err != nil {
+			return nil, fmt.Errorf("parse postgres config: %w", err)
+		}
+		poolCfg.MaxConns = 25
+		poolCfg.MinConns = 5
+		poolCfg.MaxConnLifetime = time.Hour
+		poolCfg.MaxConnIdleTime = 30 * time.Minute
+		poolCfg.HealthCheckPeriod = time.Minute
+		pool, err := pgxpool.NewWithConfig(ctx, poolCfg)
 		if err != nil {
 			return nil, fmt.Errorf("connect to postgres: %w", err)
+		}
+		if err := pool.Ping(ctx); err != nil {
+			pool.Close()
+			return nil, fmt.Errorf("ping postgres: %w", err)
 		}
 		appCtx.Pool = pool
 	}

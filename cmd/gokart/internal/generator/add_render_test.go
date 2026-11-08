@@ -133,7 +133,7 @@ func TestAddDryRunNoChanges(t *testing.T) {
 	}
 }
 
-func TestAddPostgresUsesToolkitOwner(t *testing.T) {
+func TestAddPostgresUsesUpstreamPool(t *testing.T) {
 	t.Parallel()
 	data := baseTemplateData("myapp", "example.com/myapp", true, false)
 	data.UsePostgres = true
@@ -149,17 +149,15 @@ func TestAddPostgresUsesToolkitOwner(t *testing.T) {
 	}
 	content := string(contextContent)
 
-	for _, want := range []string{"postgres.Open(ctx, dbURL)"} {
+	for _, want := range []string{"pgxpool.ParseConfig(dbURL)", "pgxpool.NewWithConfig(ctx, poolCfg)"} {
 		if !strings.Contains(content, want) {
 			t.Fatalf("expected postgres context.go to contain %q", want)
 		}
 	}
 
 	for _, bad := range []string{
-		"pgxpool.New(ctx,",
-		"pgxpool.NewWithConfig",
-		"cfg.MinConns",
-		"cfg.MaxConnLifetime",
+		"dotcommander/gokart",
+		"postgres.Open",
 		"context.Background",
 	} {
 		if strings.Contains(content, bad) {

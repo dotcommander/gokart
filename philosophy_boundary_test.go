@@ -23,7 +23,7 @@ func TestPhilosophyBoundary(t *testing.T) {
 		}
 		text := string(data)
 		for _, retired := range []string{"./ai", "./fs", "gokart/ai", "gokart/fs"} {
-			if strings.Contains(text, retired) {
+			if containsRetiredToken(text, retired) {
 				t.Fatalf("%s contains retired surface %q", path, retired)
 			}
 		}
@@ -83,5 +83,26 @@ func TestMigrationInventoryNamesEveryRemovedAPI(t *testing.T) {
 		if !strings.Contains(doc, "`"+symbol+"`") {
 			t.Errorf("migration inventory omits %s", symbol)
 		}
+	}
+}
+
+// containsRetiredToken reports whether text contains token followed by a
+// non-alphanumeric boundary (or end of text), so "gokart/fs" does not match
+// "gokart/fslock".
+func containsRetiredToken(text, token string) bool {
+	for offset := 0; ; {
+		i := strings.Index(text[offset:], token)
+		if i < 0 {
+			return false
+		}
+		end := offset + i + len(token)
+		if end >= len(text) {
+			return true
+		}
+		c := text[end]
+		if (c < 'a' || c > 'z') && (c < 'A' || c > 'Z') && (c < '0' || c > '9') {
+			return true
+		}
+		offset += i + 1
 	}
 }

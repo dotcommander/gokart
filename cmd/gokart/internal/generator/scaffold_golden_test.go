@@ -185,7 +185,7 @@ func TestGeneratedDependenciesCleanupOnInitializationFailure(t *testing.T) {
 			t.Errorf("generated dependency constructor omits %q", want)
 		}
 	}
-	if cleanup, sqlite := strings.Index(source, "defer func()"), strings.Index(source, "sqlite.Open(dbPath)"); cleanup < 0 || sqlite < 0 || cleanup > sqlite {
+	if cleanup, sqlite := strings.Index(source, "defer func()"), strings.Index(source, `sql.Open("sqlite", dsn)`); cleanup < 0 || sqlite < 0 || cleanup > sqlite {
 		t.Errorf("generated cleanup guard must be installed before resource construction")
 	}
 }

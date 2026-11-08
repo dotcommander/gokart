@@ -5,4 +5,5 @@ go 1.26.0
 require (
 	github.com/alecthomas/kong v1.16.1
 	github.com/spf13/viper v1.21.0
+	github.com/redis/go-redis/v9 v9.22.0
 )

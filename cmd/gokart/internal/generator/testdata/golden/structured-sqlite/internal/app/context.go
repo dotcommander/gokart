@@ -8,8 +8,9 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"time"
 
-	"github.com/dotcommander/gokart/sqlite"
+	_ "modernc.org/sqlite"
 
 	"github.com/spf13/viper"
 )
@@ -58,9 +59,18 @@ func New(ctx context.Context, appName string, v *viper.Viper) (_ *Dependencies, 
 		dbPath = filepath.Join(dbDir, "data.db")
 	}
 
-	db, err := sqlite.Open(dbPath)
+	// Pragmas mirror the gokart/sqlite defaults: WAL, foreign keys, 5s busy timeout.
+	dsn := "file:" + dbPath + "?_txlock=immediate&_pragma=busy_timeout(5000)&_pragma=journal_mode(WAL)&_pragma=foreign_keys(1)&_pragma=cache_size(-2000)"
+	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("open sqlite: %w", err)
+	}
+	db.SetMaxOpenConns(1)
+	db.SetMaxIdleConns(1)
+	db.SetConnMaxLifetime(time.Hour)
+	if err := db.PingContext(ctx); err != nil {
+		_ = db.Close()
+		return nil, fmt.Errorf("ping sqlite: %w", err)
 	}
 	appCtx.DB = db
 

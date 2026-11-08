@@ -33,7 +33,7 @@ func TestDocumentedSQLiteNewcomerFlow(t *testing.T) {
 
 	contextPath := filepath.Join(dir, "internal/app/context.go")
 	appContext := readTutorialFile(t, contextPath)
-	appContext = strings.Replace(appContext, "\t\"github.com/dotcommander/gokart/sqlite\"", "\t\"github.com/dotcommander/gokart/migrate\"\n\t\"github.com/dotcommander/gokart/sqlite\"", 1)
+	appContext = strings.Replace(appContext, "\t_ \"modernc.org/sqlite\"", "\t\"github.com/dotcommander/gokart/migrate\"\n\t_ \"modernc.org/sqlite\"", 1)
 	appContext = strings.Replace(appContext, "\tappCtx.DB = db", "\tif err := migrate.Up(ctx, db, migrate.Config{Dir: \"migrations\", Dialect: \"sqlite3\"}); err != nil {\n\t\t_ = db.Close()\n\t\treturn nil, fmt.Errorf(\"migrate database: %w\", err)\n\t}\n\tappCtx.DB = db", 1)
 	writeTutorialFile(t, dir, "internal/app/context.go", appContext)
 

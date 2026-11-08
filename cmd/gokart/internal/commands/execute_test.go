@@ -17,6 +17,7 @@ import (
 type fakeProjects struct {
 	create func(generator.CreateRequest) (generator.CreateResult, error)
 	add    func(generator.AddRequest) (generator.AddResult, error)
+	detach func(generator.DetachRequest) (generator.DetachResult, error)
 }
 
 func (f fakeProjects) Create(_ context.Context, req generator.CreateRequest, _ generator.Runtime) (generator.CreateResult, error) {
@@ -25,6 +26,10 @@ func (f fakeProjects) Create(_ context.Context, req generator.CreateRequest, _ g
 
 func (f fakeProjects) Add(_ context.Context, req generator.AddRequest, _ generator.Runtime) (generator.AddResult, error) {
 	return f.add(req)
+}
+
+func (f fakeProjects) Detach(_ context.Context, req generator.DetachRequest, _ generator.Runtime) (generator.DetachResult, error) {
+	return f.detach(req)
 }
 
 func testDependencies(stdout, stderr *bytes.Buffer, projects ProjectGenerator) Dependencies {
@@ -213,7 +218,7 @@ func TestHelpSnapshots(t *testing.T) {
 		create: func(generator.CreateRequest) (generator.CreateResult, error) { return generator.CreateResult{}, nil },
 		add:    func(generator.AddRequest) (generator.AddResult, error) { return generator.AddResult{}, nil },
 	}
-	for _, command := range []string{"root", "new", "add"} {
+	for _, command := range []string{"root", "new", "add", "detach"} {
 		command := command
 		t.Run(command, func(t *testing.T) {
 			t.Parallel()
@@ -221,7 +226,7 @@ func TestHelpSnapshots(t *testing.T) {
 			deps := testDependencies(&stdout, &stderr, projects)
 			exec := &executor{ctx: context.Background(), version: "v-test", deps: deps}
 			root := cli{}
-			root.New.exec, root.Add.exec = exec, exec
+			root.New.exec, root.Add.exec, root.Detach.exec = exec, exec, exec
 			parser, err := newParser(&root, "v-test", deps, kong.Exit(func(int) {}))
 			if err != nil {
 				t.Fatal(err)

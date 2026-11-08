@@ -7,6 +7,8 @@ use (
 	./cache
 	./cli
 	./cmd/gokart
+	./fslock
+	./kongapp
 	./logger
 	./migrate
 	./postgres

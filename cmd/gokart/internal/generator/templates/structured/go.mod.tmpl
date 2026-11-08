@@ -10,6 +10,12 @@ require (
 {{- if .UsePostgres }}
 	github.com/jackc/pgx/v5 {{.PGXVersion}}
 {{- end }}
+{{- if .UseSQLite }}
+	modernc.org/sqlite {{.ModerncVersion}}
+{{- end }}
+{{- if .UseRedis }}
+	github.com/redis/go-redis/v9 {{.RedisVersion}}
+{{- end }}
 {{- if .UseAI }}
 	github.com/openai/openai-go/v3 {{.OpenAIVersion}}
 {{- end }}

@@ -27,7 +27,7 @@ before returning to `main`. `app.Context` remains an alias for compatibility.
 
 | Integration | Wiring | Environment |
 | --- | --- | --- |
-| redis | Redis through cache.Open | REDIS_ADDR (optional; defaults to localhost:6379) |
+| redis | Redis via go-redis client | REDIS_ADDR (optional; defaults to localhost:6379) |
 
 ## Safe extension points
 
@@ -50,6 +50,7 @@ go test ./...
 go build -ldflags "-X main.version=$(git describe --tags 2>/dev/null || echo dev)" -o demo ./cmd
 ```
 
-See the GoKart [generated-code guide](https://github.com/dotcommander/gokart/blob/main/docs/generated-code.md)
-for manifest conflicts, removing integrations, and replacing wrappers with
-upstream packages.
+See the GoKart generated-code guide (`docs/generated-code.md` in the GoKart
+repository) for manifest conflicts and removing integrations. Generated code
+imports upstream packages directly; `gokart detach` removes older GoKart
+runtime imports.

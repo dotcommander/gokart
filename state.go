@@ -35,7 +35,7 @@ func SaveState[T any](appName, filename string, data T) error {
 	}
 
 	path := filepath.Join(dir, filename)
-	if err := atomicWriteFile(path, content, 0o600); err != nil {
+	if err := AtomicWriteFile(path, content, 0o600); err != nil {
 		return fmt.Errorf("publish state file: %w", err)
 	}
 

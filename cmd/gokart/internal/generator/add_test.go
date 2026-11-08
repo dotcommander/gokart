@@ -143,10 +143,10 @@ func TestAddRejectsDuplicate(t *testing.T) {
 func TestIntegrationRegistryIsSingleSource(t *testing.T) { //nolint:gocyclo // one contract test validates every registry-owned projection
 	t.Parallel()
 	wantDeps := map[string][]string{
-		integrationSQLite:   {"github.com/dotcommander/gokart/sqlite@" + defaultGokartSQLiteVersion},
-		integrationPostgres: {"github.com/dotcommander/gokart/postgres@" + defaultGokartPostgresVersion, "github.com/jackc/pgx/v5@" + defaultPGXVersion},
+		integrationSQLite:   {"modernc.org/sqlite@" + defaultModerncVersion},
+		integrationPostgres: {"github.com/jackc/pgx/v5@" + defaultPGXVersion},
 		integrationAI:       {"github.com/openai/openai-go/v3@" + defaultOpenAIVersion},
-		integrationRedis:    {"github.com/dotcommander/gokart/cache@" + defaultGokartCacheVersion, "github.com/redis/go-redis/v9@" + defaultRedisVersion},
+		integrationRedis:    {"github.com/redis/go-redis/v9@" + defaultRedisVersion},
 	}
 	if len(integrationRegistry) != len(wantDeps) {
 		t.Fatalf("integrationRegistry has %d entries, want %d", len(integrationRegistry), len(wantDeps))

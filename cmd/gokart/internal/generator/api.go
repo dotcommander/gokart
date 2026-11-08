@@ -233,3 +233,22 @@ type AddResult struct {
 	Checks           []CheckResult
 	Warnings         []string
 }
+
+type DetachRequest struct {
+	Dir           string
+	DryRun        bool
+	Force         bool
+	Verify        bool
+	VerifyTimeout time.Duration
+}
+
+type DetachResult struct {
+	AlreadyDetached  bool
+	FilesOverwritten []string
+	ManifestRemoved  bool
+	DryRun           bool
+	VerifyRequested  bool
+	VerifyPassed     bool
+	Checks           []CheckResult
+	Warnings         []string
+}

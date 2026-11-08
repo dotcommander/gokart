@@ -24,6 +24,7 @@ const (
 type ProjectGenerator interface {
 	Create(context.Context, generator.CreateRequest, generator.Runtime) (generator.CreateResult, error)
 	Add(context.Context, generator.AddRequest, generator.Runtime) (generator.AddResult, error)
+	Detach(context.Context, generator.DetachRequest, generator.Runtime) (generator.DetachResult, error)
 }
 
 type Dependencies struct {
@@ -45,6 +46,7 @@ type cli struct {
 	VersionFlag kong.VersionFlag `name:"version" help:"Print version information and quit."`
 	New         newCommand       `cmd:"" aliases:"create,init" help:"Create a new GoKart project."`
 	Add         addCommand       `cmd:"" help:"Add integrations to a managed structured project."`
+	Detach      detachCommand    `cmd:"" help:"Remove GoKart runtime coupling from a structured project."`
 	Version     versionCommand   `cmd:"" help:"Print the version number."`
 	Config      configCommand    `cmd:"" help:"Show gokart configuration."`
 }
@@ -58,7 +60,7 @@ func Execute(ctx context.Context, args []string, version string, deps Dependenci
 	}
 	exec := &executor{ctx: ctx, version: version, deps: deps}
 	root := cli{}
-	root.New.exec, root.Add.exec = exec, exec
+	root.New.exec, root.Add.exec, root.Detach.exec = exec, exec, exec
 	root.Version.exec, root.Config.exec = exec, exec
 	parser, err := newParser(&root, version, deps)
 	var parsed *kong.Context
@@ -82,7 +84,7 @@ func Execute(ctx context.Context, args []string, version string, deps Dependenci
 	}
 	if hasJSONFlag(args) {
 		var out any = createOutput{Outcome: outcomeFailure, ErrorCode: generator.ErrorInvalidArguments, ExitCode: 2, Error: err.Error()}
-		if len(args) > 0 && args[0] == "add" {
+		if len(args) > 0 && (args[0] == "add" || args[0] == "detach") {
 			out = addOutput{Outcome: outcomeFailure, ErrorCode: generator.ErrorInvalidArguments, ExitCode: 2, Error: err.Error()}
 		}
 		if writeErr := emitJSON(deps.Stdout, out); writeErr != nil {
@@ -101,7 +103,7 @@ func Execute(ctx context.Context, args []string, version string, deps Dependenci
 func newParser(root *cli, version string, deps Dependencies, extra ...kong.Option) (*kong.Kong, error) {
 	options := []kong.Option{
 		kong.Name(appName),
-		kong.Description(rootDescription),
+		kong.Description(rootDescription + rootPrimer),
 		kong.Vars{"version": appName + " version " + version},
 		kong.Writers(deps.Stdout, deps.Stderr),
 		kong.UsageOnError(),
@@ -211,3 +213,11 @@ func changedFlags(args []string) map[string]bool {
 }
 
 const rootDescription = "GoKart scaffolds focused Go command-line applications."
+
+const rootPrimer = `
+
+Quick start:
+  gokart new demo --example
+  cd demo && go run . greet --name World
+  gokart add sqlite --dry-run
+  gokart config show`

@@ -9,17 +9,17 @@ import (
 )
 
 type newCommand struct {
-	Args          []string      `arg:"" name:"project" help:"Project name."`
-	Flat          bool          `help:"Use a single-package root layout (default)." group:"Project"`
-	Structured    bool          `help:"Use a managed cmd/ and internal/ layout for later integrations." group:"Project"`
+	Args          []string      `arg:"" name:"project" help:"Project name." optional:""`
+	Flat          bool          `help:"Use a single-package root layout (default; Kong-based CLI)." group:"Project"`
+	Structured    bool          `help:"Use a managed cmd/ and internal/ layout (Kong-based) for later gokart add integrations." group:"Project"`
 	Module        string        `help:"Go module path." group:"Project"`
-	Example       bool          `help:"Include a runnable greet command and tests." group:"Project"`
-	DB            string        `default:"none" enum:"sqlite,postgres,none" help:"Database backend." group:"Integrations / Configuration"`
-	AI            bool          `help:"Include OpenAI client." group:"Integrations / Configuration"`
-	Redis         bool          `help:"Include Redis cache." group:"Integrations / Configuration"`
-	Local         bool          `help:"Use local-only config." group:"Integrations / Configuration"`
-	Global        bool          `help:"Enable global config." group:"Integrations / Configuration"`
-	ConfigScope   string        `default:"auto" enum:"auto,local,global" help:"Config scope." group:"Integrations / Configuration"`
+	Example       bool          `help:"Include a runnable Kong greet command and tests." group:"Project"`
+	DB            string        `default:"none" enum:"sqlite,postgres,none" help:"Database backend (managed integration; structured layout)." group:"Integrations / Configuration"`
+	AI            bool          `help:"Include OpenAI client (managed integration; structured layout)." group:"Integrations / Configuration"`
+	Redis         bool          `help:"Include Redis cache (managed integration; structured layout)." group:"Integrations / Configuration"`
+	Local         bool          `help:"Use local-only config (no global config directory)." group:"Integrations / Configuration"`
+	Global        bool          `help:"Enable global config in the user config directory." group:"Integrations / Configuration"`
+	ConfigScope   string        `default:"auto" enum:"auto,local,global" help:"Config scope: auto, local, or global." group:"Integrations / Configuration"`
 	DryRun        bool          `help:"Preview scaffold operations without writing files." group:"Safety / Verification"`
 	Force         bool          `help:"Overwrite all existing files." group:"Safety / Verification"`
 	SkipExisting  bool          `help:"Skip files that already exist." group:"Safety / Verification"`
@@ -38,6 +38,9 @@ func (c *newCommand) Run() error {
 	if err != nil {
 		return classify(fmt.Errorf("get working directory: %w", err))
 	}
+	if len(c.Args) == 0 {
+		return c.runWizard(workingDir)
+	}
 	req := generator.CreateRequest{
 		Args: c.Args, Flat: c.Flat, Structured: c.Structured, Module: c.Module,
 		DB: c.DB, AI: c.AI, Redis: c.Redis, Example: c.Example, Local: c.Local,
@@ -46,6 +49,29 @@ func (c *newCommand) Run() error {
 		NoVerify: c.NoVerify, VerifyOnly: c.VerifyOnly, VerifyTimeout: c.VerifyTimeout,
 		Changed: c.changed, WorkingDir: workingDir,
 	}
+	return c.create(req)
+}
+
+func (c *newCommand) runWizard(workingDir string) error {
+	if !isTerminal(c.exec.deps.Stdout) {
+		return c.failMissingProject()
+	}
+	req, err := collectNewWizard(c.exec.ctx, c.exec.deps.Stderr, workingDir, c.changed)
+	if err != nil {
+		return classify(err)
+	}
+	return c.create(req)
+}
+
+func (c *newCommand) failMissingProject() error {
+	err := missingProjectError()
+	if c.JSON {
+		return c.emitJSON(generator.CreateResult{}, err)
+	}
+	return classify(err)
+}
+
+func (c *newCommand) create(req generator.CreateRequest) error {
 	runtime := c.exec.runtime()
 	result, err := c.exec.deps.Projects.Create(c.exec.ctx, req, runtime)
 	if c.JSON {

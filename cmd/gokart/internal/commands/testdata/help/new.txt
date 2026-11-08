@@ -1,28 +1,31 @@
-Usage: gokart new (create,init) <project> ... [flags]
+Usage: gokart new (create,init) [<project> ...] [flags]
 
 Create a new GoKart project.
 
 Arguments:
-  <project> ...    Project name.
+  [<project> ...]    Project name.
 
 Flags:
   -h, --help       Show context-sensitive help.
       --version    Print version information and quit.
 
 Project
-  --flat             Use a single-package root layout (default).
-  --structured       Use a managed cmd/ and internal/ layout for later
-                     integrations.
+  --flat             Use a single-package root layout (default; Kong-based CLI).
+  --structured       Use a managed cmd/ and internal/ layout (Kong-based) for
+                     later gokart add integrations.
   --module=STRING    Go module path.
-  --example          Include a runnable greet command and tests.
+  --example          Include a runnable Kong greet command and tests.
 
 Integrations / Configuration
-  --db="none"              Database backend.
-  --ai                     Include OpenAI client.
-  --redis                  Include Redis cache.
-  --local                  Use local-only config.
-  --global                 Enable global config.
-  --config-scope="auto"    Config scope.
+  --db="none"              Database backend (managed integration; structured
+                           layout).
+  --ai                     Include OpenAI client (managed integration;
+                           structured layout).
+  --redis                  Include Redis cache (managed integration; structured
+                           layout).
+  --local                  Use local-only config (no global config directory).
+  --global                 Enable global config in the user config directory.
+  --config-scope="auto"    Config scope: auto, local, or global.
 
 Safety / Verification
   --dry-run              Preview scaffold operations without writing files.
