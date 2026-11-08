@@ -178,7 +178,7 @@ func (c *Cache) Key(key string) string {
 }
 
 // GetJSON retrieves and unmarshals a JSON value.
-func (c *Cache) GetJSON(ctx context.Context, key string, dest interface{}) error {
+func (c *Cache) GetJSON(ctx context.Context, key string, dest any) error {
 	data, err := c.client.Get(ctx, c.Key(key)).Bytes()
 	if err != nil {
 		return err
@@ -187,7 +187,7 @@ func (c *Cache) GetJSON(ctx context.Context, key string, dest interface{}) error
 }
 
 // SetJSON marshals and stores a value as JSON.
-func (c *Cache) SetJSON(ctx context.Context, key string, value interface{}, ttl time.Duration) error {
+func (c *Cache) SetJSON(ctx context.Context, key string, value any, ttl time.Duration) error {
 	data, err := json.Marshal(value)
 	if err != nil {
 		return fmt.Errorf("failed to marshal value: %w", err)
@@ -199,10 +199,10 @@ func (c *Cache) SetJSON(ctx context.Context, key string, value interface{}, ttl 
 //
 // Example:
 //
-//	user, err := c.Remember(ctx, "user:123", time.Hour, func() (interface{}, error) {
+//	user, err := c.Remember(ctx, "user:123", time.Hour, func() (any, error) {
 //	    return db.GetUser(ctx, 123)
 //	})
-func (c *Cache) Remember(ctx context.Context, key string, ttl time.Duration, fn func() (interface{}, error)) (string, error) {
+func (c *Cache) Remember(ctx context.Context, key string, ttl time.Duration, fn func() (any, error)) (string, error) {
 	val, err := c.client.Get(ctx, c.Key(key)).Result()
 	if err == nil {
 		return val, nil
@@ -212,7 +212,7 @@ func (c *Cache) Remember(ctx context.Context, key string, ttl time.Duration, fn 
 	}
 
 	// Use singleflight to prevent cache stampede
-	v, err, _ := c.flight.Do(key, func() (interface{}, error) {
+	v, err, _ := c.flight.Do(key, func() (any, error) {
 		// Double-check cache after acquiring the flight
 		if val, err := c.client.Get(ctx, c.Key(key)).Result(); err == nil {
 			return val, nil
@@ -256,10 +256,10 @@ func (c *Cache) Remember(ctx context.Context, key string, ttl time.Duration, fn 
 // Example:
 //
 //	var user User
-//	err := c.RememberJSON(ctx, "user:123", time.Hour, &user, func() (interface{}, error) {
+//	err := c.RememberJSON(ctx, "user:123", time.Hour, &user, func() (any, error) {
 //	    return db.GetUser(ctx, 123)
 //	})
-func (c *Cache) RememberJSON(ctx context.Context, key string, ttl time.Duration, dest interface{}, fn func() (interface{}, error)) error {
+func (c *Cache) RememberJSON(ctx context.Context, key string, ttl time.Duration, dest any, fn func() (any, error)) error {
 	// Try to get existing value
 	err := c.GetJSON(ctx, key, dest)
 	if err == nil {
@@ -273,7 +273,7 @@ func (c *Cache) RememberJSON(ctx context.Context, key string, ttl time.Duration,
 	// stored JSON bytes so each caller unmarshals into its own dest:
 	// exactly one Marshal of the fn result (for storage) and one Unmarshal
 	// per caller, with no shared mutable dest inside the callback.
-	result, err, _ := c.flight.Do("json:"+key, func() (interface{}, error) {
+	result, err, _ := c.flight.Do("json:"+key, func() (any, error) {
 		// Double-check cache
 		if data, err := c.client.Get(ctx, c.Key(key)).Bytes(); err == nil {
 			return data, nil
