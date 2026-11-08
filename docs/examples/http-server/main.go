@@ -7,6 +7,7 @@
 //   - Request timeout handling
 //   - Graceful shutdown with signal handling
 //   - Response helpers for common HTTP patterns
+//   - Bounded JSON binding and validation (BindJSON / BindAndValidate)
 //
 // Run with: go run main.go
 // Then test with:
@@ -17,7 +18,7 @@
 package main
 
 import (
-	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -26,6 +27,8 @@ import (
 	"github.com/dotcommander/gokart/web"
 	"github.com/go-chi/chi/v5"
 )
+
+var validator = web.NewStandardValidator()
 
 func main() {
 	// Create router with standard middleware
@@ -98,14 +101,19 @@ func getUserHandler(w http.ResponseWriter, r *http.Request) {
 // createUserHandler creates a new user
 func createUserHandler(w http.ResponseWriter, r *http.Request) {
 	var user User
-	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
-		web.Error(w, http.StatusBadRequest, "Invalid request body")
+	// Bounded binding (10 MiB default) plus validation in one call.
+	fields, err := web.BindAndValidate(r, validator, &user)
+	if err != nil {
+		var tooLarge *http.MaxBytesError
+		if errors.As(err, &tooLarge) {
+			web.Error(w, http.StatusRequestEntityTooLarge, "request too large")
+		} else {
+			web.Error(w, http.StatusBadRequest, "Invalid request body")
+		}
 		return
 	}
-
-	// Validate
-	if user.Name == "" || user.Email == "" {
-		web.Error(w, http.StatusBadRequest, "Name and email are required")
+	if len(fields) > 0 {
+		web.JSONStatus(w, http.StatusUnprocessableEntity, map[string]any{"errors": fields})
 		return
 	}
 
@@ -121,7 +129,7 @@ func updateUserHandler(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 
 	var user User
-	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
+	if err := web.BindJSON(r, &user); err != nil {
 		web.Error(w, http.StatusBadRequest, "Invalid request body")
 		return
 	}
@@ -144,8 +152,8 @@ func deleteUserHandler(w http.ResponseWriter, r *http.Request) {
 // User represents a user in the system
 type User struct {
 	ID    string `json:"id"`
-	Name  string `json:"name"`
-	Email string `json:"email"`
+	Name  string `json:"name" validate:"notblank"`
+	Email string `json:"email" validate:"required,email"`
 }
 
 // Example: Custom shutdown timeout

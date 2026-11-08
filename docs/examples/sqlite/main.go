@@ -40,8 +40,9 @@ func main() {
 	//   - WAL mode: enabled (better concurrency)
 	//   - Foreign keys: enabled
 	//   - Busy timeout: 5 seconds
-	//   - Max open connections: 25
-	//   - Max idle connections: 5
+	//   - Cache size: 2,000 KiB
+	//   - Max open connections: 1 (preserves immediate transaction locking)
+	//   - Max idle connections: 1
 	//   - Conn max lifetime: 1 hour
 	db, err := sqlite.Open("app.db")
 	if err != nil {
@@ -176,7 +177,7 @@ func main() {
 
 // Example: Transaction with panic recovery
 //
-// WithTransaction also recovers from panics and rolls back:
+// Transaction also recovers from panics and rolls back:
 //
 //	err = sqlite.Transaction(ctx, db, func(tx *sql.Tx) error {
 //	    _, err := tx.ExecContext(ctx, "INSERT INTO users (name, email) VALUES (?, ?)", "Charlie", "charlie@example.com")

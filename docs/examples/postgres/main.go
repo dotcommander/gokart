@@ -159,9 +159,9 @@ func main() {
 
 // Example: Transaction with panic recovery
 //
-// WithTransaction also recovers from panics and rolls back:
+// Transaction also recovers from panics and rolls back:
 //
-//	err = postgres.WithTransaction(ctx, pool, func(tx pgx.Tx) error {
+//	err = postgres.Transaction(ctx, pool, func(tx pgx.Tx) error {
 //	    _, err := tx.Exec(ctx, "INSERT INTO users (name, email) VALUES ($1, $2)", "Dave", "dave@example.com")
 //	    if err != nil {
 //	        panic("database error!") // Transaction will be rolled back
@@ -169,9 +169,9 @@ func main() {
 //	    return nil
 //	})
 //
-// Example: Using WithTransaction for batch operations
+// Example: Using Transaction for batch operations
 //
-//	err = postgres.WithTransaction(ctx, pool, func(tx pgx.Tx) error {
+//	err = postgres.Transaction(ctx, pool, func(tx pgx.Tx) error {
 //	    // Batch insert
 //	    batch := &pgx.Batch{}
 //	    for i := 0; i < 100; i++ {

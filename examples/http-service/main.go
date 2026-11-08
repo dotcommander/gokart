@@ -2,7 +2,6 @@
 package main
 
 import (
-	"encoding/json"
 	"log"
 	"net/http"
 	"time"
@@ -19,8 +18,7 @@ func main() {
 
 	// Health check
 	router.Get("/health", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+		web.JSON(w, map[string]string{"status": "ok"})
 	})
 
 	// API routes
@@ -29,10 +27,11 @@ func main() {
 		if name == "" {
 			name = "World"
 		}
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]string{"message": "Hello, " + name + "!"})
+		web.JSON(w, map[string]string{"message": "Hello, " + name + "!"})
 	})
 
 	log.Println("Server starting on :8080")
-	log.Fatal(web.ListenAndServe(":8080", router))
+	if err := web.ListenAndServeWithTimeout(":8080", router, 10*time.Second); err != nil {
+		log.Fatal(err)
+	}
 }

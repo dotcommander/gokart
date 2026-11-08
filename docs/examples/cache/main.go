@@ -35,4 +35,20 @@ func main() {
 	if err := c.SetJSON(ctx, "user:1", User{ID: 1, Name: "Alice"}, time.Hour); err != nil {
 		log.Fatal(err)
 	}
+
+	// Remember collapses concurrent misses in-process (singleflight),
+	// computes once, and stores the result for the TTL.
+	var cached User
+	err = c.RememberJSON(ctx, "user:1:report", time.Hour, &cached, func() (interface{}, error) {
+		return buildReport(1)
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Printf("remembered: %+v", cached)
+}
+
+func buildReport(id int) (User, error) {
+	// Expensive computation you only want to run on a cache miss.
+	return User{ID: id, Name: "Alice"}, nil
 }
