@@ -3,7 +3,7 @@
 The generator is exercised by the tutorials, not a Go file — this README is the copy-paste path:
 
 ```bash
-go install github.com/dotcommander/gokart/cmd/gokart@v0.13.0
+go install github.com/dotcommander/gokart/cmd/gokart@v0.14.0
 
 # Preview first; nothing is written
 gokart new notes --db sqlite --example --dry-run

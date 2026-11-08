@@ -13,7 +13,7 @@ func TestGeneratorDocsKeepConfigOutputExample(t *testing.T) {
 		t.Fatal(err)
 	}
 	doc := string(b)
-	for _, line := range []string{"Version:     v0.13.0", "Config dir:  /Users/you/Library/Application Support", "Binary:      /Users/you/go/bin/gokart"} {
+	for _, line := range []string{"Version:     v0.14.0", "Config dir:  /Users/you/Library/Application Support", "Binary:      /Users/you/go/bin/gokart"} {
 		if !strings.Contains(doc, line) {
 			t.Errorf("docs omit config output %q", line)
 		}

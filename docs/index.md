@@ -3,7 +3,7 @@
 Install the tagged CLI:
 
 ```bash
-go install github.com/dotcommander/gokart/cmd/gokart@v0.13.0
+go install github.com/dotcommander/gokart/cmd/gokart@v0.14.0
 gokart new tvguide --example
 ```
 

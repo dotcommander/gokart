@@ -1,5 +1,28 @@
 # Changelog
 
+## v0.14.0 (2026-11-08)
+
+### Breaking
+- Remove the `cli` presentation layer: `Success`, `Info`, `Warning`, `Error`, `Dim`, `Bold`, `NewSpinner`, `WithSpinner`, `NewProgress`, `NewTable`, `SimpleTable`, `KeyValue`, `List`, `NumberedList`, and `SetStyledHelp`. Use lipgloss, bubbles, or lipgloss/table directly.
+- Remove the `postgres` compatibility aliases `PostgresConfig` and `BuildConnectionString`. Use `Config` and `DSN`.
+- Bound `LoadState` reads at 10 MiB through `ReadFileLimit`; larger files return an error satisfying `errors.Is(err, gokart.ErrTooLarge)` and a zero value.
+- Generated projects no longer import any `github.com/dotcommander/gokart/*` package at runtime. Older generated projects that still do can be converted with `gokart detach`; see generated-code ownership docs.
+
+### Added
+- Add the `kongapp` module: caller-owned Kong command trees with context, streams, post-parse initialization, and teardown.
+- Add the `fslock` module: advisory whole-file locks for cross-process coordination (Unix; `ErrUnsupported` elsewhere).
+- Add bounded reads (`ReadAllLimit`, `ReadFileLimit`, `ErrTooLarge`) and exported `AtomicWriteFile` to the root module.
+- Add `gokart detach` for converting older generated projects to upstream-direct code, and an interactive `gokart new` wizard.
+- Add task-oriented documentation and runnable examples for every module, including an upstream-direct (zero-GoKart) HTTP service example.
+
+### Changed
+- Drop the root-module dependency from `sqlite` and `postgres`: the transaction helper is now module-local, so consumers no longer pull viper/mapstructure transitively.
+- Generate PostgreSQL, SQLite, Redis, and AI integrations through upstream packages directly in new scaffolds.
+
+### Fixed
+- Upgrade `github.com/go-chi/chi/v5` to v5.5.0 (ClientIPFromXFF client-IP spoofing, Dependabot alerts #1–#3).
+- Reject unsafe application directory names in configuration setup.
+
 ## v0.13.0 (2026-07-14)
 
 ### Added
