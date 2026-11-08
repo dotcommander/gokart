@@ -356,6 +356,16 @@ mu.Unlock()
 
 ---
 
+## AtomicWriteFile
+
+`AtomicWriteFile(path, data, perm)` publishes data via a synced temp file in the same directory plus rename, creating parent directories (0755). Use `0o600` for private files.
+
+## ReadAllLimit
+
+`ReadAllLimit(r, max)` and `ReadFileLimit(path, max)` read at most `max` bytes; larger input returns an error satisfying `errors.Is(err, gokart.ErrTooLarge)`. The application chooses the limit.
+
+---
+
 ## Reference
 
 ### Functions
@@ -365,6 +375,8 @@ mu.Unlock()
 | `SaveState[T any]` | `error` | Save typed state to config directory |
 | `LoadState[T any]` | `(T, error)` | Load typed state from config directory |
 | `StatePath` | `string` | Get full path to state file |
+| `AtomicWriteFile` | `error` | Atomically write a file (synced temp file + rename) |
+| `ReadAllLimit` / `ReadFileLimit` | `([]byte, error)` | Bounded reads; `ErrTooLarge` when input exceeds the limit |
 
 ### See Also
 

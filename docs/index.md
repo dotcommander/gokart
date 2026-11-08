@@ -23,8 +23,9 @@ The canonical maintainer boundary is [GoKart philosophy](../PHILOSOPHY.md). Thes
 
 ## Reference
 
-- [Generator](components/generator.md), [CLI](api/cli.md), and [configuration and state](api/gokart.md)
+- [Generator](components/generator.md), [CLI](api/cli.md), [Kong lifecycle](components/kongapp.md), and [configuration and state](api/gokart.md)
 - [Logger](components/logger.md)
+- [File locks](components/fslock.md)
 - [SQLite](components/sqlite.md), [PostgreSQL](components/postgres.md), and [migrations](components/migrate.md)
 - [Redis cache](components/cache.md)
 - [Web](components/web.md), [responses](components/response.md), and [validation](components/validate.md)

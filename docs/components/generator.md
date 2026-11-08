@@ -310,9 +310,9 @@ Use `--dry-run` to preview which files would be created or overwritten before co
 | Integration | Packages fetched via `go get` |
 |-------------|-------------------------------|
 | `sqlite` | `github.com/dotcommander/gokart/sqlite@v0.13.0` |
-| `postgres` | `github.com/dotcommander/gokart/postgres@v0.13.0`, `github.com/jackc/pgx/v5@v5.10.0`, `github.com/pressly/goose/v3@v3.27.2` |
-| `ai` | `github.com/openai/openai-go/v3@v3.42.0` |
-| `redis` | `github.com/dotcommander/gokart/cache@v0.13.0`, `github.com/redis/go-redis/v9@v9.21.0` |
+| `postgres` | `github.com/dotcommander/gokart/postgres@v0.13.0`, `github.com/jackc/pgx/v5@v5.10.0`, `github.com/pressly/goose/v3@v3.27.3` |
+| `ai` | `github.com/openai/openai-go/v3@v3.52.0` |
+| `redis` | `github.com/dotcommander/gokart/cache@v0.13.0`, `github.com/redis/go-redis/v9@v9.22.0` |
 
 ### All `gokart add` Flags
 
@@ -323,6 +323,19 @@ Use `--dry-run` to preview which files would be created or overwritten before co
 | `--verify` | bool | false | Run `go test ./...` after adding integrations |
 | `--verify-timeout` | duration | `5m` | Maximum time for verify commands (`0` = no timeout) |
 | `--json` | bool | false | Print machine-readable JSON result |
+
+---
+
+## `gokart detach`
+
+Converts an older structured project that still imports `gokart/sqlite`, `gokart/postgres`, `gokart/cache`, or the root `gokart` module back to upstream-direct code, so the application no longer depends on GoKart packages.
+
+```bash
+gokart detach --dry-run   # preview what would change
+gokart detach             # apply
+```
+
+`detach` re-renders `internal/app/context.go`, `internal/commands/root.go`, and `internal/app/config.go` only when they still import GoKart, refuses to overwrite files edited since generation unless `--force` is given, runs `go mod tidy` to drop the GoKart requires, and deletes `.gokart-manifest.json`. It accepts the same `--dry-run`, `--force`, `--verify`, `--verify-timeout`, and `--json` flags as `add`. Flat projects have nothing to detach. For the ownership boundaries this preserves, see [generated-code ownership](../generated-code.md).
 
 ---
 
@@ -435,7 +448,7 @@ Example for `gokart new /work/mycli --module github.com/myorg/mycli --no-verify 
   "verify_ran": false,
   "verify_passed": false,
   "checks": [
-    {"command": "go get github.com/alecthomas/kong@v1.15.0", "status": "passed"},
+    {"command": "go get github.com/alecthomas/kong@v1.16.1", "status": "passed"},
     {"command": "go mod tidy", "status": "passed"}
   ],
   "existing_file_policy": "fail",

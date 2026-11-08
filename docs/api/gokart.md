@@ -109,5 +109,7 @@ State files are for small CLI state. Use a database or purpose-built store for c
 | [`gokart/sqlite`](../components/sqlite.md) | pure-Go SQLite setup and operations |
 | [`gokart/migrate`](../components/migrate.md) | goose migrations |
 | [`gokart/logger`](../components/logger.md) | slog setup |
+| [`gokart/kongapp`](../components/kongapp.md) | Kong parse/run lifecycle with caller-owned streams (source-checked, unreleased) |
+| [`gokart/fslock`](../components/fslock.md) | Advisory whole-file locks for cross-process coordination, Unix only (source-checked, unreleased) |
 
 The removed `gokart/ai` and `gokart/fs` modules have no forwarding packages. See the [v0.11 migration table](../../README.md#v011-migration).
