@@ -1,6 +1,6 @@
 # Examples
 
-Runnable examples use the current `v0.14.0` package boundaries. Offline examples run anywhere; examples marked **(needs service)** require PostgreSQL and/or Redis.
+Runnable examples use the current `v0.15.0` package boundaries. Offline examples run anywhere; examples marked **(needs service)** require PostgreSQL and/or Redis.
 
 ```bash
 go run docs/examples/logger/main.go

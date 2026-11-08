@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.15.0 (2026-11-08)
+
+### Breaking
+- Remove `web.StandardMiddleware`: middleware selection is caller policy. Pass an explicit `[]func(http.Handler) http.Handler` (for example `middleware.RequestID`, `middleware.RealIP`, `middleware.Recoverer`) to `web.NewRouter`.
+- Remove `postgres.Config.ConnectionString`: use `URL`, or the discrete `Host`/`Port`/`User`/`Password`/`DBName`/`SSLMode` fields assembled by `DSN`. Config maps using `connection_string` must migrate to `url`.
+- Remove the sqlite pragma passthroughs `Optimize`, `Vacuum`, and `WALCheckpointTruncate`. For `PRAGMA optimize` or `VACUUM`, call `db.ExecContext` directly; use `WALCheckpoint(ctx, db, WALCheckpointModeTruncate)` for the truncate variant.
+
+### Changed
+- `cache.RememberJSON` now marshals the computed value once and returns the stored bytes to the flight, with one unmarshal per caller into its own `dest` (previously one redundant marshal per caller). Follower callers on a double-check hit now receive a correctly decoded `dest`.
+
 ## v0.14.0 (2026-11-08)
 
 ### Breaking

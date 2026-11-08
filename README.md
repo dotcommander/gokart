@@ -7,7 +7,7 @@ GoKart is a modular Go toolkit for recurring infrastructure setup, safe defaults
 Install the tagged CLI and scaffold a project:
 
 ```bash
-go install github.com/dotcommander/gokart/cmd/gokart@v0.14.0
+go install github.com/dotcommander/gokart/cmd/gokart@v0.15.0
 gokart new tvguide --example
 cd tvguide
 go run . greet --name World

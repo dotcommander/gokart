@@ -3,7 +3,7 @@
 Install the tagged CLI:
 
 ```bash
-go install github.com/dotcommander/gokart/cmd/gokart@v0.14.0
+go install github.com/dotcommander/gokart/cmd/gokart@v0.15.0
 gokart new counter --module example.com/counter --db sqlite --example
 cd counter
 go run ./cmd greet --name Ada
@@ -44,7 +44,7 @@ The generated Viper setup maps `COUNTER_DB_PATH` to `db_path`. The typed root fi
 ## 3. Create and run a migration
 
 ```bash
-go get github.com/dotcommander/gokart/migrate@v0.14.0
+go get github.com/dotcommander/gokart/migrate@v0.15.0
 mkdir -p migrations
 ```
 

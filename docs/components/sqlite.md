@@ -15,7 +15,7 @@ The SQLite module uses the pure-Go `modernc.org/sqlite` driver and returns a sta
 ## Install
 
 ```bash
-go get github.com/dotcommander/gokart/sqlite@v0.14.0
+go get github.com/dotcommander/gokart/sqlite@v0.15.0
 ```
 
 ## Choose a mode

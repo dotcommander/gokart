@@ -22,7 +22,7 @@ The `cli` module provides small Cobra and Viper helpers. Your `main` function ow
 ## Install
 
 ```bash
-go get github.com/dotcommander/gokart/cli@v0.14.0
+go get github.com/dotcommander/gokart/cli@v0.15.0
 ```
 
 ## Configure the application

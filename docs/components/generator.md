@@ -7,7 +7,7 @@ Scaffold new Go CLI projects and add integrations without re-scaffolding.
 Install the tagged CLI:
 
 ```bash
-go install github.com/dotcommander/gokart/cmd/gokart@v0.14.0
+go install github.com/dotcommander/gokart/cmd/gokart@v0.15.0
 ```
 
 The explicit version keeps installation reproducible.
@@ -309,10 +309,10 @@ Use `--dry-run` to preview which files would be created or overwritten before co
 
 | Integration | Packages fetched via `go get` |
 |-------------|-------------------------------|
-| `sqlite` | `github.com/dotcommander/gokart/sqlite@v0.14.0` |
-| `postgres` | `github.com/dotcommander/gokart/postgres@v0.14.0`, `github.com/jackc/pgx/v5@v5.10.0`, `github.com/pressly/goose/v3@v3.27.3` |
+| `sqlite` | `github.com/dotcommander/gokart/sqlite@v0.15.0` |
+| `postgres` | `github.com/dotcommander/gokart/postgres@v0.15.0`, `github.com/jackc/pgx/v5@v5.10.0`, `github.com/pressly/goose/v3@v3.27.3` |
 | `ai` | `github.com/openai/openai-go/v3@v3.52.0` |
-| `redis` | `github.com/dotcommander/gokart/cache@v0.14.0`, `github.com/redis/go-redis/v9@v9.22.0` |
+| `redis` | `github.com/dotcommander/gokart/cache@v0.15.0`, `github.com/redis/go-redis/v9@v9.22.0` |
 
 ### All `gokart add` Flags
 
@@ -352,7 +352,7 @@ gokart config show
 Output:
 
 ```
-Version:     v0.14.0
+Version:     v0.15.0
 Config dir:  /Users/you/Library/Application Support
 Binary:      /Users/you/go/bin/gokart
 ```
@@ -393,7 +393,7 @@ The file lets `gokart add` detect user modifications and track integrations.
 {
   "version": 2,
   "generator": "gokart",
-  "generator_version": "v0.14.0",
+  "generator_version": "v0.15.0",
   "template_root": "templates/structured",
   "existing_file_policy": "fail",
   "mode": "structured",

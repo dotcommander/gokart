@@ -5,7 +5,7 @@ Simple state persistence for CLI applications across invocations. Stores typed d
 ## Installation
 
 ```bash
-go get github.com/dotcommander/gokart@v0.14.0
+go get github.com/dotcommander/gokart@v0.15.0
 ```
 
 ## Quick Start
