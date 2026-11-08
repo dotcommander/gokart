@@ -2,6 +2,7 @@
 package logger
 
 import (
+	"fmt"
 	"io"
 	"log/slog"
 	"os"
@@ -96,7 +97,7 @@ func NewFile(appName string) (*slog.Logger, func(), error) {
 
 	file, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
-		return nil, func() {}, err
+		return nil, func() {}, fmt.Errorf("open log file %s: %w", path, err)
 	}
 
 	handler := slog.NewJSONHandler(file, &slog.HandlerOptions{
@@ -105,7 +106,9 @@ func NewFile(appName string) (*slog.Logger, func(), error) {
 	logger := slog.New(handler)
 
 	cleanup := func() {
-		file.Close()
+		if err := file.Close(); err != nil {
+			fmt.Fprintf(os.Stderr, "logger: close log file %s: %v\n", path, err)
+		}
 	}
 
 	return logger, cleanup, nil

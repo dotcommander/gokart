@@ -5,7 +5,8 @@ import (
 	"fmt"
 	"io/fs"
 	"path/filepath"
-	"sort"
+	"slices"
+	"strings"
 )
 
 func renderScaffoldManifest(templateRoot string, plan []plannedFile, opts ApplyOptions) ([]byte, error) {
@@ -45,7 +46,7 @@ func buildScaffoldManifest(templateRoot string, plan []plannedFile, opts ApplyOp
 			ContentSHA256: sha256Hex(content), Mode: uint32(mode),
 		})
 	}
-	sort.Slice(files, func(i, j int) bool { return files[i].Path < files[j].Path })
+	slices.SortFunc(files, func(a, b scaffoldManifestFile) int { return strings.Compare(a.Path, b.Path) })
 
 	meta := opts.ManifestMetadata
 	version := scaffoldManifestV1
