@@ -1,13 +1,17 @@
-package sqltx
+package sqlite
 
 import (
 	"errors"
 	"fmt"
 )
 
-// Run executes fn within a transaction lifecycle supplied by the caller.
+// runTx executes fn within a transaction lifecycle supplied by the caller.
 // It preserves rollback-on-error/panic and commit-on-success semantics.
-func Run[T any](begin func() (T, error), rollback func(T) error, commit func(T) error, fn func(T) error) (err error) {
+//
+// This helper is intentionally module-local: the sqlite module must not
+// depend on the root gokart module (see PHILOSOPHY.md, dependency
+// isolation). The postgres module carries its own copy.
+func runTx[T any](begin func() (T, error), rollback func(T) error, commit func(T) error, fn func(T) error) (err error) {
 	tx, err := begin()
 	if err != nil {
 		return fmt.Errorf("begin transaction: %w", err)

@@ -10,7 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dotcommander/gokart/internal/sqltx"
 	_ "modernc.org/sqlite"
 )
 
@@ -292,7 +291,7 @@ func TransactionWithOptions(ctx context.Context, db *sql.DB, opts *sql.TxOptions
 	if fn == nil {
 		return fmt.Errorf("transaction: nil callback")
 	}
-	return sqltx.Run(func() (*sql.Tx, error) { return db.BeginTx(ctx, opts) }, func(tx *sql.Tx) error { return tx.Rollback() }, func(tx *sql.Tx) error { return tx.Commit() }, fn)
+	return runTx(func() (*sql.Tx, error) { return db.BeginTx(ctx, opts) }, func(tx *sql.Tx) error { return tx.Rollback() }, func(tx *sql.Tx) error { return tx.Commit() }, fn)
 }
 func Transaction(ctx context.Context, db *sql.DB, fn func(*sql.Tx) error) error {
 	return TransactionWithOptions(ctx, db, nil, fn)

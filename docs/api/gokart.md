@@ -94,7 +94,7 @@ if errors.Is(err, os.ErrNotExist) {
 }
 ```
 
-`SaveState` atomically publishes indented JSON with mode `0600`. `LoadState` returns `os.ErrNotExist` for a missing file. `StatePath(app, filename)` returns the platform path, or an empty string when the user config directory cannot be determined.
+`SaveState` atomically publishes indented JSON with mode `0600`. `LoadState` returns `os.ErrNotExist` for a missing file and bounds reads at 10 MiB (`errors.Is(err, gokart.ErrTooLarge)` beyond that). `StatePath(app, filename)` returns the platform path, or an empty string when the user config directory cannot be determined.
 
 State files are for small CLI state. Use a database or purpose-built store for concurrent records, queries, or large data.
 

@@ -61,6 +61,31 @@ func TestLoadState_NotFound(t *testing.T) {
 	}
 }
 
+func TestLoadState_OversizedFile(t *testing.T) {
+	t.Parallel()
+
+	appName := "gokart-test-oversized-" + t.Name()
+	filename := "state.json"
+	path := gokart.StatePath(appName, filename)
+	t.Cleanup(func() { _ = os.RemoveAll(filepath.Dir(path)) })
+
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	oversized := make([]byte, (10<<20)+1)
+	if err := os.WriteFile(path, oversized, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	loaded, err := gokart.LoadState[testState](appName, filename)
+	if !errors.Is(err, gokart.ErrTooLarge) {
+		t.Fatalf("expected ErrTooLarge, got %v", err)
+	}
+	if loaded != (testState{}) {
+		t.Errorf("expected zero value, got %+v", loaded)
+	}
+}
+
 func TestSaveState_UsesPrivatePermissions(t *testing.T) {
 	appName := "gokart-test-permissions-" + t.Name()
 	filename := "state.json"

@@ -129,6 +129,7 @@ func LoadState[T any](appName, filename string) (T, error)
 
 - Returns zero value and `os.ErrNotExist` if file doesn't exist
 - Returns zero value and unmarshal error if JSON is invalid
+- Reads through `ReadFileLimit` with a 10 MiB bound: a larger file returns zero value and an error satisfying `errors.Is(err, gokart.ErrTooLarge)`
 - Use `errors.Is(err, os.ErrNotExist)` to detect first run
 
 **Example:**

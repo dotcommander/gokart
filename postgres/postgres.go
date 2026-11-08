@@ -9,7 +9,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/dotcommander/gokart/internal/sqltx"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -223,7 +222,7 @@ func Transaction(ctx context.Context, pool *pgxpool.Pool, fn func(tx pgx.Tx) err
 	if fn == nil {
 		return fmt.Errorf("transaction: nil callback")
 	}
-	return sqltx.Run(
+	return runTx(
 		func() (pgx.Tx, error) {
 			return pool.Begin(ctx)
 		},

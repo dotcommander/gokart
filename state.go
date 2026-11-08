@@ -42,7 +42,16 @@ func SaveState[T any](appName, filename string, data T) error {
 	return nil
 }
 
+// maxStateBytes bounds LoadState reads. State is human-readable indented
+// JSON, so 10 MiB rails against pathological files, not a capacity policy.
+const maxStateBytes = 10 << 20
+
 // LoadState loads typed state from the platform user config directory.
+//
+// The file is read through ReadFileLimit with maxStateBytes: a larger
+// file returns zero value and an error satisfying errors.Is(err,
+// ErrTooLarge). Callers needing a different bound can read the file
+// themselves with ReadFileLimit.
 //
 // Returns zero value and os.ErrNotExist if the file doesn't exist.
 // This allows callers to distinguish between missing file and parse errors.
@@ -60,7 +69,7 @@ func LoadState[T any](appName, filename string) (T, error) {
 	var zero T
 
 	path := StatePath(appName, filename)
-	content, err := os.ReadFile(path)
+	content, err := ReadFileLimit(path, maxStateBytes)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return zero, os.ErrNotExist
