@@ -2,7 +2,13 @@
 
 Use `kongapp` when you want the repeated parse-and-run shell around a Kong command tree while keeping configuration, dependencies, signal handling, and the exit policy in your application.
 
-**Limit first:** `kongapp` is source-checked but unreleased in this tree; there is no published module version to pin. Until a tagged release exists, consume it from a local checkout or workspace replace, not a versioned `go get`.
+## Install
+
+```bash
+go get github.com/dotcommander/gokart/kongapp@v0.15.0
+```
+
+Tagged with the workspace `v0.15.0` release.
 
 ## First action: parse, initialize, run, clean up
 
