@@ -1,7 +1,9 @@
 # Serve JSON over HTTP
 
 ```go
-router := web.NewRouter(web.RouterConfig{Middleware: web.StandardMiddleware})
+import "github.com/go-chi/chi/v5/middleware"
+
+router := web.NewRouter(web.RouterConfig{Middleware: []func(http.Handler) http.Handler{middleware.RequestID, middleware.Recoverer}})
 router.Get("/health", func(w http.ResponseWriter, r *http.Request) {
     web.JSON(w, map[string]string{"status": "ok"})
 })

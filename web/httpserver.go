@@ -40,25 +40,19 @@ type RouterConfig struct {
 	Timeout    time.Duration // request timeout (default: none)
 }
 
-// StandardMiddleware provides production-ready middleware stack:
-//   - RequestID: Injects request ID for tracing
-//   - RealIP: Extracts real client IP from proxies
-//   - Logger: Structured request/response logging
-//   - Recoverer: Panic recovery
-var StandardMiddleware = []func(http.Handler) http.Handler{
-	middleware.RequestID,
-	middleware.RealIP,
-	middleware.Logger,
-	middleware.Recoverer,
-}
-
-// NewRouter creates a new chi router with configured middleware.
+// NewRouter creates a new chi router with configured middleware. Middleware
+// is caller-owned: select chi middleware (RequestID, RealIP, Logger,
+// Recoverer, ...) per deployment instead of accepting a bundled default.
 //
 // Example:
 //
 //	router := web.NewRouter(web.RouterConfig{
-//	    Middleware: web.StandardMiddleware,
-//	    Timeout:    30 * time.Second,
+//	    Middleware: []func(http.Handler) http.Handler{
+//	        middleware.RequestID,
+//	        middleware.RealIP,
+//	        middleware.Recoverer,
+//	    },
+//	    Timeout: 30 * time.Second,
 //	})
 //
 //	router.Get("/health", func(w http.ResponseWriter, r *http.Request) {

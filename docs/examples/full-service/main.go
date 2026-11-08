@@ -35,6 +35,7 @@ import (
 	"github.com/dotcommander/gokart/postgres"
 	"github.com/dotcommander/gokart/web"
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -151,10 +152,14 @@ func run(ctx context.Context) error {
 		cache:  cacheClient,
 	}
 
-	// Setup router
+	// Setup router with caller-selected middleware
 	router := web.NewRouter(web.RouterConfig{
-		Middleware: web.StandardMiddleware,
-		Timeout:    30 * time.Second,
+		Middleware: []func(http.Handler) http.Handler{
+			middleware.RequestID,
+			middleware.RealIP,
+			middleware.Recoverer,
+		},
+		Timeout: 30 * time.Second,
 	})
 
 	// Health check

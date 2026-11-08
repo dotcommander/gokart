@@ -7,13 +7,14 @@ import (
 	"time"
 
 	"github.com/dotcommander/gokart/web"
+	"github.com/go-chi/chi/v5/middleware"
 )
 
 func TestNewRouter(t *testing.T) {
 	t.Parallel()
 
 	router := web.NewRouter(web.RouterConfig{
-		Middleware: web.StandardMiddleware,
+		Middleware: []func(http.Handler) http.Handler{middleware.RequestID, middleware.Recoverer},
 		Timeout:    5 * time.Second,
 	})
 
@@ -36,7 +37,7 @@ func TestNewRouter(t *testing.T) {
 
 func ExampleNewRouter() {
 	router := web.NewRouter(web.RouterConfig{
-		Middleware: web.StandardMiddleware,
+		Middleware: []func(http.Handler) http.Handler{middleware.RequestID, middleware.Recoverer},
 		Timeout:    30 * time.Second,
 	})
 

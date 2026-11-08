@@ -26,20 +26,23 @@ import (
 
 	"github.com/dotcommander/gokart/web"
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 )
 
 var validator = web.NewStandardValidator()
 
 func main() {
-	// Create router with standard middleware
-	// StandardMiddleware includes:
+	// Create router with caller-selected middleware:
 	//   - RequestID: injects X-Request-ID header
 	//   - RealIP: extracts real IP from X-Forwarded-For/X-Real-IP
-	//   - Logger: structured request/response logging
 	//   - Recoverer: panic recovery with 500 response
 	router := web.NewRouter(web.RouterConfig{
-		Middleware: web.StandardMiddleware,
-		Timeout:    30 * time.Second,
+		Middleware: []func(http.Handler) http.Handler{
+			middleware.RequestID,
+			middleware.RealIP,
+			middleware.Recoverer,
+		},
+		Timeout: 30 * time.Second,
 	})
 
 	// Health check endpoint
