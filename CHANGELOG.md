@@ -1,5 +1,18 @@
 # Changelog
 
+## v0.18.0 (2026-11-09)
+
+### Added
+- `web.RetryTransport` / `web.NewRetryClient()` / `web.ShouldRetryHTTP()` / `web.RetryPolicy` — explicit, operation-owned retry `RoundTripper` with jittered exponential backoff (`delay = base × (0.5 + uniform(0, 0.25))`, `base = min(Initial * 2^attempt, MaxDelay)`; `Initial` falls back to 100ms when unset, `Attempts` must be positive — there is no implicit 3-attempt default). Retries network errors, 408, 429, and 5xx; other 4xx are permanent caller errors. The caller must supply a replayable request; the wrapper never buffers bodies. See the new "Retries (operation-owned)" section in `docs/components/web.md`.
+
+### Fixed
+- `web.ValidationErrors` now uses `errors.As` instead of a direct type assertion, so wrapped validator errors are recognized instead of returning nil.
+
+### Changed
+- README: install snippet uses `go install ...@latest` so it never goes stale between releases; the Next section links the runnable example collections (`examples/` and `docs/examples/`).
+- `docs/components/web.md`: retries row now points at `web.RetryTransport` (was `go-retryablehttp`).
+- `cmd/gokart`: dev-version marker constantized (`devGokartVersion`), clearing a `goconst` finding CI flagged; dependency bumps in `go.mod`/`go.sum`.
+
 ## v0.17.0 (2026-11-09)
 
 ### Added
