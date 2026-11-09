@@ -8,9 +8,19 @@ import (
 
 // ConfigDir returns the app's platform-specific configuration directory,
 // creating it when necessary.
+// validateLocalName rejects names that could escape their parent directory:
+// absolute paths, `..` segments, and empty/`"` values. Relative subpaths
+// without parent segments (e.g. `sub/dir`) stay allowed.
+func validateLocalName(kind, name string) error {
+	if !filepath.IsLocal(name) || filepath.Clean(name) == "." {
+		return fmt.Errorf("invalid %s %q: must name a local application directory", kind, name)
+	}
+	return nil
+}
+
 func ConfigDir(appName string) (string, error) {
-	if !filepath.IsLocal(appName) || filepath.Clean(appName) == "." {
-		return "", fmt.Errorf("invalid app name %q: must name a local application directory", appName)
+	if err := validateLocalName("app name", appName); err != nil {
+		return "", err
 	}
 
 	base, err := os.UserConfigDir()

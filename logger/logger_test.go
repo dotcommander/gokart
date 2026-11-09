@@ -288,3 +288,38 @@ func TestNewFile_AppendsToExistingFile(t *testing.T) {
 		t.Errorf("expected second event present, got %q", out)
 	}
 }
+
+func TestNewFile_SecuresPermissions(t *testing.T) {
+	t.Parallel()
+	appName := "gokart-logger-perms-" + t.Name()
+	path := Path(appName)
+	_ = os.Remove(path)
+	t.Cleanup(func() { _ = os.Remove(path) })
+
+	// Pre-create with permissive mode to simulate an older-version file.
+	if err := os.WriteFile(path, nil, 0644); err != nil {
+		t.Fatal(err)
+	}
+	log, cleanup, err := NewFile(appName)
+	if err != nil {
+		t.Fatal(err)
+	}
+	log.Info("x")
+	cleanup()
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if perm := info.Mode().Perm(); perm != 0600 {
+		t.Fatalf("log file perm = %04o, want 0600", perm)
+	}
+}
+
+func TestNewFile_RejectsUnsafeAppName(t *testing.T) {
+	t.Parallel()
+	for _, name := range []string{"", ".", "..", "../evil", "a/b", "/abs", `a\b`} {
+		if _, _, err := NewFile(name); err == nil {
+			t.Errorf("NewFile(%q) error = nil, want error", name)
+		}
+	}
+}

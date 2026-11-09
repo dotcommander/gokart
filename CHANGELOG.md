@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- Test coverage: `cli` (25.9% → 87.7%), `cache` (49.4% → 73.0%), `migrate` (64.3% → 75.7%), `postgres` (59.3% → 91.2% via failure-path tests against a closed port), `cmd/gokart` main (0% → 81.8%) and `commands` (61.3% → 73.6%), plus root `LoadConfig`/`ParseConfig`, `web` response helpers, `sqlite` constraint/readonly, and generic transaction-lifecycle tests (begin/rollback/commit/panic) — all without new dependencies.
+
+### Fixed
+- `docs/components/fslock.md` and `docs/api/gokart.md`: replace stale "unreleased" caveats with the published `v0.16.0` install (`go get github.com/dotcommander/gokart/fslock@v0.16.0`); both `kongapp` and `fslock` have been tagged and published since v0.14.0.
+- `postgres.FromEnv`: read `DATABASE_URL` from the environment and fail when it is unset or invalid. The implementation previously passed an empty string to `pgxpool.ParseConfig`, silently ignoring `DATABASE_URL` and falling back to libpq/PG* defaults (wrong database). The stale `docs/components/postgres.md` `FromEnv` row claiming pgx reads its normal environment variables is corrected to match.
+- `docs/components/postgres.md`: add a "Budget your pool" section — the 25/5/1h defaults are a convenience starting point, not a production budget; `MaxConns` must be derived from `max_connections` minus reserved slots divided by simultaneously deployed instances.
+- `docs/components/sqlite.md`: add a "Durability" section — WAL + `NORMAL` is the silent default but can roll back recent accepted transactions on crash; authoritative stores should set `SynchronousFull`, and `OFF` is never for authoritative data.
+- `web` response helpers: encode JSON before committing headers so unencodable values return `500 {"error":"json encode failed"}` (and `JSONStatusE` returns the marshal error) instead of a silent `200` with an empty/truncated body.
+- `logger.NewFile`: create log files `0600` and tighten pre-existing files to `0600` (logs can carry tokens/user data; the shared `os.TempDir()` is world-readable), and reject app names containing path separators, `..`, or NUL so the log path cannot escape the temp dir.
+- `SaveState`/`LoadState`/`StatePath`: validate app and file names with the same local-name check as `ConfigDir`, rejecting absolute paths, empty values, and `..` segments so state cannot be written outside the app config directory (previously a crafted name like `../../x` was joined straight onto the config dir).
+
 ## v0.16.0 (2026-11-08)
 
 ### Breaking

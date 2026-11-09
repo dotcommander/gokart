@@ -2,7 +2,15 @@
 
 Use `fslock` when two instances of your own program must not enter the same critical section at once — for example, a single-writer state file or a one-time migration.
 
-**Limit first:** advisory locks only work cooperatively. Every process that touches the shared file must acquire the same lock; a process that ignores the lock is not excluded. `fslock` is Unix-only and source-checked but unreleased in this tree, so there is no published module version to pin; consume it from a local checkout or workspace replace.
+**Limit first:** advisory locks only work cooperatively. Every process that touches the shared file must acquire the same lock; a process that ignores the lock is not excluded. `fslock` is Unix-only (`ErrUnsupported` elsewhere).
+
+## Install
+
+```bash
+go get github.com/dotcommander/gokart/fslock@v0.16.0
+```
+
+Tagged with the workspace `v0.16.0` release.
 
 ## First action: acquire, work, release
 

@@ -93,11 +93,21 @@ func parseLevel(level string) slog.Level {
 //	log.Info("application started")
 //	// Logs written to /tmp/myapp.log (or equivalent)
 func NewFile(appName string) (*slog.Logger, func(), error) {
+	if appName == "" || appName == "." || appName == ".." || appName != filepath.Base(appName) || strings.ContainsAny(appName, `/\\`) || strings.ContainsRune(appName, 0) {
+		return nil, func() {}, fmt.Errorf("invalid app name %q", appName)
+	}
 	path := Path(appName)
 
-	file, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	file, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
 	if err != nil {
 		return nil, func() {}, fmt.Errorf("open log file %s: %w", path, err)
+	}
+	// Tighten permissions on pre-existing files (created 0644 by older
+	// versions): logs can carry tokens and user data, so keep them
+	// owner-only even when the file already exists.
+	if err := file.Chmod(0600); err != nil {
+		_ = file.Close()
+		return nil, func() {}, fmt.Errorf("secure log file %s: %w", path, err)
 	}
 
 	handler := slog.NewJSONHandler(file, &slog.HandlerOptions{

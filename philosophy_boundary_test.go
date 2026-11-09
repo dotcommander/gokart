@@ -52,7 +52,7 @@ func TestWebSourceAllowlist(t *testing.T) {
 	want := map[string]bool{
 		"bind.go": true, "bind_test.go": true,
 		"httpserver.go": true, "httpserver_test.go": true,
-		"response.go": true,
+		"response.go": true, "response_test.go": true,
 		"validate.go": true,
 		"web_test.go": true,
 	}

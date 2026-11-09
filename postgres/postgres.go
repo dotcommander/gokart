@@ -3,9 +3,11 @@ package postgres
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"net/url"
+	"os"
 	"strconv"
 	"time"
 
@@ -170,7 +172,11 @@ func applyPoolConfig(poolCfg *pgxpool.Config, cfg Config) {
 //	// Reads DATABASE_URL from environment
 //	pool, err := postgres.FromEnv(ctx)
 func FromEnv(ctx context.Context) (*pgxpool.Pool, error) {
-	poolCfg, err := pgxpool.ParseConfig("")
+	url := os.Getenv("DATABASE_URL")
+	if url == "" {
+		return nil, errors.New("DATABASE_URL environment variable is not set")
+	}
+	poolCfg, err := pgxpool.ParseConfig(url)
 	if err != nil {
 		return nil, fmt.Errorf("parse postgres env config: %w", err)
 	}

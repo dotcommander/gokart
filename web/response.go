@@ -9,10 +9,19 @@ import (
 const jsonContentType = "application/json"
 
 func writeJSON(w http.ResponseWriter, status int, data any) error {
+	// Encode before committing headers so a marshal failure can still
+	// return 500 instead of a silent 200 with an empty/truncated body.
+	body, err := json.Marshal(data)
+	if err != nil {
+		w.Header().Set("Content-Type", jsonContentType)
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte("{\"error\":\"json encode failed\"}\n"))
+		return fmt.Errorf("json encode: %w", err)
+	}
 	w.Header().Set("Content-Type", jsonContentType)
 	w.WriteHeader(status)
-	if err := json.NewEncoder(w).Encode(data); err != nil {
-		return fmt.Errorf("json encode: %w", err)
+	if _, err := w.Write(append(body, '\n')); err != nil {
+		return fmt.Errorf("json write: %w", err)
 	}
 	return nil
 }

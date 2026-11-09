@@ -25,7 +25,7 @@ go get github.com/dotcommander/gokart/postgres@v0.16.0
 |---|---|
 | `Open(ctx, url)` | Applies production defaults, creates a pool, and pings it. |
 | `OpenWithConfig(ctx, cfg)` | Applies explicit connection and pool settings, then pings. |
-| `FromEnv(ctx)` | Lets pgx read its normal PostgreSQL environment variables, then pings. |
+| `FromEnv(ctx)` | Reads `DATABASE_URL` from the environment (error if unset), then pings. |
 | `Config.NewPool(ctx)` | Creates the pool without a startup ping. |
 
 ```go
@@ -40,6 +40,22 @@ pool, err := postgres.OpenWithConfig(ctx, cfg)
 `Config.DSN` selects `URL`, otherwise constructs one from `Host`, `Port`, `User`, `Password`, `DBName`, and `SSLMode`. Passwords and database names are URL-escaped.
 
 Pool defaults are 25 maximum connections, 5 minimum connections, a one-hour maximum lifetime, a 30-minute maximum idle time, and a one-minute health-check period. Zero or negative pool values use these defaults.
+
+## Budget your pool
+
+The 25/5 defaults are a convenience starting point, **not** a production budget. PostgreSQL allocates resources based on `max_connections`; raising it has a server-wide cost. Budget from live server evidence:
+
+```text
+usable application slots = max_connections
+                         - superuser_reserved_connections
+                         - reserved_connections
+                         - other guaranteed direct connections
+
+per-instance MaxConns = floor(usable application slots
+                              / maximum simultaneously deployed application processes)
+```
+
+Treat this as a hard ceiling, not the steady-state target — start below it, reserve an operational margin, and lower `MaxConns` when `pool.Stat()` shows high `TotalConns` with low acquisition pressure. If PgBouncer sits in front of PostgreSQL, budget both sides: the pooler's backend pool still consumes PostgreSQL slots.
 
 ## Run a transaction
 

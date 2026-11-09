@@ -30,7 +30,7 @@ go get github.com/dotcommander/gokart/sqlite@v0.16.0
 
 ## Understand defaults
 
-`DefaultConfig(path)` enables foreign keys, a five-second busy timeout, a 2,000 KiB cache, one open connection, one idle connection, and a one-hour connection lifetime. Read-write files use WAL with normal synchronization and immediate transaction locking.
+`DefaultConfig(path)` enables foreign keys, a five-second busy timeout, a 2,000 KiB cache, one open connection, one idle connection, and a one-hour connection lifetime. Read-write files use WAL with normal (`NORMAL`) synchronization and immediate transaction locking. `NORMAL` is the default when `Synchronous` is empty, but it is **not** the safe default for every store — see “Durability” below.
 
 ```go
 cfg := sqlite.ReadHeavyConfig("analytics.db")
@@ -41,6 +41,26 @@ db, err := sqlite.OpenWithConfig(ctx, cfg)
 `ReadHeavyConfig` uses a 20,000 KiB cache, a 30 GB mmap limit, 10 open connections, and 5 idle connections. `ReadOnlyConfig` and `ImmutableConfig` are templates; set `Path` before opening.
 
 `Config` exposes `Path`, `Mode`, `WALMode`, `JournalMode`, `Synchronous`, `BusyTimeout`, `MaxOpenConns`, `MaxIdleConns`, `ConnMaxLifetime`, `ForeignKeys`, `CacheSizeKB`, and `MmapSizeBytes`. `ResolveConfig` validates conflicting modes and returns the effective values.
+
+## Durability
+
+`Synchronous` controls how much a power loss can undo:
+
+| Mode | Meaning | Use when |
+|---|---|---|
+| `NORMAL` (default with WAL) | A crash can roll back recent *accepted* transactions. | Recovery/rebuild covers that window (cache, derived data). |
+| `FULL` | Power-loss durability of acknowledged writes. | Authoritative data you cannot rebuild. |
+| `OFF` | No durability guarantee. | Never for authoritative data. |
+
+`ResolveConfig` silently resolves WAL + empty `Synchronous` to `NORMAL`. For authoritative stores, set it explicitly:
+
+```go
+cfg := sqlite.DefaultConfig("app.db")
+cfg.Synchronous = sqlite.SynchronousFull
+db, err := sqlite.OpenWithConfig(ctx, cfg)
+```
+
+Verify the effective settings through the application's connection (`PRAGMA synchronous`, `PRAGMA journal_mode`, `PRAGMA foreign_keys`) — a requested `Synchronous` is not evidence the VFS accepted it.
 
 ## Run transactions and savepoints
 

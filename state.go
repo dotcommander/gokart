@@ -24,6 +24,9 @@ import (
 //	    WindowSize: 1024,
 //	})
 func SaveState[T any](appName, filename string, data T) error {
+	if err := validateLocalName("state filename", filename); err != nil {
+		return err
+	}
 	dir, err := stateDir(appName)
 	if err != nil {
 		return fmt.Errorf("get config dir: %w", err)
@@ -67,8 +70,14 @@ const maxStateBytes = 10 << 20
 //	}
 func LoadState[T any](appName, filename string) (T, error) {
 	var zero T
+	if err := validateLocalName("state filename", filename); err != nil {
+		return zero, err
+	}
 
 	path := StatePath(appName, filename)
+	if path == "" {
+		return zero, fmt.Errorf("invalid app name %q: cannot determine state path", appName)
+	}
 	content, err := ReadFileLimit(path, maxStateBytes)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
@@ -87,7 +96,8 @@ func LoadState[T any](appName, filename string) (T, error) {
 
 // StatePath returns the full path to a state file.
 //
-// Returns empty string if the user config directory cannot be determined.
+// Returns empty string if the user config directory cannot be determined
+// or either name is invalid (absolute, empty, or contains `..`).
 //
 // Example:
 //
@@ -95,6 +105,9 @@ func LoadState[T any](appName, filename string) (T, error) {
 //	// macOS: ~/Library/Application Support/myapp/state.json
 //	// Linux: ~/.config/myapp/state.json
 func StatePath(appName, filename string) string {
+	if err := validateLocalName("state filename", filename); err != nil {
+		return ""
+	}
 	dir, err := stateDir(appName)
 	if err != nil {
 		return ""
@@ -104,6 +117,9 @@ func StatePath(appName, filename string) string {
 
 // stateDir returns the config directory for the app.
 func stateDir(appName string) (string, error) {
+	if err := validateLocalName("app name", appName); err != nil {
+		return "", err
+	}
 	configDir, err := os.UserConfigDir()
 	if err != nil {
 		return "", err

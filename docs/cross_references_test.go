@@ -119,7 +119,8 @@ func TestDocsDoNotUseRetiredImportsOrUnpinnedInstalls(t *testing.T) {
 			return readErr
 		}
 		for _, text := range retiredImports {
-			if strings.Contains(string(data), text) {
+			// Boundary-aware: `fslock` must not trip the retired `fs` prefix check.
+			if regexp.MustCompile(regexp.QuoteMeta(text)+`[^a-zA-Z0-9_-]`).Match(data) || strings.HasSuffix(string(data), text) {
 				t.Errorf("%s references retired import %s", path, text)
 			}
 		}
