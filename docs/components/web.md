@@ -47,7 +47,7 @@ client := web.NewRetryClient(&web.RetryTransport{
 ```
 
 - **Classification:** `web.ShouldRetryHTTP` retries network errors, 408, 429, and 5xx; other 4xx are permanent caller errors. Custom policies implement `web.RetryPolicy`.
-- **Jitter (required):** every retry waits `base/2 + uniform(0, base/2)` where `base = min(Initial * 2^attempt, MaxDelay)` — without jitter, simultaneous failures retry in lockstep and amplify the outage.
+- **Jitter (required):** every retry waits `base × (0.5 + uniform(0, 0.25))`, where `base = min(Initial × 2^(attempt-1), MaxDelay)` on attempt `attempt` (first retry waits at least `Initial/2`, at most `3/4 × base`) — without jitter, simultaneous failures retry in lockstep and amplify the outage. The factor hook `JitterRand` overrides the uniform draw when set.
 - **Replayability:** the wrapper re-sends the same `*http.Request`; the caller must supply a request whose body can be replayed (e.g. `bytes.NewReader`, `http.NewRequestWithContext` + `GetBody`). Non-replayable bodies must be handled by the operation itself.
 
 ## See Also
