@@ -77,6 +77,12 @@ err = gokart.EnsureConfigDir("myapp", []byte("address: :8080\n"))
 
 `ConfigDir` returns `<os.UserConfigDir()>/myapp` and creates it with mode `0755`. `EnsureConfigDir` race-safely creates `config.yaml` with mode `0644` only when it does not already exist.
 
+### Choosing your config path
+
+`os.UserConfigDir()` is platform-native: `~/.config` on Linux, `~/Library/Application Support` on macOS, `%AppData%` on Windows. That is the right choice for GUI apps, system services, and tools distributed to non-developer audiences who expect platform-native paths — which is why this library uses it (it matches the convention apps and managed services follow).
+
+CLI developer tools often enforce `~/.config/<app>/` on every platform instead: it keeps the path identical across Linux and macOS (the dotfile convention `gh`, `lazygit`, and Claude Code use), avoids macOS scattering config into `~/Library/Application Support/` where CLI users won't look, and gives a single mental model ("everything under `~/.config/<app>/`"). If you want that consistency instead of the platform-native default, resolve `filepath.Join(home, ".config", appName)` yourself via `os.UserHomeDir()` rather than calling `ConfigDir`.
+
 ## Save application state
 
 ```go

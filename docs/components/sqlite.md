@@ -77,6 +77,55 @@ err = sqlite.Savepoint(ctx, tx, "optional_step", func() error {
 
 `TransactionWithOptions` accepts `*sql.TxOptions`. Transaction helpers commit on success and roll back on an error or panic.
 
+### Single-connection pools: do reads before opening a transaction
+
+`DefaultConfig` uses `MaxOpenConns: 1` and `MaxIdleConns: 1` (the standard single-writer model). With one connection, `BeginTx` holds the *only* pooled connection — any query issued on `*sql.DB` (not on the `*sql.Tx`) while that transaction is open blocks forever waiting for a connection the transaction already holds. The build passes; tests hang.
+
+Do all reads first with no transaction open, accumulate results in memory, then open one transaction for writes only:
+
+```go
+// WRONG: reads via db while tx holds the sole connection -> self-deadlock
+_ = sqlite.Transaction(ctx, db, func(tx *sql.Tx) error {
+    _, err := tx.ExecContext(ctx, "DELETE FROM edges")
+    if err != nil {
+        return err
+    }
+    for _, src := range sources {
+        batch, err := computeFromReads(ctx, db, src) // blocks forever
+        if err != nil {
+            return err
+        }
+        if _, err := tx.ExecContext(ctx, "INSERT INTO edges ...", batch); err != nil {
+            return err
+        }
+    }
+    return nil
+})
+
+// RIGHT: reads first, then a single write-only transaction
+var all []Row
+for _, src := range sources {
+    batch, err := computeFromReads(ctx, db, src) // no tx held
+    if err != nil {
+        return err
+    }
+    all = append(all, batch...)
+}
+err := sqlite.Transaction(ctx, db, func(tx *sql.Tx) error {
+    if _, err := tx.ExecContext(ctx, "DELETE FROM edges"); err != nil {
+        return err
+    }
+    for _, row := range all {
+        if _, err := tx.ExecContext(ctx, "INSERT INTO edges ...", row); err != nil {
+            return err
+        }
+    }
+    return nil
+})
+```
+
+Split read helpers into pure *compute* functions that return data and *write* functions that take the `*sql.Tx`. Write atomicity is preserved; no read contends for the held connection. To verify a fix, run the suspect package with a short timeout (`go test -timeout 60s`) — a hang aborts in seconds with a goroutine dump instead of waiting for the default timeout.
+
 ## Check and maintain a database
 
 ```go

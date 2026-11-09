@@ -123,6 +123,23 @@ The returned cleanup function closes the underlying file. Always defer it immedi
 
 ---
 
+### `SetTUIHandler(appName string) (func(), error)`
+
+Opens the same file as `NewFile` and installs it as the `slog` default via `slog.SetDefault`, so library and third-party code calling `slog.Default()` is redirected too. If the file cannot be opened, it installs an `io.Discard` handler instead of leaving slog pointed at stderr.
+
+```go
+cleanup, err := logger.SetTUIHandler("myapp")
+if err != nil {
+    fmt.Fprintln(os.Stderr, "warn: logging disabled:", err)
+}
+defer cleanup()
+app.Run() // TUI starts after this; slog never writes to stderr
+```
+
+Go's default `slog` handler writes to **stderr**, so a single `slog.Warn` at runtime splatters log text across a bubbletea frame. Call `SetTUIHandler` *before* `tea.NewProgram(...).Run()` and keep it installed for the TUI's lifetime. Use it only in interactive/TUI mode — headless runs should keep stderr so operators see errors.
+
+---
+
 ### `Path(appName string) string`
 
 Returns the path where `NewFile` writes logs, without opening the file. Useful for printing the log location at startup or in help text.
@@ -218,6 +235,7 @@ log := logger.New(logger.Config{Level: cfg.LogLevel})
 | `New(cfg Config)` | func | Creates logger with explicit config |
 | `NewDefault()` | func | Creates logger with info/JSON/stderr defaults |
 | `NewFile(appName string)` | func | Creates file logger at `/tmp/<appName>.log` |
+| `SetTUIHandler(appName string)` | func | Installs file logger as slog default for TUIs; `io.Discard` fallback on error |
 | `Path(appName string)` | func | Returns log file path without opening it |
 
 ---

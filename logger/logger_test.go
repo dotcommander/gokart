@@ -3,6 +3,7 @@ package logger
 import (
 	"bytes"
 	"encoding/json"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -322,4 +323,48 @@ func TestNewFile_RejectsUnsafeAppName(t *testing.T) {
 			t.Errorf("NewFile(%q) error = nil, want error", name)
 		}
 	}
+}
+
+func TestSetTUIHandler_InstallsDefaultAndWritesFile(t *testing.T) {
+	t.Parallel()
+	appName := "gokart-logger-tui-" + t.Name()
+	path := Path(appName)
+	_ = os.Remove(path)
+	t.Cleanup(func() { _ = os.Remove(path) })
+
+	prev := slog.Default()
+	t.Cleanup(func() { slog.SetDefault(prev) })
+
+	cleanup, err := SetTUIHandler(appName)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if slog.Default() == prev {
+		t.Fatal("slog.Default() unchanged, want TUI handler installed")
+	}
+	// A library/logger emitting via the default must land in the file, not stderr.
+	slog.Default().Info("via default")
+	cleanup()
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), "via default") {
+		t.Fatalf("log file missing default-handler event, got %q", string(data))
+	}
+}
+
+func TestSetTUIHandler_InvalidNameFallsBackToDiscard(t *testing.T) {
+	t.Parallel()
+	prev := slog.Default()
+	t.Cleanup(func() { slog.SetDefault(prev) })
+
+	cleanup, err := SetTUIHandler("../evil")
+	if err == nil {
+		t.Fatal("SetTUIHandler(../evil) error = nil, want error")
+	}
+	if slog.Default() == prev {
+		t.Fatal("slog.Default() unchanged, want discard fallback installed")
+	}
+	cleanup() // must not panic with discard handler
 }

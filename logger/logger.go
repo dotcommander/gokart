@@ -124,6 +124,41 @@ func NewFile(appName string) (*slog.Logger, func(), error) {
 	return logger, cleanup, nil
 }
 
+// SetTUIHandler installs a non-stderr slog default handler for
+// terminal-owned UIs (bubbletea, tview, tcell, termui).
+//
+// Go's slog default handler writes to stderr, so a single slog.Warn
+// or slog.Info at runtime splatters log text across the rendered
+// frame. Call SetTUIHandler before starting the TUI and keep it
+// installed for the TUI's lifetime. It opens the same file as
+// NewFile (os.TempDir()/appName.log, 0600) and installs it as the
+// default via slog.SetDefault, so library and third-party code
+// calling slog.Default() is redirected too. If the file cannot be
+// opened, it installs an io.Discard handler instead of leaving
+// slog pointed at stderr.
+//
+// Call only in interactive/TUI mode; headless (--print,
+// --non-interactive) runs should keep stderr so operators see errors.
+// The returned cleanup function closes the file and must be deferred
+// immediately after checking the error.
+//
+// Example:
+//
+//	cleanup, err := logger.SetTUIHandler("myapp")
+//	if err != nil {
+//	    fmt.Fprintln(os.Stderr, "warn: logging disabled:", err)
+//	}
+//	defer cleanup()
+func SetTUIHandler(appName string) (func(), error) {
+	log, cleanup, err := NewFile(appName)
+	if err != nil {
+		slog.SetDefault(slog.New(slog.NewJSONHandler(io.Discard, nil)))
+		return func() {}, err
+	}
+	slog.SetDefault(log)
+	return cleanup, nil
+}
+
 // Path returns the path where file logs are written.
 //
 // Example:
