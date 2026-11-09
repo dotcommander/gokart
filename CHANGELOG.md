@@ -3,6 +3,7 @@
 ## Unreleased
 
 ### Added
+- `web.Transport()` / `web.NewClient()` — production-tuned outbound HTTP client: `http.DefaultTransport` cloned (never `&http.Transport{}` from scratch, which drops TLS timeouts/HTTP2/proxy) with `MaxIdleConnsPerHost` 2→100 (~7x throughput on a saturated upstream), `MaxIdleConns` 100, and `IdleConnTimeout` 90s.
 - Test coverage: `cli` (25.9% → 87.7%), `cache` (49.4% → 73.0%), `migrate` (64.3% → 75.7%), `postgres` (59.3% → 91.2% via failure-path tests against a closed port), `cmd/gokart` main (0% → 81.8%) and `commands` (61.3% → 73.6%), plus root `LoadConfig`/`ParseConfig`, `web` response helpers, `sqlite` constraint/readonly, and generic transaction-lifecycle tests (begin/rollback/commit/panic) — all without new dependencies.
 
 ### Fixed
