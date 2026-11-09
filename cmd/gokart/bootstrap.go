@@ -28,7 +28,7 @@ func effectiveGokartVersion(version string) string {
 }
 
 func selectGokartVersion(version, moduleVersion string) string {
-	if version != "dev" || moduleVersion == "" || moduleVersion == "(devel)" {
+	if version != devGokartVersion || moduleVersion == "" || moduleVersion == "(devel)" {
 		return version
 	}
 	return moduleVersion
