@@ -54,6 +54,7 @@ func TestWebSourceAllowlist(t *testing.T) {
 		"client.go": true, "client_test.go": true,
 		"httpserver.go": true, "httpserver_test.go": true,
 		"response.go": true, "response_test.go": true,
+		"retry.go": true, "retry_test.go": true,
 		"validate.go": true,
 		"web_test.go": true,
 	}

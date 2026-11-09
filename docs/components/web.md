@@ -19,7 +19,7 @@ Use upstream facilities directly for removed policy surfaces:
 - static assets: `http.FileServer`
 - auth, sessions, and CSRF: caller-selected middleware
 - pagination: caller-owned request and response types
-- retries: `net/http` or `go-retryablehttp`
+- retries: `web.RetryTransport` (operation-owned; see below)
 - rate limiting: `golang.org/x/time/rate`
 - templates: templ's native component and handler APIs
 
@@ -32,6 +32,23 @@ client := web.NewClient() // create once per service, reuse for every request
 ```
 
 Clients own their connection pool — creating one per request or per goroutine defeats pooling entirely. Never build `&http.Transport{}` from scratch to change one field: the zero value silently drops TLS timeouts, HTTP/2, and proxy settings. `web.Transport()` clones the default so those production-safe settings are inherited.
+
+## Retries (operation-owned)
+
+Retries belong at the operation layer: idempotency depends on the method, body replayability, idempotency keys, and response classification — never automatic retries on every request. `web.RetryTransport` is an explicit `RoundTripper` you opt into per operation:
+
+```go
+client := web.NewRetryClient(&web.RetryTransport{
+    Next:     web.Transport(),
+    Attempts: 3,
+    Initial:  100 * time.Millisecond,
+    MaxDelay: 2 * time.Second,
+})
+```
+
+- **Classification:** `web.ShouldRetryHTTP` retries network errors, 408, 429, and 5xx; other 4xx are permanent caller errors. Custom policies implement `web.RetryPolicy`.
+- **Jitter (required):** every retry waits `base/2 + uniform(0, base/2)` where `base = min(Initial * 2^attempt, MaxDelay)` — without jitter, simultaneous failures retry in lockstep and amplify the outage.
+- **Replayability:** the wrapper re-sends the same `*http.Request`; the caller must supply a request whose body can be replayed (e.g. `bytes.NewReader`, `http.NewRequestWithContext` + `GetBody`). Non-replayable bodies must be handled by the operation itself.
 
 ## See Also
 

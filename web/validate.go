@@ -1,6 +1,7 @@
 package web
 
 import (
+	"errors"
 	"reflect"
 	"strings"
 
@@ -89,8 +90,8 @@ func NewStandardValidator() *validator.Validate {
 //	    }
 //	}
 func ValidationErrors(err error) map[string]string {
-	ve, ok := err.(validator.ValidationErrors)
-	if !ok {
+	var ve validator.ValidationErrors
+	if !errors.As(err, &ve) {
 		return nil
 	}
 
