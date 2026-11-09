@@ -93,6 +93,7 @@ Flat projects are unmanaged, so `gokart add` refuses with exit 10: "add the rele
 ## Next
 
 - Tutorial: [getting started](docs/getting-started.md)
+- Runnable examples: [complete applications](examples/) and [component examples](docs/examples/)
 - Library reference: [documentation index](docs/index.md)
 - Generator reference: [generator](docs/components/generator.md)
 
