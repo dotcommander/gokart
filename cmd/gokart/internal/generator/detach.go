@@ -129,7 +129,7 @@ func projectFreeOfGokart(dir string) bool {
 	if _, err := os.Stat(filepath.Join(dir, "go.mod")); err != nil {
 		return false
 	}
-	for _, rel := range []string{"go.mod", appContextPath, appConfigPath, "internal/commands/root.go"} {
+	for _, rel := range []string{"go.mod", appContextPath, appConfigPath, commandsRootPath} {
 		data, err := os.ReadFile(filepath.Join(dir, rel))
 		if err != nil {
 			if os.IsNotExist(err) {
