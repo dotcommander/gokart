@@ -7,7 +7,7 @@ Scaffold new Go CLI projects and add integrations without re-scaffolding.
 Install the tagged CLI:
 
 ```bash
-go install github.com/dotcommander/gokart/cmd/gokart@v0.16.0
+go install github.com/dotcommander/gokart/cmd/gokart@v0.17.0
 ```
 
 The explicit version keeps installation reproducible.
@@ -365,7 +365,7 @@ gokart config show
 Output:
 
 ```
-Version:     v0.16.0
+Version:     v0.17.0
 Config dir:  /Users/you/Library/Application Support
 Binary:      /Users/you/go/bin/gokart
 ```
@@ -406,7 +406,7 @@ The file lets `gokart add` detect user modifications and track integrations.
 {
   "version": 2,
   "generator": "gokart",
-  "generator_version": "v0.16.0",
+  "generator_version": "v0.17.0",
   "template_root": "templates/structured",
   "existing_file_policy": "fail",
   "mode": "structured",

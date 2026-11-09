@@ -5,7 +5,7 @@ Structured logging for Go applications built on [log/slog](https://pkg.go.dev/lo
 ## Installation
 
 ```bash
-go get github.com/dotcommander/gokart/logger@v0.16.0
+go get github.com/dotcommander/gokart/logger@v0.17.0
 ```
 
 ## Quick Start

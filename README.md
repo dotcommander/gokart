@@ -12,7 +12,7 @@ Bootstrap a Go project in one command. Output is plain Go you own.
 ## Start
 
 ```bash
-go install github.com/dotcommander/gokart/cmd/gokart@v0.16.0
+go install github.com/dotcommander/gokart/cmd/gokart@v0.17.0
 gokart new hello --example
 ```
 

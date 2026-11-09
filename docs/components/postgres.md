@@ -16,7 +16,7 @@ The PostgreSQL module configures a real `*pgxpool.Pool`. Use pgx directly after 
 ## Install
 
 ```bash
-go get github.com/dotcommander/gokart/postgres@v0.16.0
+go get github.com/dotcommander/gokart/postgres@v0.17.0
 ```
 
 ## Choose a constructor

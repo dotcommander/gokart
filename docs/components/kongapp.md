@@ -5,10 +5,10 @@ Use `kongapp` when you want the repeated parse-and-run shell around a Kong comma
 ## Install
 
 ```bash
-go get github.com/dotcommander/gokart/kongapp@v0.16.0
+go get github.com/dotcommander/gokart/kongapp@v0.17.0
 ```
 
-Tagged with the workspace `v0.16.0` release.
+Tagged with the workspace `v0.17.0` release.
 
 ## First action: parse, initialize, run, clean up
 

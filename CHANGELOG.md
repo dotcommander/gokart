@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v0.17.0 (2026-11-09)
 
 ### Added
 - `logger.SetTUIHandler(appName)` — installs the `NewFile` logger as the `slog` default via `slog.SetDefault` for terminal-owned UIs (bubbletea/tview/termui), where the default stderr handler corrupts rendered frames. Falls back to `io.Discard` when the file can't be opened; call before `tea.NewProgram(...).Run()`.

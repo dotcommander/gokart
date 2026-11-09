@@ -7,10 +7,10 @@ Use `fslock` when two instances of your own program must not enter the same crit
 ## Install
 
 ```bash
-go get github.com/dotcommander/gokart/fslock@v0.16.0
+go get github.com/dotcommander/gokart/fslock@v0.17.0
 ```
 
-Tagged with the workspace `v0.16.0` release.
+Tagged with the workspace `v0.17.0` release.
 
 ## First action: acquire, work, release
 

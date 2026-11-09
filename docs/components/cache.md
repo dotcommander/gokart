@@ -18,7 +18,7 @@ The cache module owns Redis construction, optional key prefixes, JSON operations
 ## Install
 
 ```bash
-go get github.com/dotcommander/gokart/cache@v0.16.0
+go get github.com/dotcommander/gokart/cache@v0.17.0
 ```
 
 ## Connect
