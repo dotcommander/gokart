@@ -125,7 +125,9 @@ func TestDetachIdempotentAfterManifestRemoved(t *testing.T) {
 	}
 	// noopRunner skips `go mod tidy`, so simulate its effect on go.mod.
 	mustWrite(t, filepath.Join(dir, "go.mod"), "module example.com/demo\n\ngo 1.26\n")
-	os.Remove(filepath.Join(dir, scaffoldManifestPath))
+	if err := os.Remove(filepath.Join(dir, scaffoldManifestPath)); err != nil && !os.IsNotExist(err) {
+		t.Fatal(err)
+	}
 	res, err := svc.Detach(context.Background(), DetachRequest{Dir: dir}, Runtime{})
 	if err != nil || !res.AlreadyDetached {
 		t.Fatalf("res=%+v err=%v", res, err)

@@ -1,7 +1,6 @@
 package commands
 
 import (
-	"errors"
 	"fmt"
 	"time"
 
@@ -76,12 +75,8 @@ func (c *detachCommand) emitJSON(result generator.DetachResult, err error) error
 		out.Outcome = outcomeSuccess
 		return c.writeJSON(out)
 	}
-	classified := classify(err)
-	out.Outcome, out.ErrorCode, out.ExitCode, out.Error = outcomeFailure, classified.kind, classified.exitCode, err.Error()
-	var op *generator.OperationError
-	if errors.As(err, &op) && op.Partial {
-		out.Outcome = outcomePartialSuccess
-	}
+	classified, outcome := classifyEmission(err)
+	out.Outcome, out.ErrorCode, out.ExitCode, out.Error = outcome, classified.kind, classified.exitCode, err.Error()
 	if writeErr := c.writeJSON(out); writeErr != nil {
 		return writeErr
 	}

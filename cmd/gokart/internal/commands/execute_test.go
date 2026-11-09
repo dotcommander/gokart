@@ -218,7 +218,7 @@ func TestHelpSnapshots(t *testing.T) {
 		create: func(generator.CreateRequest) (generator.CreateResult, error) { return generator.CreateResult{}, nil },
 		add:    func(generator.AddRequest) (generator.AddResult, error) { return generator.AddResult{}, nil },
 	}
-	for _, command := range []string{"root", "new", "add", "detach"} {
+	for _, command := range []string{"root", "new", addCommandName, detachCommandName} {
 		command := command
 		t.Run(command, func(t *testing.T) {
 			t.Parallel()

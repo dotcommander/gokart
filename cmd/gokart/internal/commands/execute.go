@@ -19,6 +19,8 @@ const (
 	outcomeSuccess        = "success"
 	jsonFlag              = "--json"
 	configName            = "config"
+	addCommandName        = "add"
+	detachCommandName     = "detach"
 )
 
 type ProjectGenerator interface {
@@ -84,7 +86,7 @@ func Execute(ctx context.Context, args []string, version string, deps Dependenci
 	}
 	if hasJSONFlag(args) {
 		var out any = createOutput{Outcome: outcomeFailure, ErrorCode: generator.ErrorInvalidArguments, ExitCode: 2, Error: err.Error()}
-		if len(args) > 0 && (args[0] == "add" || args[0] == "detach") {
+		if len(args) > 0 && (args[0] == addCommandName || args[0] == detachCommandName) {
 			out = addOutput{Outcome: outcomeFailure, ErrorCode: generator.ErrorInvalidArguments, ExitCode: 2, Error: err.Error()}
 		}
 		if writeErr := emitJSON(deps.Stdout, out); writeErr != nil {
@@ -191,6 +193,18 @@ func classify(err error) *commandError {
 		code = 1
 	}
 	return &commandError{Err: err, kind: op.Kind, exitCode: code}
+}
+
+// classifyEmission pairs classify with the JSON outcome for a failed operation,
+// so add and detach emitJSON share it instead of duplicating the partial check.
+func classifyEmission(err error) (*commandError, string) {
+	classified := classify(err)
+	outcome := outcomeFailure
+	var op *generator.OperationError
+	if errors.As(err, &op) && op.Partial {
+		outcome = outcomePartialSuccess
+	}
+	return classified, outcome
 }
 
 func emitJSON(w io.Writer, value any) error {

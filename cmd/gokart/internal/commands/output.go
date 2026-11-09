@@ -83,6 +83,12 @@ func renderCreate(w io.Writer, r generator.CreateResult) {
 	for _, warning := range r.Warnings {
 		writeOutputf(w, "Warning: %s\n", warning)
 	}
+	renderCreateHeadline(w, r)
+	renderCreatePlan(w, r)
+	renderCreateFooter(w, &r)
+}
+
+func renderCreateHeadline(w io.Writer, r generator.CreateResult) {
 	switch {
 	case r.DryRun:
 		writeOutputf(w, "Dry run complete for %s (%s)\n", r.ProjectName, r.Mode)
@@ -94,32 +100,36 @@ func renderCreate(w io.Writer, r generator.CreateResult) {
 	default:
 		writeOutputf(w, "Created %s (%s)\n", r.ProjectName, r.Mode)
 	}
-	if r.DryRun && r.Result != nil {
-		label := "Applied"
-		if r.DryRun {
-			label = "Planned"
-		}
-		writeOutputf(w, "%s: %d create, %d overwrite, %d skip, %d unchanged\n", label, len(r.Result.Created), len(r.Result.Overwritten), len(r.Result.Skipped), len(r.Result.Unchanged))
-		for _, group := range []struct {
-			label string
-			paths []string
-		}{{"create", r.Result.Created}, {"overwrite", r.Result.Overwritten}, {"skip", r.Result.Skipped}, {"unchanged", r.Result.Unchanged}} {
-			for _, path := range group.paths {
-				writeOutputf(w, "  %-10s %s\n", group.label, path)
-			}
+}
+
+func renderCreatePlan(w io.Writer, r generator.CreateResult) {
+	if !r.DryRun || r.Result == nil {
+		return
+	}
+	writeOutputf(w, "Planned: %d create, %d overwrite, %d skip, %d unchanged\n", len(r.Result.Created), len(r.Result.Overwritten), len(r.Result.Skipped), len(r.Result.Unchanged))
+	for _, group := range []struct {
+		label string
+		paths []string
+	}{{"create", r.Result.Created}, {"overwrite", r.Result.Overwritten}, {"skip", r.Result.Skipped}, {"unchanged", r.Result.Unchanged}} {
+		for _, path := range group.paths {
+			writeOutputf(w, "  %-10s %s\n", group.label, path)
 		}
 	}
+}
+
+func renderCreateFooter(w io.Writer, r *generator.CreateResult) {
 	if r.VerifyOnly && r.VerifyPassed && len(r.NextSteps) == 0 {
 		r.NextSteps = []string{"cd " + shellQuote(r.TargetDir), "go run ."}
 	}
 	if r.VerifyRan && r.VerifyPassed {
 		writeOutputln(w, "Verified: tests and build")
 	}
-	if len(r.NextSteps) > 0 {
-		writeOutputln(w, "\nNext:")
-		for _, step := range r.NextSteps {
-			writeOutputf(w, "  %s\n", step)
-		}
+	if len(r.NextSteps) == 0 {
+		return
+	}
+	writeOutputln(w, "\nNext:")
+	for _, step := range r.NextSteps {
+		writeOutputf(w, "  %s\n", step)
 	}
 }
 

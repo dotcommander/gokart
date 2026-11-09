@@ -46,29 +46,54 @@ func (s *Service) Detach(ctx context.Context, request DetachRequest, runtime Run
 }
 
 func planDetach(req DetachRequest, result *DetachResult) (*detachPlan, error) {
-	if _, err := os.Stat(filepath.Join(req.Dir, scaffoldManifestPath)); os.IsNotExist(err) && looksLikeFlatProject(req.Dir) {
-		return nil, wrapAddFlowError(errors.New("gokart detach: flat projects have no GoKart runtime import; nothing to detach"), ErrorFlatModeUnsupported)
+	manifest, done, err := detachManifest(req, result)
+	if err != nil || done {
+		return nil, err
 	}
-	if _, statErr := os.Stat(filepath.Join(req.Dir, scaffoldManifestPath)); os.IsNotExist(statErr) && projectFreeOfGokart(req.Dir) {
-		result.AlreadyDetached = true
-		return nil, nil
-	}
-	manifest, err := readAddManifest(req.Dir)
-	if err != nil {
-		return nil, wrapAddFlowError(err, ErrorManifestNotFound)
-	}
-	if isFlatProject(manifest) {
-		return nil, wrapAddFlowError(errors.New("gokart detach: flat projects have no GoKart runtime import; nothing to detach"), ErrorFlatModeUnsupported)
-	}
-
 	goMod, err := os.ReadFile(filepath.Join(req.Dir, "go.mod"))
 	if err != nil {
 		return nil, wrapAddFlowError(fmt.Errorf("read go.mod: %w", err), ErrorScaffoldFailed)
 	}
 	plan := &detachPlan{Manifest: manifest, GoModCoupled: bytes.Contains(goMod, []byte(gokartImportPrefix))}
+	rendered, err := renderDetachData(manifest, req.Dir)
+	if err != nil {
+		return nil, err
+	}
+	if err := collectDetachFiles(req, manifest, rendered, plan, result); err != nil {
+		return nil, err
+	}
+	sort.Strings(plan.RenderedPaths)
+	result.FilesOverwritten = append(result.FilesOverwritten, plan.RenderedPaths...)
+	if len(plan.RenderedPaths) == 0 && !plan.GoModCoupled {
+		result.AlreadyDetached = true
+		return nil, nil
+	}
+	return plan, nil
+}
 
-	_, current := detectCurrentIntegrations(manifest, req.Dir)
-	data, err := inferTemplateData(manifest, req.Dir, current, nil, manifest.Module)
+// detachManifest returns the manifest, or done=true when the request needs
+// no further planning (already-detached marker is set on result).
+func detachManifest(req DetachRequest, result *DetachResult) (*scaffoldManifest, bool, error) {
+	if _, err := os.Stat(filepath.Join(req.Dir, scaffoldManifestPath)); os.IsNotExist(err) && looksLikeFlatProject(req.Dir) {
+		return nil, false, wrapAddFlowError(errors.New("gokart detach: flat projects have no GoKart runtime import; nothing to detach"), ErrorFlatModeUnsupported)
+	}
+	if _, statErr := os.Stat(filepath.Join(req.Dir, scaffoldManifestPath)); os.IsNotExist(statErr) && projectFreeOfGokart(req.Dir) {
+		result.AlreadyDetached = true
+		return nil, true, nil
+	}
+	manifest, err := readAddManifest(req.Dir)
+	if err != nil {
+		return nil, false, wrapAddFlowError(err, ErrorManifestNotFound)
+	}
+	if isFlatProject(manifest) {
+		return nil, false, wrapAddFlowError(errors.New("gokart detach: flat projects have no GoKart runtime import; nothing to detach"), ErrorFlatModeUnsupported)
+	}
+	return manifest, false, nil
+}
+
+func renderDetachData(manifest *scaffoldManifest, dir string) (map[string][]byte, error) {
+	_, current := detectCurrentIntegrations(manifest, dir)
+	data, err := inferTemplateData(manifest, dir, current, nil, manifest.Module)
 	if err != nil {
 		return nil, wrapAddFlowError(fmt.Errorf("infer project state: %w", err), ErrorScaffoldFailed)
 	}
@@ -76,7 +101,10 @@ func planDetach(req DetachRequest, result *DetachResult) (*detachPlan, error) {
 	if err != nil {
 		return nil, wrapAddFlowError(fmt.Errorf("render templates: %w", err), ErrorScaffoldFailed)
 	}
+	return rendered, nil
+}
 
+func collectDetachFiles(req DetachRequest, manifest *scaffoldManifest, rendered map[string][]byte, plan *detachPlan, result *DetachResult) error {
 	plan.RenderedFiles = make(map[string][]byte)
 	for relPath, content := range rendered {
 		existing, err := os.ReadFile(filepath.Join(req.Dir, relPath))
@@ -85,21 +113,14 @@ func planDetach(req DetachRequest, result *DetachResult) (*detachPlan, error) {
 		}
 		if checkFileSafety(req.Dir, relPath, manifest) == fileSafetyConflict {
 			if !req.Force {
-				return nil, &OperationError{Kind: ErrorExistingFileConflict, Conflicts: []string{relPath}, Err: fmt.Errorf("file %s has been modified (use --force to overwrite)", relPath)}
+				return &OperationError{Kind: ErrorExistingFileConflict, Conflicts: []string{relPath}, Err: fmt.Errorf("file %s has been modified (use --force to overwrite)", relPath)}
 			}
 			result.Warnings = append(result.Warnings, "force-overwriting modified file: "+relPath)
 		}
 		plan.RenderedFiles[relPath] = content
 		plan.RenderedPaths = append(plan.RenderedPaths, relPath)
 	}
-	sort.Strings(plan.RenderedPaths)
-	result.FilesOverwritten = append(result.FilesOverwritten, plan.RenderedPaths...)
-
-	if len(plan.RenderedPaths) == 0 && !plan.GoModCoupled {
-		result.AlreadyDetached = true
-		return nil, nil
-	}
-	return plan, nil
+	return nil
 }
 
 // projectFreeOfGokart reports whether go.mod and the generated wiring files
@@ -108,7 +129,7 @@ func projectFreeOfGokart(dir string) bool {
 	if _, err := os.Stat(filepath.Join(dir, "go.mod")); err != nil {
 		return false
 	}
-	for _, rel := range []string{"go.mod", "internal/app/context.go", appConfigPath, "internal/commands/root.go"} {
+	for _, rel := range []string{"go.mod", appContextPath, appConfigPath, "internal/commands/root.go"} {
 		data, err := os.ReadFile(filepath.Join(dir, rel))
 		if err != nil {
 			if os.IsNotExist(err) {
