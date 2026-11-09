@@ -8,9 +8,15 @@ GoKart is a multi-module Go workspace. Use the repository workspace for developm
 
 ```bash
 scripts/verify-workspace.sh all
-golangci-lint run ./...
-(cd cmd/gokart && golangci-lint run ./...)
+scripts/lint.sh
 ```
+
+`scripts/lint.sh` is the single source of truth for the lint checks and mirrors
+CI (`.github/workflows/ci.yml`) exactly. It also runs automatically before
+`git push` via the `.githooks/pre-push-check` hook, so code that fails lint
+never reaches GitHub. For that gate to fire, the global `core.hooksPath`
+`pre-push` wrapper must chain `.githooks/pre-push-check` (see
+`~/.codex/git-hooks/README.md`); use `just lint` for the manual check.
 
 Generator changes must update the embedded templates, their golden trees, CLI help contracts, and documentation together. Regenerate and recheck goldens with:
 

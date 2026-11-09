@@ -19,6 +19,10 @@ test:
 vet:
     scripts/verify-workspace.sh vet
 
+# Lint root and cmd/gokart modules (same checks as CI; also run by the pre-push gate)
+lint:
+    scripts/lint.sh
+
 # Verify all workspace modules and ignored example files
 verify:
     scripts/verify-workspace.sh all

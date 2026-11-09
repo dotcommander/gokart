@@ -1,0 +1,21 @@
+#!/bin/sh
+# Pre-push lint gate for this repository.
+#
+# Chained by the global core.hooksPath pre-push wrapper
+# (~/.codex/git-hooks/pre-push, see that directory's README) after the
+# GitHub outgoing-history checks. Any failure blocks the push, matching
+# the Lint steps in .github/workflows/ci.yml.
+set -eu
+
+repo_root=$(git rev-parse --show-toplevel)
+if [ ! -x "$repo_root/scripts/lint.sh" ]; then
+    printf '%s\n' 'pre-push: BLOCKED: scripts/lint.sh is missing or not executable.' >&2
+    exit 1
+fi
+
+if ! "$repo_root/scripts/lint.sh"; then
+    printf '%s\n' 'pre-push: BLOCKED: lint failed. Fix the findings above; push blocked.' >&2
+    printf '%s\n' 'pre-push: To bypass in an emergency: git push --no-verify (code must still pass CI).' >&2
+    exit 1
+fi
+exit 0
